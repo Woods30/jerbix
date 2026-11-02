@@ -6,13 +6,11 @@
 
 ## 项目定位
 
-`saas-template`（示例品牌 **Jerbix**）是一个构建在 **Cloudflare Workers** 上的
-**TanStack Start** SaaS 起步模板。目标流程：`git clone` → 改
-`src/config/website.ts` → 部署。
-
-技术栈：TanStack Start / Router / Query、React 19、TypeScript strict、Tailwind CSS v4、
-shadcn/ui（Base UI 基座 / Tabler 图标）、Paraglide JS（zh / en）、Zod、
-Drizzle ORM + D1、Vitest + Playwright。
+本仓是 **Jerbix 官网工程**：营销页 + Stripe 收款 + 商业条款，跑在 **Cloudflare Workers**
+上。代码是**模板工程**起步模板的衍生版本（TanStack Start / Router / Query、React 19、
+TypeScript strict、Tailwind CSS v4、shadcn/ui（Base UI 基座 / Tabler 图标）、
+Paraglide JS（zh / en）、Zod、Drizzle ORM + D1、Vitest + Playwright）——通用改动在
+模板仓做，再合并过来；品牌、价格、支持邮箱与法律条款留在本仓。
 
 ## 与模板仓的关系
 
@@ -38,6 +36,11 @@ git fetch template && git merge template/main
 | `package.json` 的 `version` | 官网版本：Release tag 必须与它一致 |
 | `CHANGELOG.md` | 官网的发布记录 |
 | `docs/superpowers/**` | 官网的开发史（模板仓不留本项目的历史） |
+
+**版本号两仓各自独立，互不跟随**：模板仓的 `version` 是模板的发布版本（当前 0.9.0），
+本仓的是官网站点的发布版本（当前 0.8.1）。合并模板仓时模板的版本号与发布记录不带
+过来，本仓的也不带过去。发 Release 的三个硬性条件：tag 与本仓 `package.json` 的
+`version` 一致、tag 指向的提交在 `main` 上、该提交的 CI 已成功。
 
 两个 Worker 各自部署，互不影响：
 
