@@ -38,8 +38,11 @@ pnpm install
 pnpm run setup
 ```
 
-脚本会问你项目名，然后创建（或复用）D1 数据库、R2 bucket、KV namespace，生成认证密钥，
-把结果写进 `.env` 与 `wrangler.jsonc`。
+脚本会问你项目名，然后创建（或复用）D1 数据库与 KV namespace，生成认证密钥，
+把结果写进 `.env` 与 `wrangler.jsonc`。`.env` 里已有的值会保留——脚本只改写自己管的那几个键。
+
+R2 **不会**被自动创建：bucket 需要先在 Cloudflare Dashboard 开通一次（要绑支付方式，
+API 代劳不了）。手动步骤见 [存储](./storage)。
 
 没有登录 Cloudflare 时脚本会提示，但仍可继续——本地开发用 D1 的 SQLite 模拟，
 不需要真实资源。登录方式：

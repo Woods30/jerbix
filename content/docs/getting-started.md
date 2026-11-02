@@ -40,9 +40,14 @@ pnpm install
 pnpm run setup
 ```
 
-The script asks for a project name, then creates (or reuses) a D1 database, R2 bucket, and
-KV namespace, generates the auth secret, and writes the results to `.env` and
-`wrangler.jsonc`.
+The script asks for a project name, then creates (or reuses) a D1 database and a KV
+namespace, generates the auth secret, and writes the results to `.env` and
+`wrangler.jsonc`. Existing `.env` values are kept — only the keys the script manages
+are rewritten.
+
+R2 is **not** created for you: the bucket must be activated once in the Cloudflare
+dashboard (it requires a payment method, so the API cannot do it). See
+[Storage](./storage) for the manual steps.
 
 If you are not logged in to Cloudflare it warns you but continues — local development uses
 a SQLite-backed D1 and needs no real resources. To log in:

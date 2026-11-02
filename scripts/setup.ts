@@ -1,40 +1,39 @@
 #!/usr/bin/env tsx
-import { execSync } from 'node:child_process'
+import { execFileSync, execSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { confirm, input, password, select } from '@inquirer/prompts'
+import { updateEnv } from './lib/env-merge'
+import { buildEnvUpdates } from './lib/setup-env'
+import {
+  applyResourceBindings,
+  isValidProjectName,
+  provisionResources,
+} from './lib/setup-resources'
 
 function run(cmd: string, options: { stdio?: 'inherit' | 'pipe' } = {}) {
   console.log(`$ ${cmd}`)
   return execSync(cmd, { stdio: options.stdio ?? 'inherit' })
 }
 
-export function readEnv(): Record<string, string> {
-  if (!existsSync('.env')) return {}
-  const raw = readFileSync('.env', 'utf-8')
-  const result: Record<string, string> = {}
-  for (const line of raw.split('\n')) {
-    const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/)
-    if (m) {
-      const key = m[1]
-      const value = m[2]
-      if (key !== undefined && value !== undefined) {
-        result[key] = value
-      }
-    }
+/**
+ * 读出 `.env` 的**原文**；不存在时从 `.env.example` 复制一份。
+ *
+ * 保留原文而非解析成键值对，是为了不丢注释：`.env` 里写着「生产必须改成实际
+ * 域名」这类说明，整体覆盖会把它们连同手填的凭据一起抹掉。
+ */
+export function prepareEnvFile(envPath = '.env', examplePath = '.env.example'): string {
+  if (existsSync(envPath)) return readFileSync(envPath, 'utf-8')
+  if (!existsSync(examplePath)) {
+    throw new Error(`缺少 ${envPath} 与 ${examplePath}；请先创建 ${examplePath}`)
   }
-  return result
+  copyFileSync(examplePath, envPath)
+  return readFileSync(envPath, 'utf-8')
 }
 
-export function writeEnv(env: Record<string, string>) {
-  const content = `${Object.entries(env)
-    .map(([k, v]) => `${k}=${v}`)
-    .join('\n')}\n`
-  writeFileSync('.env', content)
-  console.log('✅ .env 已更新')
-}
-
-async function main() {
+export async function main() {
   console.log('🚀 SaaS Template Setup\n')
 
   // wrangler 未登录只软警告，不阻断。
@@ -51,64 +50,20 @@ async function main() {
   const projectName = await input({
     message: '项目名（用于 Cloudflare 资源前缀）',
     default: 'saas-template',
-    validate: (v) => /^[a-z0-9-]+$/.test(v) || '仅允许小写字母、数字、连字符',
+    validate: (v) =>
+      isValidProjectName(v) || '仅允许小写字母、数字、连字符（不能以连字符开头或结尾）',
   })
-  const dbName = `${projectName}-db`
-  const r2Name = `${projectName}-uploads`
-  const kvName = `${projectName}-cache`
-
-  let dbId = ''
-  try {
-    const out = run(`wrangler d1 create ${dbName} --json`, { stdio: 'pipe' }).toString()
-    dbId = (JSON.parse(out) as { uuid: string }).uuid
-  } catch {
-    // 已存在时从 d1 list 解析 id。
-    try {
-      const list = run(`wrangler d1 list --json`, { stdio: 'pipe' }).toString()
-      const found = (JSON.parse(list) as Array<{ uuid: string; name: string }>).find(
-        (d) => d.name === dbName,
-      )
-      if (!found) throw new Error('无法解析已存在的 D1 id')
-      dbId = found.uuid
-      console.log(`✅ D1 已存在：${dbId}`)
-    } catch (e) {
-      throw new Error(`D1 创建/查找失败：${(e as Error).message}`)
-    }
-  }
-  console.log(`✅ D1：${dbId}`)
-
-  try {
-    run(`wrangler r2 bucket create ${r2Name}`)
-  } catch {
-    console.log(`✅ R2 bucket ${r2Name}（可能已存在）`)
-  }
-
-  let kvId = ''
-  try {
-    const out = run(`wrangler kv namespace create ${kvName}`, { stdio: 'pipe' }).toString()
-    const m = out.match(/id = "([a-f0-9]+)"/)
-    if (!m) throw new Error('无法解析 KV id')
-    const kvIdMatch = m[1]
-    if (!kvIdMatch) throw new Error('无法解析 KV id')
-    kvId = kvIdMatch
-  } catch {
-    try {
-      const list = run(`wrangler kv namespace list --json`, { stdio: 'pipe' }).toString()
-      const found = (JSON.parse(list) as Array<{ id: string; title: string }>).find(
-        (k) => k.title === kvName,
-      )
-      if (!found) throw new Error('无法解析已存在的 KV id')
-      kvId = found.id
-      console.log(`✅ KV 已存在：${kvId}`)
-    } catch (e) {
-      throw new Error(`KV 创建/查找失败：${(e as Error).message}`)
-    }
-  }
-  console.log(`✅ KV：${kvId}`)
+  const resources = provisionResources(projectName, (command, args) => {
+    console.log(`$ ${command} ${args.join(' ')}`)
+    // 以 argv 下发，不经 shell：项目名即使被篡改也不会被解释成命令。
+    return execFileSync(command, args, { stdio: 'pipe' }).toString()
+  })
+  console.log(`✅ D1：${resources.dbId}`)
+  console.log(`✅ KV：${resources.kvId}`)
 
   const authSecret = randomBytes(32).toString('base64')
 
-  const env = readEnv()
+  const optional: Record<string, string> = {}
 
   const stripeChoice = await select({
     message: 'Stripe 配置？',
@@ -118,9 +73,9 @@ async function main() {
     ],
   })
   if (stripeChoice === 'configure') {
-    env.VITE_PAYMENT_PROVIDER = 'stripe'
-    env.STRIPE_SECRET_KEY = await password({ message: 'STRIPE_SECRET_KEY' })
-    env.STRIPE_WEBHOOK_SECRET = await password({ message: 'STRIPE_WEBHOOK_SECRET' })
+    optional.VITE_PAYMENT_PROVIDER = 'stripe'
+    optional.STRIPE_SECRET_KEY = await password({ message: 'STRIPE_SECRET_KEY' })
+    optional.STRIPE_WEBHOOK_SECRET = await password({ message: 'STRIPE_WEBHOOK_SECRET' })
   }
 
   const mailProvider = await select({
@@ -132,50 +87,44 @@ async function main() {
     ],
   })
   if (mailProvider === 'cloudflare') {
-    env.CLOUDFLARE_ACCOUNT_ID = await input({ message: 'CLOUDFLARE_ACCOUNT_ID' })
-    env.CLOUDFLARE_API_TOKEN = await password({ message: 'CLOUDFLARE_API_TOKEN' })
-    env.CLOUDFLARE_EMAIL_SENDER = await input({
+    optional.CLOUDFLARE_ACCOUNT_ID = await input({ message: 'CLOUDFLARE_ACCOUNT_ID' })
+    optional.CLOUDFLARE_API_TOKEN = await password({ message: 'CLOUDFLARE_API_TOKEN' })
+    optional.CLOUDFLARE_EMAIL_SENDER = await input({
       message: 'CLOUDFLARE_EMAIL_SENDER (e.g. support@example.com)',
       default: `support@${projectName}.com`,
     })
   } else if (mailProvider === 'resend') {
-    env.RESEND_API_KEY = await password({ message: 'RESEND_API_KEY' })
+    optional.RESEND_API_KEY = await password({ message: 'RESEND_API_KEY' })
   }
 
   const enableDiscord = await confirm({ message: '启用 Discord 通知？', default: false })
   if (enableDiscord) {
-    env.DISCORD_WEBHOOK_URL = await input({ message: 'DISCORD_WEBHOOK_URL' })
+    optional.DISCORD_WEBHOOK_URL = await input({ message: 'DISCORD_WEBHOOK_URL' })
   }
 
-  env.CLOUDFLARE_DATABASE_ID = dbId
-  env.BETTER_AUTH_SECRET = authSecret
-  if (!existsSync('.env')) {
-    if (existsSync('.env.example')) {
-      execSync('cp .env.example .env')
-    } else {
-      throw new Error('缺少 .env 与 .env.example；请先创建 .env.example')
-    }
-  }
-  writeEnv(env)
+  const currentEnv = prepareEnvFile()
+  const updates = buildEnvUpdates({
+    current: currentEnv,
+    dbId: resources.dbId,
+    authSecret,
+    optional,
+  })
+  writeFileSync('.env', updateEnv(currentEnv, updates))
+  console.log('✅ .env 已更新')
 
   const wranglerRaw = readFileSync('wrangler.jsonc', 'utf-8')
-  // 剥离 JSONC 注释后解析再写回：字段保留，注释会丢失。
-  const stripped = wranglerRaw.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
-  const wrangler = JSON.parse(stripped) as Record<string, unknown>
-
-  wrangler.d1_databases = [
-    {
-      binding: 'DB',
-      database_name: dbName,
-      database_id: dbId,
-      migrations_dir: './src/db/migrations',
-    },
-  ]
-  wrangler.r2_buckets = [{ binding: 'BUCKET', bucket_name: r2Name }]
-  wrangler.kv_namespaces = [{ binding: 'CACHE', id: kvId }]
-
-  writeFileSync('wrangler.jsonc', `${JSON.stringify(wrangler, null, 2)}\n`)
+  writeFileSync(
+    'wrangler.jsonc',
+    applyResourceBindings(wranglerRaw, {
+      dbName: resources.dbName,
+      dbId: resources.dbId,
+      kvId: resources.kvId,
+    }),
+  )
   console.log('✅ wrangler.jsonc 已更新')
+  console.log(
+    'ℹ️  未创建 R2：需先在 Cloudflare Dashboard 开通 R2（免费额度内不收费，但要绑支付方式），再取消 wrangler.jsonc 里 r2_buckets 的注释。',
+  )
 
   try {
     run('pnpm exec wrangler d1 migrations apply DB --local')
@@ -188,7 +137,21 @@ async function main() {
   console.log('  pnpm deploy 部署到 Cloudflare')
 }
 
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+/**
+ * 只有被直接执行时才跑交互流程。
+ *
+ * 之前 `main()` 写在模块顶层，import 这个模块就会弹交互框 —— 测试里表现为
+ * 一个永不返回的 prompt，被 import 的模块不该有这类副作用。
+ */
+function isDirectRun(): boolean {
+  const entry = process.argv[1]
+  if (!entry) return false
+  return import.meta.url.split('?')[0] === pathToFileURL(resolve(entry)).href
+}
+
+if (isDirectRun()) {
+  main().catch((err) => {
+    console.error(err)
+    process.exit(1)
+  })
+}

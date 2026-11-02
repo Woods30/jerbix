@@ -1,3 +1,6 @@
+import { spawnSync } from 'node:child_process'
+import { join } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // 必须在导入前 mock node:fs。
@@ -5,68 +8,60 @@ vi.mock('node:fs', () => ({
   readFileSync: vi.fn<(filePath: string, encoding: string) => string>(),
   writeFileSync: vi.fn<(filePath: string, content: string) => void>(),
   existsSync: vi.fn<(filePath: string) => boolean>(),
+  copyFileSync: vi.fn<(from: string, to: string) => void>(),
 }))
 
 // 在 vi.mock 之后导入，mock 才生效。
-import { readEnv, writeEnv } from '../../scripts/setup'
+import { prepareEnvFile } from '../../scripts/setup'
 
-const { readFileSync, writeFileSync, existsSync } = await import('node:fs')
+const { readFileSync, existsSync, copyFileSync } = await import('node:fs')
+
+const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
+const tsxBin = join(repoRoot, 'node_modules', '.bin', 'tsx')
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('readEnv', () => {
-  it('解析合法 .env', () => {
+describe('prepareEnvFile', () => {
+  it('.env 已存在时原样返回，不覆盖', () => {
     vi.mocked(existsSync).mockReturnValue(true)
-    vi.mocked(readFileSync).mockReturnValue(
-      'BETTER_AUTH_SECRET=abc123\nSTRIPE_SECRET_KEY=sk_test_xyz\n',
-    )
-    const env = readEnv()
-    expect(env).toEqual({
-      BETTER_AUTH_SECRET: 'abc123',
-      STRIPE_SECRET_KEY: 'sk_test_xyz',
-    })
+    vi.mocked(readFileSync).mockReturnValue('BETTER_AUTH_SECRET=abc123\n')
+
+    expect(prepareEnvFile()).toBe('BETTER_AUTH_SECRET=abc123\n')
+    expect(copyFileSync).not.toHaveBeenCalled()
   })
 
-  it('忽略注释行', () => {
-    vi.mocked(existsSync).mockReturnValue(true)
-    vi.mocked(readFileSync).mockReturnValue(
-      '# comment\nBETTER_AUTH_SECRET=secret\n# another comment\nSTRIPE_SECRET_KEY=sk_test\n',
-    )
-    const env = readEnv()
-    expect(env).toEqual({
-      BETTER_AUTH_SECRET: 'secret',
-      STRIPE_SECRET_KEY: 'sk_test',
-    })
+  it('.env 不存在时从 .env.example 复制一份', () => {
+    vi.mocked(existsSync).mockImplementation((path) => path === '.env.example')
+    vi.mocked(readFileSync).mockReturnValue('# 注释\nBETTER_AUTH_SECRET=\n')
+
+    expect(prepareEnvFile()).toBe('# 注释\nBETTER_AUTH_SECRET=\n')
+    expect(copyFileSync).toHaveBeenCalledWith('.env.example', '.env')
   })
 
-  it('处理不存在的 .env → 返回空对象', () => {
+  it('.env 与 .env.example 都不存在时抛错', () => {
     vi.mocked(existsSync).mockReturnValue(false)
-    const env = readEnv()
-    expect(env).toEqual({})
+
+    expect(() => prepareEnvFile()).toThrow(/\.env\.example/)
   })
 })
 
-describe('writeEnv', () => {
-  it('输出按 key 排序的 .env 格式', () => {
-    writeEnv({ BETTER_AUTH_SECRET: 'abc', STRIPE_SECRET_KEY: 'xyz' })
-    const written = vi.mocked(writeFileSync).mock.calls[0]?.[1] as string
-    const lines = written.trim().split('\n')
-    expect(lines[0]).toBe('BETTER_AUTH_SECRET=abc')
-    expect(lines[1]).toBe('STRIPE_SECRET_KEY=xyz')
-  })
+describe('setup.ts 的模块加载', () => {
+  it('被 import 时不触发交互流程', () => {
+    const setupUrl = pathToFileURL(join(repoRoot, 'scripts/setup.ts')).href
+    const result = spawnSync(
+      tsxBin,
+      [
+        '-e',
+        `import(${JSON.stringify(setupUrl)}).then((m) => console.log('EXPORTED:' + typeof m.main)).catch((e) => { console.error(e); process.exit(1) })`,
+      ],
+      { cwd: repoRoot, encoding: 'utf-8', timeout: 60_000 },
+    )
 
-  it('readEnv + writeEnv 往返保持一致', () => {
-    vi.mocked(existsSync).mockReturnValue(true)
-    const original = 'BETTER_AUTH_SECRET=roundtrip_value\nSTRIPE_SECRET_KEY=sk_test\n'
-    vi.mocked(readFileSync).mockReturnValue(original)
-
-    const env = readEnv()
-    writeEnv(env)
-
-    const written = vi.mocked(writeFileSync).mock.calls[0]?.[1] as string
-    expect(written).toContain('BETTER_AUTH_SECRET=roundtrip_value')
-    expect(written).toContain('STRIPE_SECRET_KEY=sk_test')
+    expect(result.stderr).toBe('')
+    expect(result.stdout).toContain('EXPORTED:function')
+    // 交互提示一旦被触发，stdout 会出现问题文本。
+    expect(result.stdout).not.toContain('项目名')
   })
 })
