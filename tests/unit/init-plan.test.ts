@@ -147,7 +147,10 @@ describe('buildPlan', () => {
 
     expect(result).toContain("name: 'Acme',")
     // 价格引用不在 init 范围内：lookup_key 取决于使用者在 Stripe 里建了什么。
-    expect(result).toContain("prices: { once: 'one_time' }")
+    // 断言「原样透传」而不是写死某个 lookup_key，各仓的价格引用不同。
+    const priceReference = /prices: \{ once: '([^']+)' \}/.exec(PRODUCTS)?.[1]
+    expect(priceReference).toBeTruthy()
+    expect(result).toContain(`prices: { once: '${priceReference}' }`)
   })
 
   it('wrangler.jsonc 改 Worker 名、域名与资源名，ID 置为占位符', () => {
