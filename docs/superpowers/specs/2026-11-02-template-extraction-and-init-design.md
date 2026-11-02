@@ -362,6 +362,11 @@ lookup key、`USD 99` 等官网专属内容。归入模板仓的版本必须改�
 且**不得使用 `{{EMAIL_*}}` 风格** —— `src/lib/llms.ts:113-124` 的 `sanitizePlaceholders()`
 会在 llms 输出里把它们洗成 `EMAILX`。
 
+**代码里的占位值另说**：模板仓的 `websiteConfig.mail.supportEmail` 用
+`support@example.com` 而不是 `<your-support-email>`。配置里的邮箱要过 `z.email()`
+校验（`src/config/service-status.ts:234`），写成尖括号会让 `mail` 模块报「配置不完整」，
+`pnpm check` 直接失败。文档里的占位符只在正文出现，不参与校验，两者不必一致。
+
 ### 5. 官网仓的改造（本次只做必要项）
 
 - `/docs` 路由与 22 个技术 slug 从官网仓移出，导航的「文档」入口改外链。
@@ -397,6 +402,17 @@ lookup key、`USD 99` 等官网专属内容。归入模板仓的版本必须改�
   官网的定制（品牌文案、`template` product、商业条款文档）。
 - 官网仓额外加一条 CI 提示：模板仓有新 tag 时在 PR 里提醒，但不自动合并。
 - 买家拿到的版本是**购买时冻结的 tag**（人工交付，邮件发 tag 链接）。
+
+**合并时必须保留官网版本的值**。模板仓是通用化后的版本，几处「具体值」在两仓里含义不同，
+Git 会按「本地未改动」静默采用模板仓的版本，不会报冲突 —— 第一次合并必须逐项核对：
+
+| 位置 | 模板仓的值 | 官网仓保留的值 | 弄错的后果 |
+|---|---|---|---|
+| `content/legal/**` | 骨架条款（占位符） | 填充版条款 | 官网的法律页变成占位符 |
+| `src/config/products.ts` | `prices.once: 'one_time'` | 真实 Stripe `lookup_key` | 首页购买链接失效，且历史订单的 `productId` 对不上 |
+| `src/config/website.ts` 的 `mail.supportEmail` | `support@example.com` | 官网真实支持邮箱 | 支持入口与联系表单收件地址失效 |
+
+其余冲突（品牌文案、消息、模块开关）按「官网定制优先」处理。
 
 ### 8. 拆分模板仓的施工方式
 
