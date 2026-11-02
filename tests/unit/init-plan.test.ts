@@ -27,20 +27,20 @@ const PRODUCTS = readFileSync(new URL('../../src/config/products.ts', import.met
 
 const WRANGLER = `{
   // Worker 名决定线上地址。
-  "name": "jerbix",
+  "name": "saas-template",
   "compatibility_date": "2026-10-01",
   // 自定义域名。
-  "routes": [{ "pattern": "www.jerbix.site", "custom_domain": true }],
+  "routes": [{ "pattern": "www.example.com", "custom_domain": true }],
   // ID 由 \`wrangler d1 create\` 产出后手工回填。
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "saas-template-db",
-      "database_id": "f0aed9d8-0cca-4cb7-9ec6-be6b67ce7e69",
+      "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "./src/db/migrations"
     }
   ],
-  "kv_namespaces": [{ "binding": "CACHE", "id": "42041d2cc3e84a378f3e264591790a3b" }]
+  "kv_namespaces": [{ "binding": "CACHE", "id": "00000000000000000000000000000000" }]
 }
 `
 
@@ -158,8 +158,8 @@ describe('buildPlan', () => {
     expect(result).toContain('"pattern": "acme.dev"')
     expect(result).toContain('"database_name": "acme-db"')
     // 资源 ID 是账号相关的，init 不可能知道，留占位符交给部署流程回填。
-    expect(result).not.toContain('f0aed9d8-0cca-4cb7-9ec6-be6b67ce7e69')
-    expect(result).not.toContain('42041d2cc3e84a378f3e264591790a3b')
+    expect(result).not.toContain('00000000-0000-0000-0000-000000000000')
+    expect(result).not.toContain('00000000000000000000000000000000')
     expect(result).toContain('REPLACE_ME')
   })
 
@@ -233,5 +233,16 @@ describe('applyPlan', () => {
     expect(() => applyPlan(buildPlan(CONFIG), repo)).toThrow(/wrangler\.jsonc/)
     // 前面两个文件虽然算得出结果，但不能已经落盘。
     expect(repo.get('package.json')).toBe(PACKAGE_JSON)
+  })
+})
+
+describe('真实仓库文件', () => {
+  it('init 能改到真实 wrangler.jsonc 里的每个目标路径', () => {
+    // JSONC 定点改写只改已有位置，路径不存在就抛错。仓库里的 wrangler.jsonc
+    // 少了任何一个目标键（有人把 routes 注释掉就会发生），init 会在半路失败。
+    const real = readFileSync(new URL('../../wrangler.jsonc', import.meta.url), 'utf-8')
+    const step = buildPlan(CONFIG).files.find((file) => file.path === 'wrangler.jsonc')
+    if (!step) throw new Error('计划里没有 wrangler.jsonc')
+    expect(() => step.transform(real)).not.toThrow()
   })
 })

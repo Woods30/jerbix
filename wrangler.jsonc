@@ -11,10 +11,12 @@
     "NODE_ENV": "production"
   },
   "observability": { "enabled": true },
-  // 自定义域名（可选）：域名区域与本 Worker 同属一个 Cloudflare 账号，
-  // Cloudflare 会在部署时自动创建 DNS 记录并签发证书。不配 routes 时，
+  // 自定义域名：域名区域与本 Worker 同属一个 Cloudflare 账号，
+  // Cloudflare 会在部署时自动创建 DNS 记录并签发证书。
+  //
+  // 出厂是占位域名，`pnpm run init` 会换成你的域名；不想要自定义域名时删掉这一行，
   // Worker 只发布到 `<name>.<账号 workers.dev 子域>.workers.dev`。
-  // "routes": [{ "pattern": "your-domain.example.com", "custom_domain": true }],
+  "routes": [{ "pattern": "your-domain.example.com", "custom_domain": true }],
   // ID 由 `wrangler d1 create` 产出后手工回填——`--update-config` 会抹掉本文件注释。
   // 部署工作流会在目标账号下按 `database_name` 查找或创建资源，并回填这里的 ID。
   "d1_databases": [

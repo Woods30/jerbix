@@ -12,7 +12,7 @@ import { getJsoncValue, setJsoncValue } from '../../scripts/lib/jsonc-edit'
 const SAMPLE = `{
   "$schema": "node_modules/wrangler/config-schema.json",
   // Worker 名决定线上地址：\`<name>.<账号 workers.dev 子域>.workers.dev\`。
-  "name": "jerbix",
+  "name": "saas-template",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   /* 自定义 server entry：注入语言上下文与 CSP nonce。 */
@@ -25,17 +25,17 @@ const SAMPLE = `{
     {
       "binding": "DB",
       "database_name": "saas-template-db",
-      "database_id": "f0aed9d8-0cca-4cb7-9ec6-be6b67ce7e69",
+      "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "./src/db/migrations"
     }
   ],
-  "kv_namespaces": [{ "binding": "CACHE", "id": "42041d2cc3e84a378f3e264591790a3b" }]
+  "kv_namespaces": [{ "binding": "CACHE", "id": "00000000000000000000000000000000" }]
 }
 `
 
 describe('getJsoncValue', () => {
   it('读取顶层与嵌套的值', () => {
-    expect(getJsoncValue(SAMPLE, ['name'])).toBe('jerbix')
+    expect(getJsoncValue(SAMPLE, ['name'])).toBe('saas-template')
     expect(getJsoncValue(SAMPLE, ['vars', 'NODE_ENV'])).toBe('production')
     expect(getJsoncValue(SAMPLE, ['d1_databases', 0, 'database_name'])).toBe('saas-template-db')
   })
@@ -73,7 +73,7 @@ describe('setJsoncValue', () => {
 
     expect(result).toContain('"database_id": "placeholder-id"')
     expect(result).toContain('"database_name": "saas-template-db"')
-    expect(result).not.toContain('f0aed9d8-0cca-4cb7-9ec6-be6b67ce7e69')
+    expect(result).not.toContain('00000000-0000-0000-0000-000000000000')
   })
 
   it('路径不存在时抛错，不静默改动文件', () => {
