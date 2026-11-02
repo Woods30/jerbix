@@ -73,9 +73,14 @@ const emptyEnv: ServerEnv = parseServerEnv({})
 /** 合法 supportEmail 字面量。 */
 const SUPPORT_EMAIL = ['support', 'jerbix.dev'].join('@')
 
-/** 完整默认配置（docs/blog/changelog 开，服务关）。 */
+/**
+ * 完整默认配置（docs/blog/changelog 开，服务关）。
+ *
+ * docs 显式打开：各仓的默认开关不同（官网不提供文档站），
+ * 依赖默认值会让这里的断言随部署场景静默失效。
+ */
 function makeConfig(overrides: Partial<WebsiteConfig> = {}): WebsiteConfig {
-  return { ...createWebsiteConfig(publicEnv), ...overrides }
+  return { ...createWebsiteConfig(publicEnv), docs: { enabled: true }, ...overrides }
 }
 
 const creds: ServerEnv = parseServerEnv({
@@ -501,8 +506,13 @@ describe('页面路由门禁接线', () => {
     expectNotFound(() => contactBeforeLoad())
   })
 
-  it('docs 父路由默认开启时 beforeLoad 不抛', async () => {
-    const { Route: docs } = await import('@/routes/{-$locale}/_layout/docs')
+  it('docs 父路由在 docs 模块开启时 beforeLoad 不抛', async () => {
+    // 注入配置而非依赖仓库默认值：各仓是否提供文档站不同。
+    const { Route: docs } = (await importRouteWithConfig(
+      { docs: { enabled: true } },
+      {},
+      '@/routes/{-$locale}/_layout/docs',
+    )) as { Route: { options: { beforeLoad: () => unknown } } }
     const beforeLoad = docs.options.beforeLoad as () => unknown
     expect(() => beforeLoad()).not.toThrow()
   })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { websiteConfig } from '@/config/website'
+import { createWebsiteConfig } from '@/config/website'
+import { parsePublicEnv } from '@/env/public'
 import { getSitemapPaths, renderSitemapXml } from '@/routes/sitemap[.]xml'
 
 /**
@@ -11,9 +12,15 @@ import { getSitemapPaths, renderSitemapXml } from '@/routes/sitemap[.]xml'
 
 const base = 'https://example.com'
 
+/**
+ * 显式打开 docs：各仓是否提供文档站不同，sitemap 的用例只关心文档路径本身。
+ */
+const config = createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: base }))
+config.docs = { enabled: true }
+
 describe('sitemap lastmod', () => {
   it('文档按 frontmatter 的 updated 输出 lastmod', () => {
-    const paths = getSitemapPaths(websiteConfig, 'en', {
+    const paths = getSitemapPaths(config, 'en', {
       blogs: [],
       docs: [{ locale: 'en', _meta: { fileName: 'getting-started.md' }, updated: '2026-10-21' }],
     })
@@ -22,7 +29,7 @@ describe('sitemap lastmod', () => {
   })
 
   it('博客按 date 输出 lastmod，只取日期部分', () => {
-    const paths = getSitemapPaths(websiteConfig, 'en', {
+    const paths = getSitemapPaths(config, 'en', {
       blogs: [
         {
           locale: 'en',
@@ -38,7 +45,7 @@ describe('sitemap lastmod', () => {
   })
 
   it('静态页没有日期来源时不输出 lastmod', () => {
-    const paths = getSitemapPaths(websiteConfig, 'en', { blogs: [], docs: [] })
+    const paths = getSitemapPaths(config, 'en', { blogs: [], docs: [] })
     const entry = paths.find((p) => p.loc === `${base}/en/marketing/about`)
     expect(entry).toBeDefined()
     expect(entry?.lastmod).toBeUndefined()
@@ -58,7 +65,7 @@ describe('sitemap lastmod', () => {
 describe('sitemap 的文档地址', () => {
   it('文档首页只出现在 /docs，不另列 /docs/index', () => {
     // 同一篇内容有两个 URL 时，搜索引擎会挑一个当规范地址，另一个进重复内容池。
-    const paths = getSitemapPaths(websiteConfig, 'en', {
+    const paths = getSitemapPaths(config, 'en', {
       blogs: [],
       docs: [
         { locale: 'en', _meta: { fileName: 'index.md' }, updated: '2026-11-02' },
@@ -71,7 +78,7 @@ describe('sitemap 的文档地址', () => {
   })
 
   it('/docs 的 lastmod 取首页文档的 updated', () => {
-    const paths = getSitemapPaths(websiteConfig, 'en', {
+    const paths = getSitemapPaths(config, 'en', {
       blogs: [],
       docs: [{ locale: 'en', _meta: { fileName: 'index.md' }, updated: '2026-11-02' }],
     })

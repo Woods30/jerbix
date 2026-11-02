@@ -185,7 +185,8 @@ describe('导航配置工厂', () => {
 
   it('关闭 docs 后 Navbar / Footer 移除 Docs，主按钮回退首页 features', () => {
     const config = createConfig()
-    config.docs.enabled = false
+    // 整体替换：留 siteUrl 时入口是外链，不会随模块开关消失。
+    config.docs = { enabled: false }
     const ctx = { config, authenticated: false }
     expect(getNavbarLinks('zh', ctx).map((item) => item.id)).toEqual([
       'features',
@@ -230,7 +231,9 @@ describe('导航配置工厂', () => {
   })
 
   it('启用 docs 时主按钮指向 Docs', () => {
-    expect(getNavbarActions('en', createConfig()).primary.destination).toEqual({
+    const config = createConfig()
+    config.docs = { enabled: true }
+    expect(getNavbarActions('en', config).primary.destination).toEqual({
       kind: 'internal',
       options: getPublicLinkOptions('docs', 'en'),
     })
@@ -238,6 +241,7 @@ describe('导航配置工厂', () => {
 
   it('Footer 分别按 blog / changelog 开关过滤', () => {
     const config = createConfig()
+    config.docs = { enabled: true }
     config.blog.enabled = false
     config.changelog.enabled = false
     const items = getFooterLinks('en', { config, authenticated: false })
