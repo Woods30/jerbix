@@ -2,8 +2,8 @@
 
 构建在 **Cloudflare Workers** 上的 **TanStack Start** SaaS 起步模板。
 
-克隆 → 改 `src/config/website.ts` → 部署。营销页、认证、支付、文档站、工作台、
-多语言、测试与 CI 都已就位，开箱即可改名上线。
+克隆 → `pnpm run init`（或手动改 `src/config/website.ts`）→ 部署。营销页、认证、支付、
+文档站、工作台、多语言、测试与 CI 都已就位，开箱即可改名上线。
 
 > **Jerbix 是示例品牌。** 名称、Logo、文案都可以替换，步骤见
 > [文档站 · 网站配置](content/docs/configuration.zh.md)。
@@ -33,6 +33,40 @@ pnpm dev         # http://localhost:3000
 没有 Cloudflare 账号也能先跑：`pnpm run setup` 可以跳过资源创建，本地用 D1 模拟。
 
 当前默认启用 Resend 和注册邮箱验证。使用注册、登录前，在 `.env` 填写 `RESEND_API_KEY` 与已验证域名下的 `MAIL_FROM`，并确保 `BETTER_AUTH_URL` 与 `VITE_BASE_URL` 一致。缺少邮件配置时认证 API 返回 503；详见[邮件配置](content/docs/email.zh.md#resend-配置)。
+
+## 一键创建自己的项目
+
+不想逐项改配置？跑初始化脚本，它把模板变成你的项目：
+
+```bash
+pnpm run init
+```
+
+脚本依次问站点名、短名、生产域名、支持邮箱与要开的模块，然后一次性改好：
+
+- 站名与品牌文案（zh / en）、PWA manifest
+- `src/config/website.ts` 的品牌、字标强调色、支持邮箱与模块开关
+- `src/config/products.ts` 的一次性商品名
+- `wrangler.jsonc` 的 Worker 名、域名与资源名（资源 ID 留占位符，部署时回填）
+- `.env` 与 `.env.example` 里的站点地址与邮箱
+
+也可以一次给全，不交互：
+
+```bash
+pnpm run init -- --name "Acme" --slug acme --domain acme.dev --email hi@acme.dev --modules docs,auth,payment
+```
+
+| 参数 | 作用 |
+|---|---|
+| `--name` | 站点名 |
+| `--slug` | 短名：包名、Worker 名与资源名前缀 |
+| `--domain` | 生产域名，写进 `wrangler.jsonc` 的路由 |
+| `--email` | 支持邮箱 |
+| `--modules` | 要开的模块（`docs` / `blog` / `changelog` / `mail` / `contact` / `newsletter` / `payment` / `notification` / `analytics` / `auth`），逗号分隔；不传则保留模板默认 |
+| `--non-interactive` | 不提问，缺参数直接报错 |
+| `--dry-run` | 只打印变更计划，不落盘 |
+
+先看会改什么：`pnpm run init -- --dry-run`。脚本幂等——同样的参数跑第二次不会再改动任何文件。
 
 ## 部署
 
