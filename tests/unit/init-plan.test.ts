@@ -261,6 +261,18 @@ describe('clearDocsSiteUrl', () => {
     expect(clearDocsSiteUrl(source)).toBe('    docs: { enabled: false },')
   })
 
+  it('类型声明在前面时改的是配置值，不是类型', () => {
+    const source = [
+      '  docs: {',
+      '    enabled: boolean',
+      '    siteUrl?: string',
+      '  }',
+      "  docs: { enabled: false, siteUrl: 'https://docs.example.com/docs' },",
+    ].join('\n')
+    expect(clearDocsSiteUrl(source)).toContain('docs: { enabled: false },')
+    expect(clearDocsSiteUrl(source)).toContain('enabled: boolean')
+  })
+
   it('没有 siteUrl 时原样返回', () => {
     const source = '    docs: { enabled: true },'
     expect(clearDocsSiteUrl(source)).toBe(source)

@@ -201,13 +201,13 @@ export function setModuleEnabled(source: string, module: ModuleName, enabled: bo
  * 要么把地址改掉 —— 留着旧地址等于把访客送到别人的文档站。
  */
 export function clearDocsSiteUrl(source: string): string {
-  return source.replace(
-    /(\bdocs: \{)([^}]*)(\})/,
-    (_all, head: string, body: string, tail: string) => {
-      const cleaned = body.replace(/,?\s*siteUrl:\s*'[^']*'/, '').replace(/,\s*$/, '')
-      return `${head}${cleaned}${tail}`
-    },
-  )
+  // 只认配置值：类型声明里的 `docs: {` 也在同一文件里，
+  // 但它没有 `enabled: true|false`，因此不匹配。
+  const pattern = /(\bdocs: \{)([^}]*?enabled: (?:true|false)[^}]*)(\})/
+  return source.replace(pattern, (_all, head: string, body: string, tail: string) => {
+    const cleaned = body.replace(/,?\s*siteUrl:\s*'[^']*'/, '').replace(/,\s*$/, '')
+    return `${head}${cleaned}${tail}`
+  })
 }
 
 /** 改某个能力开关。 */
