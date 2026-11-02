@@ -3,6 +3,7 @@ import {
   buildLocalD1Args,
   buildSeedSql,
   buildUserSeedSql,
+  isRetryableD1Error,
 } from '../../scripts/e2e-seed-subscription'
 
 describe('buildUserSeedSql', () => {
@@ -114,5 +115,23 @@ describe('buildSeedSql', () => {
 
   it('没给创建时间就不写 created_at 列', () => {
     expect(buildSeedSql(base)).not.toContain('created_at')
+  })
+})
+
+describe('isRetryableD1Error', () => {
+  it('wrangler 把错误 JSON 写在 stdout，miniflare 抢占 sqlite 时报 internal error', () => {
+    // dev server 与 E2E 脚本共用同一个 sqlite 文件，写入撞车时 wrangler 只给出
+    // 「internal error」这类模糊提示，必须重试，否则用例随机红。
+    expect(isRetryableD1Error('{"error":{"text":"internal error; reference = abc"}}')).toBe(true)
+    expect(isRetryableD1Error('SQLITE_BUSY: database is locked')).toBe(true)
+    expect(isRetryableD1Error('database is locked')).toBe(true)
+  })
+
+  it('SQL 与 schema 错误不重试：重试只会把同一个错重复四遍', () => {
+    expect(isRetryableD1Error('{"error":{"text":"no such table: users: SQLITE_ERROR"}}')).toBe(
+      false,
+    )
+    expect(isRetryableD1Error('syntax error near INSERT')).toBe(false)
+    expect(isRetryableD1Error('')).toBe(false)
   })
 })
