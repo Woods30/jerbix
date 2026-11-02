@@ -43,7 +43,8 @@ export function setJsoncValue(source: string, path: JsoncPath, value: unknown): 
   const node = resolvePath(new JsoncParser(source).parse(), path)
   if (!node) throw new Error(`JSONC: 路径不存在：${formatPath(path)}`)
 
-  const encoded = JSON.stringify(value)
+  // 缩进 2 空格：数组与对象换成多行后仍与文件其余部分对齐。
+  const encoded = JSON.stringify(value, null, 2)
   if (encoded === undefined) throw new Error(`JSONC: 值无法序列化：${formatPath(path)}`)
 
   return (

@@ -108,4 +108,16 @@ describe('setJsoncValue', () => {
     expect(result).toContain('\n  "name": "acme",')
     expect(result.endsWith('\n}\n')).toBe(true)
   })
+
+  it('整体替换数组时按所在行缩进排版', () => {
+    const result = setJsoncValue(
+      SAMPLE,
+      ['d1_databases'],
+      [{ binding: 'DB', database_name: 'acme-db', database_id: 'new-id' }],
+    )
+
+    // 数组值写在行中间，序列化后的后续行要补上缩进才不会跑到左边。
+    expect(result).toContain('"d1_databases": [\n    {\n      "binding": "DB"')
+    expect(result).toContain('\n    }\n  ],')
+  })
 })
