@@ -133,6 +133,8 @@ jobs:
           VITE_DOCS_AS_HOME: 'true'
           BETTER_AUTH_URL: https://docs.jerbix.site
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          # llms.txt 在请求时读 Stripe 价格目录（价格的事实源），没有 key 会 500。
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
         run: |
           set -euo pipefail
           pnpm run check:env:prod
@@ -145,7 +147,7 @@ jobs:
           trap 'rm -f "$secrets_file"' EXIT
           node --input-type=module - "$secrets_file" <<'NODE'
           import { writeFileSync } from 'node:fs'
-          const keys = ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL']
+          const keys = ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL', 'STRIPE_SECRET_KEY']
           const bindings = Object.fromEntries(keys.filter(key => process.env[key]).map(key => [key, process.env[key]]))
           writeFileSync(process.argv[2], JSON.stringify(bindings))
           NODE
