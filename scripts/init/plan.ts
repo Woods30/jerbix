@@ -11,6 +11,38 @@
 
 import { setJsoncValue } from '../lib/jsonc-edit'
 
+/**
+ * 内容模块：`website.ts` 里形如 `docs: { enabled: boolean }` 的开关。
+ *
+ * 模板出厂时这些模块大多是开的，但它们各自要求对应的 env 与外部服务 ——
+ * 一个什么都不配的克隆者因此跑不通生产校验。init 默认全关，由开发者按需打开。
+ */
+export const MODULE_NAMES = [
+  'docs',
+  'blog',
+  'changelog',
+  'mail',
+  'contact',
+  'newsletter',
+  'payment',
+  'notification',
+  'analytics',
+  'auth',
+] as const
+
+export type ModuleName = (typeof MODULE_NAMES)[number]
+
+/** 能力开关：`website.ts` 里形如 `enableApiKeys: boolean` 的扁平标志。 */
+export const FEATURE_NAMES = [
+  'enableI18n',
+  'enableFileUpload',
+  'enableApiKeys',
+  'enableAdmin',
+  'enableAIGateway',
+] as const
+
+export type FeatureName = (typeof FEATURE_NAMES)[number]
+
 /** 一次初始化所需的全部输入。 */
 export interface InitConfig {
   /** 站点展示名，如 `Acme`。 */
@@ -21,6 +53,10 @@ export interface InitConfig {
   domain: string
   /** 支持邮箱。 */
   email: string
+  /** 要**开启**的内容模块；不在列表里的一律关闭。 */
+  modules: ModuleName[]
+  /** 要**开启**的能力开关；缺省全关。 */
+  features?: FeatureName[]
 }
 
 /** 计划里的一个文件变更。 */
@@ -55,12 +91,20 @@ export function buildPlan(config: InitConfig): InitPlan {
       },
       {
         path: 'src/config/website.ts',
-        description: `站点名改为 ${config.name}，清空字标强调段，支持邮箱改为 ${config.email}`,
+        description: `站点名改为 ${config.name}，模块开关按选择重设，支持邮箱改为 ${config.email}`,
         transform: (current) =>
           applyAll(current, [
             (source) => replaceConfigLiteral(source, 'name', config.name),
             (source) => replaceConfigLiteral(source, 'logoAccent', ''),
             (source) => replaceConfigLiteral(source, 'supportEmail', config.email),
+            ...MODULE_NAMES.map(
+              (module) => (source: string) =>
+                setModuleEnabled(source, module, config.modules.includes(module)),
+            ),
+            ...FEATURE_NAMES.map(
+              (feature) => (source: string) =>
+                setFeatureEnabled(source, feature, (config.features ?? []).includes(feature)),
+            ),
           ]),
       },
       {
@@ -103,6 +147,25 @@ export function replaceConfigLiteral(source: string, key: string, value: string)
   }
 
   return source.replace(pattern, `$1'${value}'`)
+}
+
+/**
+ * 改某个内容模块的 `enabled`。
+ *
+ * 匹配 `模块名: { ... enabled: <bool>`，允许对象跨行（`payment` 中间有注释）。
+ * 这些模块的对象字面量里没有嵌套的 `{}`，因此 `[^}]*?` 不会越过模块边界。
+ */
+export function setModuleEnabled(source: string, module: ModuleName, enabled: boolean): string {
+  const pattern = new RegExp(`(\\b${module}: \\{[^}]*?enabled: )(true|false)`)
+  if (!pattern.test(source)) throw new Error(`配置里找不到模块 ${module} 的 enabled 开关`)
+  return source.replace(pattern, `$1${enabled}`)
+}
+
+/** 改某个能力开关。 */
+export function setFeatureEnabled(source: string, feature: FeatureName, enabled: boolean): string {
+  const pattern = new RegExp(`(\\b${feature}: )(true|false)`)
+  if (!pattern.test(source)) throw new Error(`配置里找不到能力开关 ${feature}`)
+  return source.replace(pattern, `$1${enabled}`)
 }
 
 /** 改 JSON 文件的顶层字段，按 2 空格缩进写回（与仓库既有格式一致）。 */

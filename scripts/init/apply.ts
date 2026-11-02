@@ -28,6 +28,13 @@ export interface ApplyResult {
  * 成为可断言的事实。
  */
 export function applyPlan(plan: InitPlan, io: FileIo): ApplyResult {
+  // 同一路径出现两次时，后一个变换会基于**原始内容**重算，把前一个的结果覆盖掉。
+  // 计划应当把同一文件的改动合成一项，这里直接拦下。
+  const paths = plan.files.map((file) => file.path)
+  if (new Set(paths).size !== paths.length) {
+    throw new Error(`计划里有重复的文件项：${paths.join(', ')}`)
+  }
+
   // 先全部读入并算出结果，再统一落盘：中途发现某个文件缺失时，
   // 前面几个文件不会已经被改掉（半成品比什么都不改更难收拾）。
   const prepared = plan.files.map((file) => {

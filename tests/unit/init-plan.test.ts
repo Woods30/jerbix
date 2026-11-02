@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { applyPlan } from '../../scripts/init/apply'
 import { buildPlan, type InitConfig, replaceConfigLiteral } from '../../scripts/init/plan'
@@ -17,23 +18,11 @@ const CONFIG: InitConfig = {
   slug: 'acme',
   domain: 'acme.dev',
   email: 'hello@acme.dev',
+  modules: [],
 }
 
-const WEBSITE = `export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
-  return {
-    baseUrl: env.VITE_BASE_URL,
-    metadata: {
-      name: 'Jerbix',
-      // 品牌稿的字标是双色：\`Jerbi\` 墨色、\`x\` 紫色。
-      logoAccent: 'x',
-      images: {
-        ogImage: '/logo.png',
-      },
-    },
-    mail: { enabled: true, provider: 'resend', supportEmail: 'support@jerbix.site' },
-  }
-}
-`
+// 直接用真实配置文件：配置项改名时这里会立刻红，而不是等到跑 init 才发现。
+const WEBSITE = readFileSync(new URL('../../src/config/website.ts', import.meta.url), 'utf-8')
 
 const WRANGLER = `{
   // Worker 名决定线上地址。
@@ -188,6 +177,18 @@ describe('applyPlan', () => {
       'src/config/website.ts',
       'wrangler.jsonc',
     ])
+  })
+
+  it('计划里同一文件出现两次时抛错', () => {
+    // 后一项会基于原始内容重算，把前一项的结果覆盖掉。
+    const duplicated = {
+      files: [
+        { path: 'a.ts', description: 'x', transform: (s: string) => `${s}1` },
+        { path: 'a.ts', description: 'y', transform: (s: string) => `${s}2` },
+      ],
+    }
+
+    expect(() => applyPlan(duplicated, memoryRepo({ 'a.ts': 'x' }))).toThrow(/重复/)
   })
 
   it('文件缺失时抛错，且不会留下改了一半的文件', () => {
