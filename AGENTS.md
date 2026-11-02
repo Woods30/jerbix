@@ -14,6 +14,41 @@
 shadcn/ui（Base UI 基座 / Tabler 图标）、Paraglide JS（zh / en）、Zod、
 Drizzle ORM + D1、Vitest + Playwright。
 
+## 与模板仓的关系
+
+本仓是 **Jerbix 官网工程**（`Woods30/jerbix`）：官网营销页 + Stripe 收款 + 商业条款。
+通用代码来自**模板仓** `Woods30/saas-template`——`pnpm run init` 脚本、技术文档与
+「起步模板」本身的形态都在那边。
+
+同步模板仓（人工执行一次）：
+
+```bash
+git fetch template && git merge template/main
+```
+
+合并时**必须保留官网仓的具体值**。Git 只在两边都改过同一处时才报冲突，其余组合会
+静默采用模板的值——第一次合并必须逐项核对：
+
+| 位置 | 保留官网的值 |
+|---|---|
+| `src/config/products.ts` | 真实 Stripe `lookup_key`（`jerbix_template`），否则首页购买链接失效 |
+| `src/config/website.ts` | `mail.supportEmail` 的真实邮箱；`docs.enabled = false` 与 `docs.siteUrl` |
+| `wrangler.jsonc` | Worker 名 `jerbix`、`www.jerbix.site`、真实 D1 / KV ID |
+| `content/legal/**` | 填充版条款与购买常见问题（模板那边是骨架条款） |
+| `package.json` 的 `version` | 官网版本：Release tag 必须与它一致 |
+| `CHANGELOG.md` | 官网的发布记录 |
+| `docs/superpowers/**` | 官网的开发史（模板仓不留本项目的历史） |
+
+两个 Worker 各自部署，互不影响：
+
+| Worker | 域名 | 工作流 | 构建 |
+|---|---|---|---|
+| `jerbix` | `www.jerbix.site` | `deploy.yml` | 全模块 |
+| `jerbix-docs` | `docs.jerbix.site` | `deploy-docs.yml` | `VITE_MODULES=docs`，根路径跳文档首页 |
+
+官网不提供 `/docs`（`docs.enabled = false`，整棵 docs 子树 404），导航与页脚的
+「文档」入口指向外部文档站。
+
 ## 命令
 
 | 命令 | 作用 |
