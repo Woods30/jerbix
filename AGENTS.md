@@ -7,12 +7,28 @@
 ## 项目定位
 
 `saas-template`（示例品牌 **Jerbix**）是一个构建在 **Cloudflare Workers** 上的
-**TanStack Start** SaaS 起步模板。目标流程：`git clone` → 改
-`src/config/website.ts` → 部署。
+**TanStack Start** SaaS 起步模板。目标流程：`git clone` → `pnpm run init`
+（或手动改 `src/config/website.ts`）→ 部署。
 
 技术栈：TanStack Start / Router / Query、React 19、TypeScript strict、Tailwind CSS v4、
 shadcn/ui（Base UI 基座 / Tabler 图标）、Paraglide JS（zh / en）、Zod、
 Drizzle ORM + D1、Vitest + Playwright。
+
+## 版本与发布
+
+本仓是**模板工程**；销售站点（官网工程）是另一个仓，两仓**版本号各自独立**，
+互不跟随：
+
+| | 模板仓（本仓） | 官网工程 |
+|---|---|---|
+| `package.json` 的 `version` | 模板的发布版本 | 官网站点的发布版本 |
+| Release tag | `v<模板版本>`，买家拿这个冻结版本 | `v<官网版本>`，部署官网 |
+| `CHANGELOG.md` | 模板的发布记录 | 官网的发布记录 |
+
+官网仓合并本仓时，本仓的版本号与发布记录**不带过去**（官网保留自己的），反之亦然。
+
+发 Release 的硬性要求：tag 必须与本仓 `package.json` 的 `version` 一致，且 tag
+指向的提交在 `main` 上、该提交的 CI 已成功——三者任一不满足，部署工作流会拒绝。
 
 ## 命令
 
