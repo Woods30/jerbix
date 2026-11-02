@@ -12,6 +12,13 @@ export interface StartCheckoutParams {
   productId: string
   offerId: string
   locale: Locale
+  /**
+   * 用户在 Stripe 结账页点「返回」时回到哪里（站内路径，含 locale）。
+   *
+   * 由发起结账的那一页决定，而不是在这里按商品 ID 猜 —— 同一个商品可能同时出现在
+   * 首页与定价页，猜错就把用户丢到另一个页面。
+   */
+  cancelPath: string
 }
 
 export async function startCheckout(params: StartCheckoutParams): Promise<CheckoutOutcome> {
@@ -22,12 +29,11 @@ export async function startCheckout(params: StartCheckoutParams): Promise<Checko
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        ...params,
+        productId: params.productId,
+        offerId: params.offerId,
+        locale: params.locale,
         successUrl: `${base}/${params.locale}/dashboard/billing?checkout=success`,
-        cancelUrl:
-          params.productId === websiteConfig.template.productId
-            ? `${base}/${params.locale}/#pricing`
-            : `${base}/${params.locale}/pricing?checkout=cancelled`,
+        cancelUrl: `${base}${params.cancelPath}`,
       }),
     })
     if (response.status === 401) return { kind: 'unauthenticated' }

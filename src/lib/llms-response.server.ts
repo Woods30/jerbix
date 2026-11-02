@@ -35,8 +35,8 @@ export async function llmsTextResponse(
     // 价格事实源是 Stripe 的价格目录，与首页展示、结账收款同源。
     priceCents: findCatalogAmount(
       await getPriceCatalog(),
-      websiteConfig.template.productId,
-      websiteConfig.template.offerId,
+      websiteConfig.landingOffer.productId,
+      websiteConfig.landingOffer.offerId,
     ),
     siteName: websiteConfig.metadata.name,
     source: defaultLlmsSource(),

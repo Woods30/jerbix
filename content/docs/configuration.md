@@ -45,11 +45,10 @@ metadata: {
 
 See [Design System](./design-system#brand-logo) for how the logo is rendered.
 
-### Template homepage marketing
+### What the homepage sells
 
 ```ts
-template: {
-  priceUsd: 99,
+landingOffer: {
   productId: 'template',
   offerId: 'once',
 }
@@ -59,9 +58,12 @@ Pricing is shown in the homepage `#pricing` section. The old `/pricing` URL redi
 
 The homepage uses the existing Checkout flow. `productId` / `offerId` select
 `template.prices.once = 'jerbix_template'` in `src/config/products.ts`; no external sales URL
-is needed. Configure that Stripe `lookup_key` with a one-time USD 99 price. The server
-checks the actual amount against `priceUsd`, along with the currency and payment mode,
-and rejects missing or mismatched prices.
+is needed. Configure that Stripe `lookup_key` with a **one-time** price.
+
+No amount is stored in config: the Stripe price catalog is the single source of truth, read
+by both the homepage display and checkout. The server only verifies the price is
+`mode: 'payment'` and denominated in USD — if the `lookup_key` points at a subscription
+price, checkout is rejected rather than silently selling the wrong thing.
 
 Enable `auth.enabled` and `payment.enabled`. Guests sign in or register first, with the
 return path preserved through email verification. They return to the homepage pricing

@@ -11,7 +11,7 @@ import { getServerContext } from '@/lib/server-context'
 import { safeSameOriginUrl } from '@/lib/urls'
 import { getPaymentProvider } from '@/payment'
 import { beginCheckout, findCustomerId } from '@/payment/checkout'
-import { isTemplatePriceValid } from '@/payment/price-catalog'
+import { isOneTimePriceValid, LANDING_PRICE_CURRENCY } from '@/payment/price-catalog'
 import { getPriceCatalog } from '@/payment/price-catalog.server'
 
 const checkoutBody = z.object({
@@ -59,7 +59,8 @@ export const Route = createFileRoute('/api/payment/$')({
           const price = (await getPriceCatalog())[reference]
           if (
             !price ||
-            (productId === websiteConfig.template.productId && !isTemplatePriceValid(price))
+            (productId === websiteConfig.landingOffer.productId &&
+              !isOneTimePriceValid(price, { currency: LANDING_PRICE_CURRENCY }))
           )
             return Response.json({ error: 'PRICE_UNAVAILABLE' }, { status: 400 })
           const provider = getPaymentProvider(websiteConfig.payment.provider)

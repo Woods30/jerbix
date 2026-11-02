@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { getProducts } from '@/config/products'
-import { isTemplatePriceValid, mergePricingProducts } from '@/payment/price-catalog'
+import {
+  isOneTimePriceValid,
+  LANDING_PRICE_CURRENCY,
+  mergePricingProducts,
+} from '@/payment/price-catalog'
 
 // 捕获价格选项丢失、按本地周期猜测计费方式，以及重复维护配置的问题。
 describe('扁平套餐目录', () => {
-  it('模板只允许一次性美元价格，金额以 Stripe 目录为准', () => {
+  it('首页售卖的商品只允许一次性价格，金额以 Stripe 目录为准', () => {
     const price = {
       priceId: 'p_template',
       reference: 'jerbix_template',
@@ -14,15 +18,31 @@ describe('扁平套餐目录', () => {
       interval: null,
       intervalCount: null,
     } as const
-    expect(isTemplatePriceValid(price)).toBe(true)
-    expect(isTemplatePriceValid(undefined)).toBe(false)
+    expect(isOneTimePriceValid(price)).toBe(true)
+    expect(isOneTimePriceValid(undefined)).toBe(false)
     // 金额不再与配置里的第二份金额比对：目录里的金额就是事实源。
-    expect(isTemplatePriceValid({ ...price, amount: 16900 })).toBe(true)
-    expect(isTemplatePriceValid({ ...price, currency: 'eur' })).toBe(false)
-    expect(isTemplatePriceValid({ ...price, mode: 'subscription', interval: 'month' })).toBe(false)
+    expect(isOneTimePriceValid({ ...price, amount: 16900 })).toBe(true)
+    expect(isOneTimePriceValid({ ...price, mode: 'subscription', interval: 'month' })).toBe(false)
     expect(getProducts().find((product) => product.id === 'template')?.prices).toEqual({
       once: 'jerbix_template',
     })
+  })
+
+  it('指定币种时按币种校验', () => {
+    const price = {
+      priceId: 'p_template',
+      reference: 'jerbix_template',
+      amount: 9900,
+      currency: 'usd',
+      mode: 'payment',
+      interval: null,
+      intervalCount: null,
+    } as const
+
+    expect(isOneTimePriceValid(price, { currency: LANDING_PRICE_CURRENCY })).toBe(true)
+    expect(isOneTimePriceValid({ ...price, currency: 'eur' }, { currency: 'usd' })).toBe(false)
+    // 不传币种时不限制：模板工程不假设某个币种，币种由实例自己决定。
+    expect(isOneTimePriceValid({ ...price, currency: 'eur' })).toBe(true)
   })
   it('同一套餐声明直接参与取价，保留选项 ID 和真实计费信息', () => {
     const products = [

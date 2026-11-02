@@ -18,14 +18,28 @@ export interface CatalogPrice {
 export type PriceCatalog = Record<string, CatalogPrice>
 
 /**
- * 模板买断必须是可用的**一次性美元价格**。
+ * 首页 CTA 展示与校验共用的一次性价格币种。
+ *
+ * 展示（`formatUsdAmount`）与校验（`isOneTimePriceValid`）必须读同一个值：
+ * 两处各写一份，就会出现「页面按美元展示、校验按别的币种拦下」。
+ */
+export const LANDING_PRICE_CURRENCY = 'usd'
+
+/**
+ * 首页售卖的商品必须是可用的**一次性价格**。
  *
  * 不再比对配置里的金额：价格的唯一事实源是 Stripe，页面展示与结账收款读的是
  * 同一份目录。配置里再存一份金额，只会造成「改了 Stripe、结账被拦」——
  * 而这类不一致的报错信息还容易被误解成「方案没开放购买」。
+ *
+ * 币种是可选项：不传就不限制币种，由实例自己决定（模板工程不假设美元）。
  */
-export function isTemplatePriceValid(price: CatalogPrice | undefined): boolean {
-  return !!price && price.mode === 'payment' && price.currency === 'usd'
+export function isOneTimePriceValid(
+  price: CatalogPrice | undefined,
+  options: { currency?: string } = {},
+): boolean {
+  if (price?.mode !== 'payment') return false
+  return options.currency === undefined || price.currency === options.currency
 }
 
 /**
@@ -49,7 +63,7 @@ export function formatUsdAmount(amountCents: number | null): string {
   const usd = amountCents / 100
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: LANDING_PRICE_CURRENCY,
     maximumFractionDigits: Number.isInteger(usd) ? 0 : 2,
   }).format(usd)
 }

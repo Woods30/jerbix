@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { findCatalogAmount, formatUsdAmount, isTemplatePriceValid } from '@/payment/price-catalog'
+import {
+  findCatalogAmount,
+  formatUsdAmount,
+  isOneTimePriceValid,
+  LANDING_PRICE_CURRENCY,
+} from '@/payment/price-catalog'
 
 /**
  * 价格目录：价格的**唯一事实源**是 Stripe，代码里不再存第二份金额。
@@ -20,15 +25,23 @@ const catalog = {
   },
 }
 
-describe('模板价格校验', () => {
-  it('目录里是一次性美元价格即视为可用，不比对别处的金额', () => {
-    expect(isTemplatePriceValid(catalog.jerbix_template)).toBe(true)
+describe('一次性价格校验', () => {
+  it('目录里是一次性价格即视为可用，不比对别处的金额', () => {
+    expect(isOneTimePriceValid(catalog.jerbix_template)).toBe(true)
   })
 
-  it('订阅型、非美元或缺失的条目都不可用', () => {
-    expect(isTemplatePriceValid({ ...catalog.jerbix_template, mode: 'subscription' })).toBe(false)
-    expect(isTemplatePriceValid({ ...catalog.jerbix_template, currency: 'eur' })).toBe(false)
-    expect(isTemplatePriceValid(undefined)).toBe(false)
+  it('订阅型或缺失的条目不可用', () => {
+    expect(isOneTimePriceValid({ ...catalog.jerbix_template, mode: 'subscription' })).toBe(false)
+    expect(isOneTimePriceValid(undefined)).toBe(false)
+  })
+
+  it('指定币种时按币种校验', () => {
+    expect(isOneTimePriceValid(catalog.jerbix_template, { currency: LANDING_PRICE_CURRENCY })).toBe(
+      true,
+    )
+    expect(
+      isOneTimePriceValid({ ...catalog.jerbix_template, currency: 'eur' }, { currency: 'usd' }),
+    ).toBe(false)
   })
 })
 

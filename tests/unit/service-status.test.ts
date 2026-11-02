@@ -353,13 +353,13 @@ describe('getServiceStatuses — payment', () => {
   })
 
   it('首页要卖的商品没有价格引用时 incomplete', () => {
-    // `websiteConfig.template` 是首页 CTA 指向的商品与购买方式。它没有价格引用时，
+    // `websiteConfig.landingOffer` 是首页 CTA 指向的商品与购买方式。它没有价格引用时，
     // 首页取不到价格、结账也无从下手 —— 不能算「已配置」。
     // 声明了但没在 Stripe 上创建的 price，配置层看不出来，只能查「要卖的那个」。
     const statuses = getServiceStatuses({
       config: makeConfig((c) => {
         c.payment.enabled = true
-        c.template = { productId: 'free', offerId: 'once' }
+        c.landingOffer = { productId: 'free', offerId: 'once' }
       }),
       publicEnv: parsePublicEnv({}),
       serverEnv: parseServerEnv({ STRIPE_SECRET_KEY: 'key', STRIPE_WEBHOOK_SECRET: 'whsec' }),

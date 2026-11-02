@@ -25,8 +25,8 @@ export const Route = createFileRoute('/{-$locale}/')({
       return {
         priceCents: findCatalogAmount(
           catalog,
-          websiteConfig.template.productId,
-          websiteConfig.template.offerId,
+          websiteConfig.landingOffer.productId,
+          websiteConfig.landingOffer.offerId,
         ),
       }
     } catch {

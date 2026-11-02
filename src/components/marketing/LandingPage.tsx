@@ -279,9 +279,11 @@ function TemplatePricing({ price }: { price: string | null }) {
     setPending(true)
     setNotice('')
     const result = await startCheckout({
-      productId: websiteConfig.template.productId,
-      offerId: websiteConfig.template.offerId,
+      productId: websiteConfig.landingOffer.productId,
+      offerId: websiteConfig.landingOffer.offerId,
       locale,
+      // 首页的购买入口在 `#pricing` 锚点，取消后回到这里。
+      cancelPath: `/${locale}/#pricing`,
     })
     if (result.kind === 'redirect') {
       window.location.assign(result.url)

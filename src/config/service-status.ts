@@ -147,7 +147,8 @@ export function getServiceStatuses(input: {
       // 未必在 Stripe 上真的建过 Price，那种情况在配置层看不出来。
       [
         'payment.products',
-        resolvePriceReference(config.template.productId, config.template.offerId) !== undefined,
+        resolvePriceReference(config.landingOffer.productId, config.landingOffer.offerId) !==
+          undefined,
         'src/config/products.ts',
         '首页要卖的商品在 Stripe 上没有对应的 Price（lookup key 未创建或已迁移）',
       ],

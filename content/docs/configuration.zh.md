@@ -45,11 +45,10 @@ metadata: {
 
 Logo 的替换细节见[设计系统](./design-system#品牌-logo)。
 
-### 模板首页营销
+### 首页售卖的商品
 
 ```ts
-template: {
-  priceUsd: 99,
+landingOffer: {
   productId: 'template',
   offerId: 'once',
 }
@@ -57,10 +56,13 @@ template: {
 
 定价统一展示在首页 `#pricing`，旧 `/pricing` 地址跳转至当前语言首页价格区，不再展示独立演示套餐页。
 
-首页模板复用现有 Checkout：`productId` / `offerId` 指向 `src/config/products.ts` 中的
+首页复用现有 Checkout：`productId` / `offerId` 指向 `src/config/products.ts` 中的
 `template.prices.once = 'jerbix_template'`，无需外部销售地址。在 Stripe 配置该 `lookup_key`
-对应的 USD 99 一次性价格。`priceUsd` 用于首页展示，服务端同时校验实际金额、币种与一次性
-计费方式，不匹配或缺少价格时拒绝结账，避免误收演示资源包的费用。
+对应的**一次性**价格。
+
+配置里**不存金额**：价格的唯一事实源是 Stripe 价格目录，首页展示与结账收款读同一份。
+服务端只校验它确实是 `mode: 'payment'` 且币种为 USD —— 若该 `lookup_key` 指向订阅价，
+结账会被拒绝，避免把一次性购买做成订阅。
 
 开启 `auth.enabled` 与 `payment.enabled` 后，未登录购买先进入登录页；切换注册、邮箱验证
 和登录成功均保留回跳，返回首页价格区后可继续购买。取消结账也回到该区域，付款成功进入
