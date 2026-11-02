@@ -149,12 +149,23 @@ jobs:
           const bindings = Object.fromEntries(keys.filter(key => process.env[key]).map(key => [key, process.env[key]]))
           writeFileSync(process.argv[2], JSON.stringify(bindings))
           NODE
-          # 复用默认配置里的构建产物（main / assets / D1 / KV 绑定），
-          # 只覆盖 Worker 名与自定义域名——文档站与官网站共享同一套代码，
-          # 差别只在构建时注入的环境变量。
+          # 复用构建产物（main / assets / D1 / KV 绑定），只改 Worker 名与自定义域名
+          # ——文档站与官网站共享同一份源码，差别只在构建时注入的环境变量。
+          #
+          # 改的是 Vite 插件生成的 dist/server/wrangler.json：它已经带着构建产物，
+          # 而自定义域名只能写在配置文件里（`--routes` 命令行参数不认 custom_domain，
+          # 会报 code 10022）。
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs'
+          const path = 'dist/server/wrangler.json'
+          const config = JSON.parse(readFileSync(path, 'utf8'))
+          config.name = 'jerbix-docs'
+          config.routes = [{ pattern: 'docs.jerbix.site', custom_domain: true }]
+          writeFileSync(path, JSON.stringify(config))
+          console.log(`Worker ${config.name}，路由 ${JSON.stringify(config.routes)}`)
+          NODE
           pnpm exec wrangler deploy \
-            --name jerbix-docs \
-            --routes '[{"pattern":"docs.jerbix.site","custom_domain":true}]' \
+            -c dist/server/wrangler.json \
             --secrets-file "$secrets_file"
       - name: Smoke test
         env:
