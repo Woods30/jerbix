@@ -1,6 +1,6 @@
 import { IconArrowLeft, IconArrowRight } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
-import type { DocNeighbor } from '@/lib/docs'
+import { DOCS_INDEX_SLUG, type DocNeighbor } from '@/lib/docs'
 import type { Locale } from '@/lib/locale'
 import { m } from '@/locale/paraglide/messages.js'
 
@@ -41,8 +41,9 @@ function PagerLink({
 
   return (
     <Link
-      to="/{-$locale}/docs/$slug"
-      params={{ slug: doc.slug, locale }}
+      // 文档首页渲染在 `/docs`，没有 slug 一段。
+      to={doc.slug === DOCS_INDEX_SLUG ? '/{-$locale}/docs' : '/{-$locale}/docs/$slug'}
+      params={doc.slug === DOCS_INDEX_SLUG ? { locale } : { slug: doc.slug, locale }}
       className={`group flex flex-col gap-1 rounded-lg border border-border px-4 py-3 transition-colors hover:border-foreground/30 hover:bg-muted/40 ${
         isNext ? 'items-end text-right sm:col-start-2' : 'items-start'
       }`}

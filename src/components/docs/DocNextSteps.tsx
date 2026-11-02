@@ -1,7 +1,7 @@
 import { IconArrowRight, IconRoute } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
 import { DOC_FALLBACK_ICON, DOC_ICON } from '@/components/docs/doc-icons'
-import { docLinkTarget, type NextStep } from '@/lib/docs'
+import { DOCS_INDEX_SLUG, docLinkTarget, type NextStep } from '@/lib/docs'
 import type { Locale } from '@/lib/locale'
 import { m } from '@/locale/paraglide/messages.js'
 
@@ -80,8 +80,9 @@ function StepCard({ step, locale }: { step: NextStep; locale: Locale }) {
 
   return (
     <Link
-      to="/{-$locale}/docs/$slug"
-      params={{ slug: target.slug, locale }}
+      // 文档首页渲染在 `/docs`，没有 slug 一段。
+      to={target.slug === DOCS_INDEX_SLUG ? '/{-$locale}/docs' : '/{-$locale}/docs/$slug'}
+      params={target.slug === DOCS_INDEX_SLUG ? { locale } : { slug: target.slug, locale }}
       hash={target.hash}
       className={className}
     >

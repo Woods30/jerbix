@@ -19,10 +19,10 @@ updated: 2026-10-29
 ```ts
 // src/config/website.ts
 auth: { enabled: true, requireEmailVerification: true },
-mail: { enabled: true, provider: 'resend', supportEmail: 'service@jerbix.site' },
+mail: { enabled: true, provider: 'resend', supportEmail: '<your-support-email>' },
 ```
 
-`supportEmail` 已配置为 `service@jerbix.site`；它是支持收件邮箱，与发件地址 `MAIL_FROM` 分开配置，见[邮件](./email)。
+`supportEmail` 已配置为 `<your-support-email>`；它是支持收件邮箱，与发件地址 `MAIL_FROM` 分开配置，见[邮件](./email)。
 
 | 配置 / 变量 | 何时需要 | 作用 |
 |---|---|---|
@@ -133,10 +133,10 @@ login 与 register 在表单卡片**内部的 `CardFooter`** 渲染一行「点�
 `error` 更没有任何可同意的动作。register 的两个 `AuthLayout` 调用点里，只有表单那一支传——
 「请查收验证邮件」那支出现时账号已创建、同意已发生过。
 
-服务条款与隐私政策位于 `content/legal/`，当前按 Jerbix、`https://www.jerbix.site` 及
-`service@jerbix.site` 编写，涵盖一次性源码购买、MIT 授权、退款和实际数据处理。页面不指定专属
-司法辖区；这不免除实际经营地或目标市场可能要求的经营者身份与地址披露。复用到其他站点时，
-应按自己的运营方式、服务商与适用规则更新正文。
+服务条款与隐私政策位于 `content/legal/`，随模板提供的是骨架版本：其中的 `<your-domain>`、
+`<your-operator>`、`<your-support-email>` 都是占位符，内容覆盖账号数据、支付、Cookie 与保留期限。
+页面不指定专属司法辖区；这不免除实际经营地或目标市场可能要求的经营者身份与地址披露。
+上线前请把占位符替换成你自己的信息。
 
 ## 生产环境
 
@@ -194,8 +194,8 @@ may not work correctly.
 未接 Google 登录时，`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` 留空即可——两个都不填时
 Better Auth 不注册该 provider，登录页也不渲染按钮。
 
-当前生产配置为 `https://www.jerbix.site`，因此重定向 URI 需填
-`https://www.jerbix.site/api/auth/callback/google`。凭据在 GitHub `production` Environment 中
+生产 origin 需为 `https://<your-domain>`，因此重定向 URI 填
+`https://<your-domain>/api/auth/callback/google`。凭据在 GitHub `production` Environment 中
 配置：`GOOGLE_CLIENT_ID` 与 `GOOGLE_CLIENT_SECRET`。工作流两者都接受 Variable 或 Secret，
 但 **Secret 更稳妥**（client secret 绝不能进客户端 bundle）。
 

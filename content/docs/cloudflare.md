@@ -213,12 +213,12 @@ Create the `production` Environment in **Settings → Environments**. If deploym
 | Secret | `DISCORD_WEBHOOK_URL` | Channel webhook URL; required when notifications are enabled (currently disabled) |
 | Variable | `VITE_GA_ID` | GA4 Measurement ID (`G-…`); required when analytics is enabled (currently disabled) |
 
-Existing repository Secrets for `CLOUDFLARE_ACCOUNT_ID` and `VITE_BASE_URL` remain supported. Use Variables for new public configuration. In the same Stripe environment, configure an active USD 99 one-time price with lookup key `jerbix_template`; see [Payment](./payment) for webhook events. Disable unused notification or analytics modules in `src/config/website.ts` instead of leaving required configuration empty.
+Existing repository Secrets for `CLOUDFLARE_ACCOUNT_ID` and `VITE_BASE_URL` remain supported. Use Variables for new public configuration. In the same Stripe environment, configure an active one-time price whose lookup key is `<one-time-price-lookup-key>`; see [Payment](./payment) for webhook events. Disable unused notification or analytics modules in `src/config/website.ts` instead of leaving required configuration empty.
 
 Neither `RESEND_API_KEY` nor `MAIL_FROM` uses a `VITE_` prefix. `MAIL_FROM` is the sender;
 the support inbox is configured separately in `websiteConfig.mail.supportEmail`. Setting one
-does not populate the other. Support is `service@jerbix.site` and the intended production domain
-is `https://www.jerbix.site`. Set production `VITE_BASE_URL` and `BETTER_AUTH_URL` to that origin
+does not populate the other. Support is `<your-support-email>` and the intended production domain
+is `https://<your-domain>`. Set production `VITE_BASE_URL` and `BETTER_AUTH_URL` to that origin
 and configure a separate Resend sender. Domain bindings and environment changes take effect during deployment.
 
 Optional mappings are included for Google OAuth (Variable `GOOGLE_CLIENT_ID`, Secret `GOOGLE_CLIENT_SECRET`), Turnstile (Variable `VITE_TURNSTILE_SITE_KEY`, Secret `TURNSTILE_SECRET_KEY`), and administrator emails (Variable `ADMIN_EMAILS`). These and both Resend fields are already mapped. When enabling additional providers, extend both workflow env mappings and the runtime upload allowlist.

@@ -15,7 +15,7 @@ Logo、开关、社交链接，都在这里。
 export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
   return {
     baseUrl: env.VITE_BASE_URL,
-    metadata: { name: 'Jerbix', images: { /* … */ } },
+    metadata: { name: '<your-site-name>', images: { /* … */ } },
     ui: { defaultTheme: 'system', enableThemeSwitch: true, themeColor: { /* … */ } },
     docs: { enabled: true },
     // …
@@ -33,7 +33,7 @@ export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
 
 ```ts
 metadata: {
-  name: 'Jerbix',                                  // 站点名，出现在标题与 OG 标签
+  name: '<your-site-name>',                              // 站点名，出现在标题与 OG 标签
   images: {
     ogImage: '/logo.png',                          // 社交分享图（1200×630）
     logoLight: '/logo-horizontal-transparent.svg', // 浅色主题的横向 Logo
@@ -56,9 +56,11 @@ landingOffer: {
 
 定价统一展示在首页 `#pricing`，旧 `/pricing` 地址跳转至当前语言首页价格区，不再展示独立演示套餐页。
 
-首页复用现有 Checkout：`productId` / `offerId` 指向 `src/config/products.ts` 中的
-`template.prices.once = 'jerbix_template'`，无需外部销售地址。在 Stripe 配置该 `lookup_key`
-对应的**一次性**价格。
+`productId` 是 `src/config/products.ts` 里声明的商品 ID。`template` 只是历史名，可以改成你自己的商品叫法——配置与 `landingOffer` 两处一起改。
+
+首页复用现有 Checkout：`productId` / `offerId` 指向 `src/config/products.ts` 中一次性商品的
+`prices.once`，无需外部销售地址。把该值改成你在 Stripe 创建的**一次性**价格的 `lookup_key`——
+金额只存在于 Stripe，不写进代码。
 
 配置里**不存金额**：价格的唯一事实源是 Stripe 价格目录，首页展示与结账收款读同一份。
 服务端只校验它确实是 `mode: 'payment'` 且币种为 USD —— 若该 `lookup_key` 指向订阅价，
@@ -94,7 +96,7 @@ ui: {
 docs: { enabled: true },
 blog: { enabled: true },
 changelog: { enabled: true },
-mail: { enabled: true, provider: 'resend', supportEmail: 'service@jerbix.site' },
+mail: { enabled: true, provider: 'resend', supportEmail: '<your-support-email>' },
 contact: { enabled: false },
 newsletter: { enabled: false, provider: 'resend' },
 payment: { enabled: true, provider: 'stripe', /* … */ },
@@ -117,7 +119,7 @@ auth: { enabled: true, requireEmailVerification: true },
 > `auth.requireEmailVerification` 是**安全控制**，不是邮件开关，当前默认 `true`。
 > 当前 Resend 邮件也已启用，须配置 `RESEND_API_KEY` 与已验证域名下的纯发件地址 `MAIL_FROM`。
 > 要求验证但邮件未配齐时，`auth` 为 `incomplete`、认证 API 返回 503，
-> `pnpm check:env:prod` 失败，不会隐式关闭验证。`supportEmail` 为 `service@jerbix.site`，与 `MAIL_FROM` 独立；
+> `pnpm check:env:prod` 失败，不会隐式关闭验证。`supportEmail` 为 `<your-support-email>`，与 `MAIL_FROM` 独立；
 > 详见[身份认证](./auth)与[邮件](./email)。
 
 ### 功能开关

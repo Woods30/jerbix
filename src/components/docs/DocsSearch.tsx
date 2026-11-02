@@ -4,7 +4,7 @@ import { type ReactNode, useCallback, useEffect, useId, useState } from 'react'
 import { DOC_FALLBACK_ICON, DOC_ICON } from '@/components/docs/doc-icons'
 import { Command, CommandDialog, CommandInput, CommandList } from '@/components/ui/command'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
-import { type DocEntry, type DocSearchResult, searchDocs } from '@/lib/docs'
+import { DOCS_INDEX_SLUG, type DocEntry, type DocSearchResult, searchDocs } from '@/lib/docs'
 import type { Locale } from '@/lib/locale'
 import { m } from '@/locale/paraglide/messages.js'
 
@@ -120,12 +120,14 @@ function SearchResult({
 }) {
   const { doc, sections, keyword } = result
   const Icon = DOC_ICON[doc.slug] ?? DOC_FALLBACK_ICON
+  // 文档首页渲染在 `/docs`，没有 slug 一段；其余文档按 `/docs/<slug>`。
+  const isIndex = doc.slug === DOCS_INDEX_SLUG
 
   return (
     <div className="rounded-md">
       <Link
-        to="/{-$locale}/docs/$slug"
-        params={{ slug: doc.slug, locale }}
+        to={isIndex ? '/{-$locale}/docs' : '/{-$locale}/docs/$slug'}
+        params={isIndex ? { locale } : { slug: doc.slug, locale }}
         // 文档页之间是客户端跳转，布局不会卸载，必须手动关闭弹窗。
         onClick={onSelect}
         className="group flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted"
@@ -183,8 +185,8 @@ function SectionLink({
 }) {
   return (
     <Link
-      to="/{-$locale}/docs/$slug"
-      params={{ slug: doc.slug, locale }}
+      to={doc.slug === DOCS_INDEX_SLUG ? '/{-$locale}/docs' : '/{-$locale}/docs/$slug'}
+      params={doc.slug === DOCS_INDEX_SLUG ? { locale } : { slug: doc.slug, locale }}
       hash={section.id}
       onClick={onSelect}
       data-level={section.level}

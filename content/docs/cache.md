@@ -30,7 +30,7 @@ Copy the `id` into `wrangler.jsonc`:
 
 ```jsonc title="wrangler.jsonc"
 {
-  "kv_namespaces": [{ "binding": "CACHE", "id": "42041d2cc3e84a378f3e264591790a3b" }]
+  "kv_namespaces": [{ "binding": "CACHE", "id": "00000000000000000000000000000000" }]
 }
 ```
 

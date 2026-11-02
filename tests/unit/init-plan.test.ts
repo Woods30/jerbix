@@ -23,23 +23,24 @@ const CONFIG: InitConfig = {
 
 // 直接用真实配置文件：配置项改名时这里会立刻红，而不是等到跑 init 才发现。
 const WEBSITE = readFileSync(new URL('../../src/config/website.ts', import.meta.url), 'utf-8')
+const PRODUCTS = readFileSync(new URL('../../src/config/products.ts', import.meta.url), 'utf-8')
 
 const WRANGLER = `{
   // Worker 名决定线上地址。
-  "name": "jerbix",
+  "name": "saas-template",
   "compatibility_date": "2026-10-01",
   // 自定义域名。
-  "routes": [{ "pattern": "www.jerbix.site", "custom_domain": true }],
+  "routes": [{ "pattern": "www.example.com", "custom_domain": true }],
   // ID 由 \`wrangler d1 create\` 产出后手工回填。
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "saas-template-db",
-      "database_id": "f0aed9d8-0cca-4cb7-9ec6-be6b67ce7e69",
+      "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "./src/db/migrations"
     }
   ],
-  "kv_namespaces": [{ "binding": "CACHE", "id": "42041d2cc3e84a378f3e264591790a3b" }]
+  "kv_namespaces": [{ "binding": "CACHE", "id": "00000000000000000000000000000000" }]
 }
 `
 
@@ -64,6 +65,7 @@ const REPO = {
   'package.json': PACKAGE_JSON,
   'wrangler.jsonc': WRANGLER,
   'src/config/website.ts': WEBSITE,
+  'src/config/products.ts': PRODUCTS,
   'messages/zh.json': readFileSync(new URL('../../messages/zh.json', import.meta.url), 'utf-8'),
   'messages/en.json': readFileSync(new URL('../../messages/en.json', import.meta.url), 'utf-8'),
   'public/manifest.json': readFileSync(
@@ -114,6 +116,7 @@ describe('buildPlan', () => {
       'messages/en.json',
       'public/manifest.json',
       'src/config/website.ts',
+      'src/config/products.ts',
       'wrangler.jsonc',
     ])
   })
@@ -138,6 +141,18 @@ describe('buildPlan', () => {
     expect(result).toContain("supportEmail: 'hello@acme.dev'")
   })
 
+  it('一次性商品的显示名改成新品牌', () => {
+    const file = plan.files.find((entry) => entry.path === 'src/config/products.ts')
+    const result = file?.transform(PRODUCTS) ?? ''
+
+    expect(result).toContain("name: 'Acme',")
+    // 价格引用不在 init 范围内：lookup_key 取决于使用者在 Stripe 里建了什么。
+    // 断言「原样透传」而不是写死某个 lookup_key，各仓的价格引用不同。
+    const priceReference = /prices: \{ once: '([^']+)' \}/.exec(PRODUCTS)?.[1]
+    expect(priceReference).toBeTruthy()
+    expect(result).toContain(`prices: { once: '${priceReference}' }`)
+  })
+
   it('wrangler.jsonc 改 Worker 名、域名与资源名，ID 置为占位符', () => {
     const file = plan.files.find((entry) => entry.path === 'wrangler.jsonc')
     const result = file?.transform(WRANGLER) ?? ''
@@ -146,8 +161,8 @@ describe('buildPlan', () => {
     expect(result).toContain('"pattern": "acme.dev"')
     expect(result).toContain('"database_name": "acme-db"')
     // 资源 ID 是账号相关的，init 不可能知道，留占位符交给部署流程回填。
-    expect(result).not.toContain('f0aed9d8-0cca-4cb7-9ec6-be6b67ce7e69')
-    expect(result).not.toContain('42041d2cc3e84a378f3e264591790a3b')
+    expect(result).not.toContain('00000000-0000-0000-0000-000000000000')
+    expect(result).not.toContain('00000000000000000000000000000000')
     expect(result).toContain('REPLACE_ME')
   })
 
@@ -171,6 +186,7 @@ describe('applyPlan', () => {
       'messages/zh.json',
       'package.json',
       'public/manifest.json',
+      'src/config/products.ts',
       'src/config/website.ts',
       'wrangler.jsonc',
     ])
@@ -189,6 +205,7 @@ describe('applyPlan', () => {
       'messages/zh.json',
       'package.json',
       'public/manifest.json',
+      'src/config/products.ts',
       'src/config/website.ts',
       'wrangler.jsonc',
     ])
@@ -213,10 +230,22 @@ describe('applyPlan', () => {
       'messages/en.json': '{}',
       'public/manifest.json': '{}',
       'src/config/website.ts': WEBSITE,
+      'src/config/products.ts': PRODUCTS,
     })
 
     expect(() => applyPlan(buildPlan(CONFIG), repo)).toThrow(/wrangler\.jsonc/)
     // 前面两个文件虽然算得出结果，但不能已经落盘。
     expect(repo.get('package.json')).toBe(PACKAGE_JSON)
+  })
+})
+
+describe('真实仓库文件', () => {
+  it('init 能改到真实 wrangler.jsonc 里的每个目标路径', () => {
+    // JSONC 定点改写只改已有位置，路径不存在就抛错。仓库里的 wrangler.jsonc
+    // 少了任何一个目标键（有人把 routes 注释掉就会发生），init 会在半路失败。
+    const real = readFileSync(new URL('../../wrangler.jsonc', import.meta.url), 'utf-8')
+    const step = buildPlan(CONFIG).files.find((file) => file.path === 'wrangler.jsonc')
+    if (!step) throw new Error('计划里没有 wrangler.jsonc')
+    expect(() => step.transform(real)).not.toThrow()
   })
 })

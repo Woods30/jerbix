@@ -75,7 +75,7 @@ export const BRAND_INVENTORY: BrandInventoryEntry[] = [
   {
     file: 'src/config/products.ts',
     handling: 'plan',
-    reason: '首页售卖的一次性商品由 init 的 --one-time-product 生成',
+    reason: '一次性商品的显示名由 plan.ts 改成新品牌；价格引用（lookup_key）由使用者自己填',
   },
   {
     file: 'src/config/llms.ts',

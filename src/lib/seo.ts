@@ -37,7 +37,9 @@ interface SeoOptions {
  * `head()` 内求值，否则会在模块加载时固化语言。
  */
 export function seo(path: string, options: SeoOptions) {
-  const url = getCanonicalUrl(path)
+  // canonical 必须与 hreflang 指向同一个地址：canonical 指向「按语言协商」的无前缀
+  // URL 时，同一篇文章的两个语言版本会互相取代，搜索结果只留一个语言。
+  const url = options.locale ? localeUrl(options.locale, path) : getCanonicalUrl(path)
   // 分享卡片没有图会退化成一整行文字，等于没有卡片；缺省回退品牌 OG 图。
   const image = toAbsoluteUrl(options.image ?? websiteConfig.metadata.images.ogImage)
   const locale = options.locale
@@ -91,7 +93,7 @@ export function seo(path: string, options: SeoOptions) {
     links: [{ rel: 'canonical', href: url }, ...alternates],
     // 结构化数据经 `scripts` 输出。注意本仓的 CSP 重写器会跳过 `application/ld+json`，
     // 而 TanStack 会给 head script 注入 nonce——若改用这里，需先统一 nonce 策略。
-    ...(options.pageType ? { scripts: [pageJsonLdScript(path, options, options.pageType)] } : {}),
+    ...(options.pageType ? { scripts: [pageJsonLdScript(url, options, options.pageType)] } : {}),
   }
 }
 
@@ -114,9 +116,11 @@ function socialHandle(): string | undefined {
  * 生成 Organization + WebSite + 页面节点组成的 `@graph`。
  *
  * 必须在同一个 `@graph` 里，页面节点才能通过 `isPartOf` / `publisher` 指向其他节点。
+ *
+ * `url` 由调用方传入：它必须与 canonical 完全一致，页面节点与 canonical 指向
+ * 不同地址时，结构化数据等于给搜索引擎报了另一个页面。
  */
-function pageJsonLdScript(path: string, options: SeoOptions, pageType: SeoPageType) {
-  const url = getCanonicalUrl(path)
+function pageJsonLdScript(url: string, options: SeoOptions, pageType: SeoPageType) {
   const base = getBaseUrl()
   const graph = [
     {

@@ -20,7 +20,7 @@ updated: 2026-10-29
 
 ```ts
 // src/config/website.ts
-mail: { enabled: true, provider: 'resend', supportEmail: 'service@jerbix.site' },
+mail: { enabled: true, provider: 'resend', supportEmail: '<your-support-email>' },
 auth: { enabled: true, requireEmailVerification: true },
 ```
 
@@ -61,10 +61,10 @@ BETTER_AUTH_URL=http://localhost:3000
 
 ```bash
 # _dmarc 记录，名字填 _dmarc
-v=DMARC1; p=none; rua=mailto:service@jerbix.site
+v=DMARC1; p=none; rua=mailto:<your-support-email>
 ```
 
-`rua` 填一个能收到报告的邮箱。用 `service@jerbix.site` 即可——前提是该地址已配好收信转发。
+`rua` 填一个能收到报告的邮箱。用 `<your-support-email>` 即可——前提是该地址已配好收信转发。
 
 ### 5. Release 自动部署
 
@@ -82,7 +82,7 @@ v=DMARC1; p=none; rua=mailto:service@jerbix.site
 
 `mail.supportEmail` 是联系表单的**收件地址**及站点支持入口；`MAIL_FROM` 是验证、重置密码和欢迎邮件的
 **发件地址**。两者作用独立，配置其中一个不会自动填充另一个，地址可按业务需要分别选择。
-支持邮箱现为 `service@jerbix.site`，发件地址仍须按 Resend 已验证域名单独配置。支持邮箱配置不会自动开启联系表单。
+支持邮箱现为 `<your-support-email>`，发件地址仍须按 Resend 已验证域名单独配置。支持邮箱配置不会自动开启联系表单。
 
 当前要求邮箱验证，缺少 API key / 发件地址或关闭邮件，会令 `mail` 未配置完整、`auth` 为 `incomplete`，
 `/api/auth/*` 返回 503，生产校验失败，**不会隐式关闭验证或降级为免验证登录**。

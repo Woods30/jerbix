@@ -99,7 +99,7 @@ export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
   return {
     baseUrl: env.VITE_BASE_URL,
     metadata: {
-      name: 'Jerbix',                        // ← your site name
+      name: '<your-site-name>',                // ← your site name
       images: { ogImage: '/logo.png', /* … */ },
     },
     docs: { enabled: true },                 // ← set false to drop the docs site

@@ -78,7 +78,8 @@ describe('seo() 结构化数据', () => {
     // 断链会让三个节点退化成孤立数据。
     expect(website?.publisher).toEqual({ '@id': orgId })
     expect(page?.isPartOf).toEqual({ '@id': siteId })
-    expect(page?.['@id']).toBe(`${CUSTOM_BASE_URL}/marketing/about#page`)
+    // 页面节点的地址必须与 canonical 一致（都带语言前缀）。
+    expect(page?.['@id']).toBe(`${CUSTOM_BASE_URL}/zh/marketing/about#page`)
   })
 
   it('页面节点带上 title / description / inLanguage', async () => {
@@ -93,7 +94,7 @@ describe('seo() 结构化数据', () => {
     expect(page?.name).toBe('关于我们')
     expect(page?.description).toBe('团队与愿景')
     expect(page?.inLanguage).toBe('zh-CN')
-    expect(page?.url).toBe(`${CUSTOM_BASE_URL}/marketing/about`)
+    expect(page?.url).toBe(`${CUSTOM_BASE_URL}/zh/marketing/about`)
   })
 
   it('省略 description 时不留下空字段', async () => {

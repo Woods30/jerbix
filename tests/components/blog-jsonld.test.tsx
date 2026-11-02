@@ -36,19 +36,19 @@ function jsonLdObjects(container: HTMLElement): Record<string, unknown>[] {
 
 describe('博客详情页 JSON-LD', () => {
   it('Article.url 指向真实路由 /marketing/blog/<slug>', async () => {
-    const { container } = await renderRoute('/en/marketing/blog/hello-world')
+    const { container } = await renderRoute('/en/marketing/blog/write-your-first-post')
 
     const article = jsonLdObjects(container).find((data) => data['@type'] === 'Article')
     expect(article).toBeDefined()
-    expect(String(article?.url)).toMatch(/\/marketing\/blog\/hello-world$/)
+    expect(String(article?.url)).toMatch(/\/marketing\/blog\/write-your-first-post$/)
   })
 
   it('Article.url 的 pathname 恰为 /marketing/blog/<slug>（旧前缀 /blog 会失败）', async () => {
-    const { container } = await renderRoute('/en/marketing/blog/hello-world')
+    const { container } = await renderRoute('/en/marketing/blog/write-your-first-post')
 
     const article = jsonLdObjects(container).find((data) => data['@type'] === 'Article')
     const url = new URL(String(article?.url))
-    // 旧缺陷产出 `/blog/hello-world`，修复后应为 `/marketing/blog/hello-world`。
-    expect(url.pathname).toBe('/marketing/blog/hello-world')
+    // 旧缺陷产出 `/blog/<slug>`，修复后应为 `/marketing/blog/<slug>`。
+    expect(url.pathname).toBe('/marketing/blog/write-your-first-post')
   })
 })

@@ -117,7 +117,18 @@ export function buildUserSeedSql(user: {
 INSERT INTO accounts (id, user_id, account_id, provider_id, password) VALUES (${quote(`account_${user.id}`)}, ${quote(user.id)}, ${quote(user.id)}, 'credential', ${quote(user.passwordHash)});`
 }
 
-/** 与 dev server 共用 sqlite 文件时只重试 SQLITE_BUSY，不掩盖 schema / SQL 错误。 */
+/**
+ * 判断一次 D1 写入失败是否值得重试。
+ *
+ * 与 dev server 共用同一个 sqlite 文件时，写入撞车由 miniflare 报成
+ * 「internal error」（偶尔是 SQLITE_BUSY / database is locked）；这类错误重试即可。
+ * schema 与 SQL 错误重试只会把同一个错重复四遍，因此不重试。
+ */
+export function isRetryableD1Error(output: string): boolean {
+  return /SQLITE_BUSY|database is locked|internal error/i.test(output)
+}
+
+/** 与 dev server 共用 sqlite 文件时只重试可重试错误，不掩盖 schema / SQL 错误。 */
 export function executeLocalD1(sql: string, persistTo = process.env.E2E_D1_PERSIST_TO): void {
   for (let attempt = 0; ; attempt++) {
     try {
@@ -127,8 +138,9 @@ export function executeLocalD1(sql: string, persistTo = process.env.E2E_D1_PERSI
       })
       return
     } catch (error) {
-      const stderr = String((error as { stderr?: unknown }).stderr ?? '')
-      if (attempt === 3 || !/SQLITE_BUSY|database is locked/i.test(stderr)) throw error
+      // wrangler 把 D1 的错误 JSON 写到 **stdout**，stderr 往往是空的。
+      const output = `${String((error as { stderr?: unknown }).stderr ?? '')}\n${String((error as { stdout?: unknown }).stdout ?? '')}`
+      if (attempt === 3 || !isRetryableD1Error(output)) throw error
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, (attempt + 1) * 300)
     }
   }

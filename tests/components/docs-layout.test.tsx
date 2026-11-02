@@ -109,6 +109,31 @@ describe('DocsLayout 宽屏侧栏', () => {
   })
 })
 
+/** 文档首页的地址是 `/docs`：侧栏链接不能写成 `/docs/index`，那会多一跳重定向。 */
+describe('DocsLayout 侧栏的文档首页', () => {
+  function landingLink(): HTMLElement {
+    const nav = within(aside()).getByRole('navigation', { name: '文档导航' })
+    return within(nav).getByRole('link', { name: '文档概览' })
+  }
+
+  it('首页条目指向 /docs，不带 /index', () => {
+    render(<DocsLayout locale="zh">正文</DocsLayout>)
+    expect(landingLink().getAttribute('href')).toBe('/zh/docs')
+  })
+
+  it('停在 /docs 时首页条目高亮', () => {
+    routerMocks.pathname = '/zh/docs'
+    render(<DocsLayout locale="zh">正文</DocsLayout>)
+    expect(landingLink().className).toContain('bg-sidebar-accent')
+  })
+
+  it('停在别的文档时首页条目不高亮', () => {
+    routerMocks.pathname = '/zh/docs/getting-started'
+    render(<DocsLayout locale="zh">正文</DocsLayout>)
+    expect(landingLink().className).not.toContain('bg-sidebar-accent')
+  })
+})
+
 describe('DocsLayout 窄屏抽屉', () => {
   it('默认不渲染抽屉', () => {
     render(<DocsLayout locale="zh">正文</DocsLayout>)

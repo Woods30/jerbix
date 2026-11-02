@@ -30,7 +30,7 @@ pnpm exec wrangler d1 create saas-template-db
     {
       "binding": "DB",
       "database_name": "saas-template-db",
-      "database_id": "f0aed9d8-0cca-4cb7-9ec6-be6b67ce7e69",
+      "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "./src/db/migrations"
     }
   ]

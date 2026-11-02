@@ -54,3 +54,28 @@ describe('sitemap lastmod', () => {
     expect(withoutDate).not.toContain('<lastmod>')
   })
 })
+
+describe('sitemap 的文档地址', () => {
+  it('文档首页只出现在 /docs，不另列 /docs/index', () => {
+    // 同一篇内容有两个 URL 时，搜索引擎会挑一个当规范地址，另一个进重复内容池。
+    const paths = getSitemapPaths(websiteConfig, 'en', {
+      blogs: [],
+      docs: [
+        { locale: 'en', _meta: { fileName: 'index.md' }, updated: '2026-11-02' },
+        { locale: 'en', _meta: { fileName: 'getting-started.md' } },
+      ],
+    })
+
+    expect(paths.some((p) => p.loc === `${base}/en/docs/index`)).toBe(false)
+    expect(paths.some((p) => p.loc === `${base}/en/docs`)).toBe(true)
+  })
+
+  it('/docs 的 lastmod 取首页文档的 updated', () => {
+    const paths = getSitemapPaths(websiteConfig, 'en', {
+      blogs: [],
+      docs: [{ locale: 'en', _meta: { fileName: 'index.md' }, updated: '2026-11-02' }],
+    })
+    const entry = paths.find((p) => p.loc === `${base}/en/docs`)
+    expect(entry?.lastmod).toBe('2026-11-02')
+  })
+})

@@ -1,9 +1,7 @@
-import { createFileRoute, notFound } from '@tanstack/react-router'
-import { DocNextSteps } from '@/components/docs/DocNextSteps'
-import { DocPager } from '@/components/docs/DocPager'
-import { DocsToc } from '@/components/docs/DocsToc'
-import { Mdx } from '@/components/mdx/Mdx'
+import { createFileRoute, notFound, redirect } from '@tanstack/react-router'
+import { DocArticle } from '@/components/docs/DocArticle'
 import {
+  DOCS_INDEX_SLUG,
   docNeighbors,
   docsForLocale,
   extractHeadings,
@@ -13,7 +11,6 @@ import {
 } from '@/lib/docs'
 import { getRequestLocale } from '@/lib/locale'
 import { seo } from '@/lib/seo'
-import { m } from '@/locale/paraglide/messages.js'
 
 /**
  * 单篇文档页。slug 与语言无关（见 `src/lib/docs.ts`）：URL 不泄漏语言后缀，
@@ -22,6 +19,13 @@ import { m } from '@/locale/paraglide/messages.js'
 export const Route = createFileRoute('/{-$locale}/_layout/docs/$slug')({
   beforeLoad: ({ params }) => {
     const locale = getRequestLocale()
+
+    // 文档首页的正式地址是 `/docs`；`/docs/index` 只是历史地址，重定向过去，
+    // 免得同一篇内容有两个可索引的 URL。
+    if (params.slug === DOCS_INDEX_SLUG) {
+      throw redirect({ to: '/{-$locale}/docs', params: { locale } })
+    }
+
     const doc = findDocBySlug(params.slug, locale)
     if (!doc) throw notFound()
     return { doc, locale }
@@ -60,24 +64,5 @@ function DocPage() {
   const doc = Route.useLoaderData()
   const { locale } = Route.useRouteContext()
 
-  return (
-    <div className="mx-auto flex max-w-5xl justify-center gap-10">
-      <article className="max-w-3xl min-w-0 flex-1">
-        <h1 className="text-3xl font-bold tracking-tight">{doc.title}</h1>
-        <p className="mt-2 text-muted-foreground">{doc.description}</p>
-        {doc.updated !== '' && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {m.docs_updated_at()} {doc.updated}
-          </p>
-        )}
-        <hr className="my-6 border-border" />
-        <Mdx source={doc.body} />
-        <DocNextSteps steps={doc.steps} locale={locale} />
-        <DocPager locale={locale} prev={doc.prev} next={doc.next} />
-      </article>
-      <aside className="sticky top-20 hidden h-fit w-56 shrink-0 xl:block">
-        <DocsToc headings={doc.headings} />
-      </aside>
-    </div>
-  )
+  return <DocArticle doc={doc} locale={locale} />
 }
