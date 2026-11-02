@@ -24,8 +24,13 @@ import { getLocale } from '@/locale/paraglide/runtime.js'
 import { startCheckout } from '@/payment/checkout-client'
 import { formatUsdAmount } from '@/payment/price-catalog'
 
-/** docs 开关启用时指向当前语言的文档入口，关闭时回退首页锚点。 */
+/**
+ * 首页的文档入口：外部文档站优先，其次站内 `/docs`，最后回退首页锚点。
+ *
+ * 文档站部署在外部时（`docs.siteUrl`），本仓没有 docs 子树，入口必须指向外站。
+ */
 function docsCtaHref(): string {
+  if (websiteConfig.docs.siteUrl) return websiteConfig.docs.siteUrl
   return websiteConfig.docs.enabled ? `/${getLocale()}/docs` : '#features'
 }
 

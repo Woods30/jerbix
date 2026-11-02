@@ -56,6 +56,31 @@ export type MenuVisibility = {
   authenticated?: boolean
   roles?: readonly string[]
 }
+
+/**
+ * 「文档」入口：文档站部署在外部时指向外链，否则指向站内 `/docs`。
+ *
+ * 外部文档站由 `docs.siteUrl` 表达。配了它就始终显示入口 —— 即使本仓关闭了
+ * docs 模块，访客也要有地方可去；没配时入口跟随 docs 模块开关。
+ */
+export function getDocsMenuEntry(
+  config: WebsiteConfig,
+  locale: Locale,
+): {
+  visibility?: MenuVisibility
+  destination: MenuLinkItem['destination']
+} {
+  const siteUrl = config.docs.siteUrl
+  if (siteUrl) {
+    return {
+      destination: { kind: 'external', href: siteUrl, newTab: true },
+    }
+  }
+  return {
+    visibility: { module: 'docs' },
+    destination: { kind: 'internal', options: getPublicLinkOptions('docs', locale) },
+  }
+}
 type Common = { id: string; visibility?: MenuVisibility }
 type Label = { title: string; description?: string; icon?: TablerIcon }
 export type MenuLinkItem = Common &
