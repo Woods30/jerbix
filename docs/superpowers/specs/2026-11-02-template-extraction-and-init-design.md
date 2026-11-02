@@ -66,7 +66,7 @@
 | 文档归属 | 技术文档跟模板走并由模板仓部署；商业条款文档跟官网走；官网 `/docs` 改外链 |
 | Logo | wordmark 与图形拆开，文字由 `metadata.name` 动态渲染 |
 | 版本关系 | 模板仓公开发布 GitHub Release；买家拿购买时冻结的 tag |
-| Git 历史 | 模板仓用 `git filter-repo` 从现仓派生，保留共同祖先 |
+| Git 历史 | 模板仓由现仓的 `template` 分支直接推送，保留共同祖先 |
 | 本轮交付范围 | 先做「模板工程 + init 脚本」，官网仓暂不动 |
 
 ## 现状事实（已核实）
@@ -398,19 +398,39 @@ lookup key、`USD 99` 等官网专属内容。归入模板仓的版本必须改�
 - 官网仓额外加一条 CI 提示：模板仓有新 tag 时在 PR 里提醒，但不自动合并。
 - 买家拿到的版本是**购买时冻结的 tag**（人工交付，邮件发 tag 链接）。
 
-### 8. 拆分模板仓的施工方式
+**合并时必须保留官网版本的值**。模板仓是通用化后的版本，几处「具体值」在两仓里含义不同，
+Git 会按「本地未改动」静默采用模板仓的版本，不会报冲突 —— 第一次合并必须逐项核对：
 
-用 `git filter-repo` 从现仓派生，**保留共同祖先**：
+| 位置 | 模板仓的值 | 官网仓保留的值 | 弄错的后果 |
+|---|---|---|---|
+| `content/legal/**` | 骨架条款（占位符） | 填充版条款 | 官网的法律页变成占位符 |
+| `src/config/products.ts` | `prices.once: 'one_time'` | 真实 Stripe `lookup_key` | 首页购买链接失效，且历史订单的 `productId` 对不上 |
+| `src/config/website.ts` 的 `mail.supportEmail` | `support@example.com` | 官网真实支持邮箱 | 支持入口与联系表单收件地址失效 |
+| `wrangler.jsonc` | 占位 worker 名、域名与资源 ID | 官网的 worker 名、`www.jerbix.site` 与真实 D1 / KV ID | 部署到错误的 Worker 与域名，生产站点下线 |
+| `CHANGELOG.md` | 模板工程的发布记录 | 官网的发布记录 | 官网的发布历史被模板的覆盖 |
+| `package.json` 的 `version` | 模板版本（`0.9.0` 起） | 官网版本 | Release tag 与 `package.json` 版本对不上，发版流程拒绝 |
+| `README.md`、`CONTEXT.md` | 模板的说明与术语表 | 官网的说明与术语表 | 官网仓的说明变成模板说明，读的人以为这是模板仓 |
+| `docs/superpowers/**` | 已删（模板仓不留本项目的开发史） | 官网的开发史原样保留 | 官网仓丢掉自己的开发记录 |
+
+其余冲突（品牌文案、消息、模块开关）按「官网定制优先」处理。
+
+### 8. 拆分模板仓的施工方式
 
 1. 在现仓建分支 `template`；
 2. 在该分支上做完「模板化」改造（去商业痕迹、通用化文档、加 init 脚本、拆 logo、
    删开发史）；
-3. `git filter-repo --path <保留路径> --invert-paths` 剔除要删的路径，
-   `--message-callback` / blob callback 顺手洗掉历史里的 Jerbix 商业痕迹；
-4. 推到 `Woods30/saas-template`。
+3. 把 `template` 分支推成 `Woods30/saas-template` 的 `main`；
+4. 现仓改名 `Woods30/jerbix`，加 `template` remote，跑第一次合并。
 
-**保留共同祖先的价值**：官网仓跟进模板时从「每次 cherry-pick 一堆 commit」降级成「一次
-merge」。「历史干净」的价值不大 —— 没人会去翻模板仓 2026 年 10 月的提交历史。
+**不用 `git filter-repo`**：改写历史会让两仓失去共同祖先 —— filter-repo 重写了每个受影响
+commit 的 SHA，官网仓与模板仓从此是两条无关的历史，`git merge template/main` 只能靠
+`--allow-unrelated-histencies`，冲突面全开。而「历史干净」的价值不大：没人会去翻模板仓
+2026 年 10 月的提交历史。**保留共同祖先的价值**才大：官网仓跟进模板时从「每次
+cherry-pick 一堆 commit」降级成「一次 merge」。
+
+因此开发史（`docs/superpowers/`）与历史里的旧值用**普通提交**在 `template` 分支上删掉，
+而不是改写历史。历史里残留的官网旧值（支持邮箱、价格引用、真实资源 ID）本来就公开在
+官网仓里，模板仓再存一份不构成新的泄漏。
 
 现仓随后改名 `Woods30/jerbix`（GitHub 改仓名会自动重定向旧链接），`Woods30/saas-template`
 让给模板仓。
@@ -431,7 +451,7 @@ merge」。「历史干净」的价值不大 —— 没人会去翻模板仓 202
 | 两仓代码漂移 | 模板仓发 tag；官网仓一条合并流程 + CI 提醒 |
 | 文档站的 canonical 与 hreflang 不一致 | 迁到独立域前先修 `seo()` 的 canonical（去掉无语言前缀），并更新 `tests/unit/content-head.test.ts:108` |
 | 文档独立成域后 `/` 无落地页 | 加 `index.md` 或让 `/` 重定向到 `getting-started` |
-| `git filter-repo` 洗历史时误删通用代码 | 洗完立即在模板仓跑全量 `pnpm check` + `pnpm test` + `pnpm test:e2e` |
+| 派生模板仓时误删通用代码 | 推之前在模板仓跑全量 `pnpm check` + `pnpm test` + `pnpm test:e2e` |
 | 模板仓的 CI 缺 `.env` 导致 e2e 全红 | 沿用现仓 CI 的做法：`cp .env.example .env` + 追加合成 mail key；`wrangler.jsonc` 的 `vars.NODE_ENV=production` 是这条存在的原因 |
 
 ## 测试接缝
@@ -471,7 +491,7 @@ merge」。「历史干净」的价值不大 —— 没人会去翻模板仓 202
 6. **通用化文档**：22 个技术 slug 去品牌（改占位符写法，不用 `{{EMAIL_*}}`）；
    legal 骨架与官网填好版分离；删 blog / changelog 示例内容。
 7. **修 canonical 与 `/` 落地页**（顺带的两个缺陷）。
-8. **派生模板仓**：`git filter-repo` → 推到 `Woods30/saas-template` → 全量验证。
+8. **派生模板仓**：`template` 分支 → 推到 `Woods30/saas-template` → 全量验证。
 9. **现仓改名** `Woods30/jerbix`，加 `template` remote，跑第一次合并。
 10. **模板仓的文档站部署**（独立域 + 模块开关）。
 11. **官网仓跟进**：移出 `/docs`、改冒烟测试、`kvTitle` 改配置读。
