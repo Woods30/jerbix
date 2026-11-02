@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { websiteConfig } from '@/config/website'
 import { overwriteServerAsyncLocalStorage } from '@/locale/paraglide/runtime.js'
 import { Route } from '@/routes/{-$locale}/index'
 
@@ -31,8 +32,11 @@ function runHomeHead(): HeadResult {
   return head()
 }
 
+const originalDocs = { ...websiteConfig.docs }
+
 afterEach(() => {
   overwriteServerAsyncLocalStorage(undefined)
+  websiteConfig.docs = { ...originalDocs }
 })
 
 describe('首页 head 的 i18n', () => {
@@ -66,5 +70,34 @@ describe('首页 head 的 i18n', () => {
     const en = runHomeHead()
     const description = en.meta.find((entry) => entry.name === 'description')
     expect(description?.content).not.toMatch(/[㐀-鿿]/u)
+  })
+})
+
+/**
+ * 文档站模式：根路径直接进文档首页。
+ *
+ * 文档站部署在独立域时，访客来的是文档；根路径给营销首页会让人以为走错了地方。
+ */
+describe('文档站模式的根路径', () => {
+  const beforeLoad = Route.options.beforeLoad as unknown as () => unknown
+
+  it('asHome 开启时根路径跳到文档首页', () => {
+    websiteConfig.docs = { ...websiteConfig.docs, asHome: true }
+    withRequestLocale('zh')
+
+    let thrown: unknown
+    try {
+      beforeLoad()
+    } catch (error) {
+      thrown = error
+    }
+    const options = (thrown as { options?: { to?: string; params?: unknown } }).options
+    expect(options?.to).toBe('/{-$locale}/docs')
+    expect(options?.params).toEqual({ locale: 'zh' })
+  })
+
+  it('asHome 关闭时根路径正常渲染', () => {
+    websiteConfig.docs = { ...websiteConfig.docs, asHome: false }
+    expect(beforeLoad()).toBeUndefined()
   })
 })

@@ -84,3 +84,56 @@ describe('websiteConfig 品牌信息', () => {
     expect(second.docs.enabled).toBe(true)
   })
 })
+
+/**
+ * 环境变量覆盖模块与能力开关。
+ *
+ * 同一份代码要发到不同场景（文档站只开文档，业务站开支付与邮件），
+ * 开关由 `VITE_MODULES` / `VITE_FEATURES` 覆盖。
+ */
+describe('环境变量覆盖模块与能力开关', () => {
+  it('VITE_MODULES 只保留名单里的模块', () => {
+    const config = createWebsiteConfig(parsePublicEnv({ VITE_MODULES: 'docs' }))
+    expect(config.docs.enabled).toBe(true)
+    expect(config.blog.enabled).toBe(false)
+    expect(config.payment.enabled).toBe(false)
+    expect(config.auth.enabled).toBe(false)
+  })
+
+  it('VITE_FEATURES 只保留名单里的能力开关', () => {
+    const config = createWebsiteConfig(parsePublicEnv({ VITE_FEATURES: 'enableI18n' }))
+    expect(config.features.enableI18n).toBe(true)
+    expect(config.features.enableApiKeys).toBe(false)
+    expect(config.features.enableAdmin).toBe(false)
+  })
+
+  it('覆盖模块开关时保留同一模块的其它字段', () => {
+    const config = createWebsiteConfig(parsePublicEnv({ VITE_MODULES: 'docs' }))
+    // 文档站地址不是开关，覆盖不能把它抹掉。
+    expect(config.docs.siteUrl).toBeUndefined()
+    expect(config.mail.provider).toBe('resend')
+  })
+
+  it('两个变量都缺省时沿用代码里的默认值', () => {
+    const config = createWebsiteConfig(parsePublicEnv({}))
+    expect(config.docs.enabled).toBe(true)
+    expect(config.payment.enabled).toBe(true)
+    expect(config.features.enableApiKeys).toBe(true)
+  })
+
+  it('VITE_DOCS_AS_HOME 决定根路径是否进文档首页', () => {
+    expect(createWebsiteConfig(parsePublicEnv({ VITE_DOCS_AS_HOME: 'true' })).docs.asHome).toBe(
+      true,
+    )
+    expect(createWebsiteConfig(parsePublicEnv({ VITE_DOCS_AS_HOME: 'false' })).docs.asHome).toBe(
+      false,
+    )
+    expect(createWebsiteConfig(parsePublicEnv({})).docs.asHome).toBeUndefined()
+  })
+
+  it('空值按「没给」处理，仍走代码里的默认值', () => {
+    const config = createWebsiteConfig(parsePublicEnv({ VITE_MODULES: '' }))
+    expect(config.docs.enabled).toBe(true)
+    expect(config.payment.enabled).toBe(true)
+  })
+})

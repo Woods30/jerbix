@@ -71,6 +71,13 @@ export interface WebsiteConfig {
      * 留空表示文档就在本仓的 `/docs`。
      */
     siteUrl?: string
+    /**
+     * 本仓就是文档站：根路径跳到文档首页，而不是营销首页。
+     *
+     * 文档站部署在独立域时用：访客来的是文档，根路径给营销首页会让人以为
+     * 走错了地方。
+     */
+    asHome?: boolean
   }
   blog: { enabled: boolean }
   changelog: { enabled: boolean }
@@ -117,55 +124,114 @@ export interface WebsiteConfig {
 }
 
 /**
+ * 逗号分隔的名字列表 → 集合；空值与空白项忽略。
+ *
+ * 返回 `undefined` 表示「没给」，与「给了空列表（表示全关）」是两回事。
+ */
+function parseNameList(value: string | undefined): Set<string> | undefined {
+  if (value === undefined) return undefined
+  const names = value
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name !== '')
+  return new Set(names)
+}
+
+/**
+ * 按环境变量覆盖模块与能力开关。
+ *
+ * 同一份代码要发到不同场景：模板的文档站只开文档模块，业务站开支付与邮件。
+ * 开关写在代码里就没法让一个构建产物发两处，所以这里允许用
+ * `VITE_MODULES` / `VITE_FEATURES`（逗号分隔的白名单）覆盖。
+ *
+ * 两个变量都缺省时原样返回：代码里的默认值就是唯一事实源。
+ */
+export function applyEnvOverrides(config: WebsiteConfig, env: PublicEnv): WebsiteConfig {
+  const modules = parseNameList(env.VITE_MODULES)
+  const features = parseNameList(env.VITE_FEATURES)
+  if (!modules && !features && env.VITE_DOCS_AS_HOME === undefined) return config
+
+  const next: WebsiteConfig = { ...config, features: { ...config.features } }
+  if (modules) {
+    next.docs = { ...next.docs, enabled: modules.has('docs') }
+    next.blog = { ...next.blog, enabled: modules.has('blog') }
+    next.changelog = { ...next.changelog, enabled: modules.has('changelog') }
+    next.mail = { ...next.mail, enabled: modules.has('mail') }
+    next.contact = { ...next.contact, enabled: modules.has('contact') }
+    next.newsletter = { ...next.newsletter, enabled: modules.has('newsletter') }
+    next.payment = { ...next.payment, enabled: modules.has('payment') }
+    next.notification = { ...next.notification, enabled: modules.has('notification') }
+    next.analytics = { ...next.analytics, enabled: modules.has('analytics') }
+    next.auth = { ...next.auth, enabled: modules.has('auth') }
+  }
+  if (env.VITE_DOCS_AS_HOME !== undefined) {
+    next.docs = { ...next.docs, asHome: env.VITE_DOCS_AS_HOME === 'true' }
+  }
+  if (features) {
+    next.features = {
+      enableI18n: features.has('enableI18n'),
+      enableFileUpload: features.has('enableFileUpload'),
+      enableApiKeys: features.has('enableApiKeys'),
+      enableAdmin: features.has('enableAdmin'),
+      enableAIGateway: features.has('enableAIGateway'),
+    }
+  }
+  return next
+}
+
+/**
  * 站点集中配置仅承载语言无关的公开值，不读取服务端 env；随请求语言变化的文案
  * 必须在组件、工厂调用或路由 `head()` 内求值。显式传入公开 env 便于单测与脚本复用。
  */
 export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
-  return {
-    baseUrl: env.VITE_BASE_URL,
-    metadata: {
-      name: 'Jerbix',
-      // 品牌稿的字标是双色：`Jerbi` 墨色、`x` 紫色。
-      logoAccent: 'x',
-      images: {
-        ogImage: '/logo.png',
-        logoLight: '/logo-horizontal-transparent.svg',
-        logoDark: '/logo-horizontal-dark.svg',
-        icon: '/icon-jerboa.svg',
+  return applyEnvOverrides(
+    {
+      baseUrl: env.VITE_BASE_URL,
+      metadata: {
+        name: 'Jerbix',
+        // 品牌稿的字标是双色：`Jerbi` 墨色、`x` 紫色。
+        logoAccent: 'x',
+        images: {
+          ogImage: '/logo.png',
+          logoLight: '/logo-horizontal-transparent.svg',
+          logoDark: '/logo-horizontal-dark.svg',
+          icon: '/icon-jerboa.svg',
+        },
+      },
+      ui: {
+        defaultTheme: 'system',
+        enableThemeSwitch: true,
+        // 与 globals.css 的 --background（浅 0.988 0.0069 304.2448 / 深 0.1473 0.0107 285.0074）等价。
+        themeColor: { light: '#FCFAFF', dark: '#0A0A0F' },
+      },
+      landingOffer: { productId: 'template', offerId: 'once' },
+      docs: { enabled: true },
+      blog: { enabled: true },
+      changelog: { enabled: true },
+      // 支持收件邮箱：出厂是占位地址，`pnpm run init` 会换成你自己的。
+      mail: { enabled: true, provider: 'resend', supportEmail: 'support@example.com' },
+      contact: { enabled: false },
+      newsletter: { enabled: false, provider: 'resend' },
+      payment: {
+        // 当前站点启用 Stripe 收款；通知与分析待配置后单独开启。
+        enabled: true,
+        provider: 'stripe',
+      },
+      notification: { enabled: false, provider: 'discord' },
+      analytics: { enabled: true, providers: ['ga'] },
+      // auth 默认开启：模板自带登录 / 注册，关闭时对应页面与 API 一律 404。
+      auth: { enabled: true, requireEmailVerification: true },
+      social: {},
+      features: {
+        enableI18n: true,
+        enableFileUpload: false,
+        enableApiKeys: true,
+        enableAdmin: true,
+        enableAIGateway: false,
       },
     },
-    ui: {
-      defaultTheme: 'system',
-      enableThemeSwitch: true,
-      // 与 globals.css 的 --background（浅 0.988 0.0069 304.2448 / 深 0.1473 0.0107 285.0074）等价。
-      themeColor: { light: '#FCFAFF', dark: '#0A0A0F' },
-    },
-    landingOffer: { productId: 'template', offerId: 'once' },
-    docs: { enabled: true },
-    blog: { enabled: true },
-    changelog: { enabled: true },
-    // 支持收件邮箱：出厂是占位地址，`pnpm run init` 会换成你自己的。
-    mail: { enabled: true, provider: 'resend', supportEmail: 'support@example.com' },
-    contact: { enabled: false },
-    newsletter: { enabled: false, provider: 'resend' },
-    payment: {
-      // 当前站点启用 Stripe 收款；通知与分析待配置后单独开启。
-      enabled: true,
-      provider: 'stripe',
-    },
-    notification: { enabled: false, provider: 'discord' },
-    analytics: { enabled: true, providers: ['ga'] },
-    // auth 默认开启：模板自带登录 / 注册，关闭时对应页面与 API 一律 404。
-    auth: { enabled: true, requireEmailVerification: true },
-    social: {},
-    features: {
-      enableI18n: true,
-      enableFileUpload: false,
-      enableApiKeys: true,
-      enableAdmin: true,
-      enableAIGateway: false,
-    },
-  }
+    env,
+  )
 }
 
 export const websiteConfig = createWebsiteConfig(publicEnv)

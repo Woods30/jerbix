@@ -25,6 +25,22 @@ const schema = z.object({
   VITE_CLARITY_PROJECT_ID: z.string().optional(),
   VITE_CLARITY_ID: z.string().optional(),
   VITE_TURNSTILE_SITE_KEY: z.string().optional(),
+  /**
+   * 逗号分隔的模块白名单，覆盖 `website.ts` 里的模块开关。
+   *
+   * 同一份代码要发到不同场景（文档站只开文档，业务站开支付与邮件），
+   * 开关写在代码里就没法让一个构建产物发两处。缺省时沿用代码里的默认值。
+   */
+  VITE_MODULES: z.string().optional(),
+  /** 逗号分隔的能力开关白名单，语义同 `VITE_MODULES`。 */
+  VITE_FEATURES: z.string().optional(),
+  /**
+   * 本仓就是文档站：根路径直接进文档首页，而不是营销首页。
+   *
+   * 文档站部署在独立域时，访客来的是文档；把营销首页放在根路径会让人以为
+   * 走错了地方。
+   */
+  VITE_DOCS_AS_HOME: z.enum(['true', 'false']).optional(),
 })
 
 export type PublicEnv = z.infer<typeof schema>
