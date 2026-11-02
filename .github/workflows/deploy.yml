@@ -224,6 +224,8 @@ jobs:
           VITE_MODULES: ${{ vars.VITE_MODULES }}
           VITE_FEATURES: ${{ vars.VITE_FEATURES }}
           VITE_DOCS_AS_HOME: ${{ vars.VITE_DOCS_AS_HOME }}
+          # 自定义域名要能读 zone 的 token 才能建；没有时只发到 workers.dev。
+          DEPLOY_SKIP_CUSTOM_DOMAIN: ${{ vars.DEPLOY_SKIP_CUSTOM_DOMAIN }}
           # 公开变量既可能配成 Variable 也可能配成 Secret：GA ID 与 Turnstile site key
           # 会进客户端 bundle，语义上是公开的，但用 Secret 存放同样安全。
           VITE_GA_ID: ${{ vars.VITE_GA_ID || secrets.VITE_GA_ID }}
@@ -242,6 +244,12 @@ jobs:
         run: |
           set -euo pipefail
           pnpm run check:env:prod
+          # 建自定义域名需要 zone 权限的 token；没有时去掉 routes，
+          # Worker 只发布到 workers.dev —— 域名之后再在 Dashboard 里挂。
+          if [ "${DEPLOY_SKIP_CUSTOM_DOMAIN:-}" = "true" ]; then
+            node -e "const fs=require('fs');const p='wrangler.jsonc';const s=fs.readFileSync(p,'utf8');fs.writeFileSync(p,s.replace(/\"routes\":\s*\[[^\]]*\]/,'\"routes\": []'))"
+            echo "已去掉自定义域名路由：Worker 只发布到 workers.dev"
+          fi
           pnpm run build
           pnpm run check:client-bundle
           # 仅上传明确列出的运行时字段，不把 Cloudflare 部署凭据送入 Worker。
