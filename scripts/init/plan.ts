@@ -10,6 +10,7 @@
  */
 
 import { setJsoncValue } from '../lib/jsonc-edit'
+import { replaceBrandInManifest, replaceBrandInMessages } from './replacements'
 
 /**
  * 内容模块：`website.ts` 里形如 `docs: { enabled: boolean }` 的开关。
@@ -88,6 +89,23 @@ export function buildPlan(config: InitConfig): InitPlan {
         path: 'package.json',
         description: `包名改为 ${config.slug}`,
         transform: (current) => setJsonField(current, 'name', config.slug),
+      },
+      {
+        path: 'messages/zh.json',
+        description: `中文文案里的品牌名改为 ${config.name}`,
+        transform: (current) =>
+          replaceBrandInMessages(current, { brand: config.name, locale: 'zh' }),
+      },
+      {
+        path: 'messages/en.json',
+        description: `英文文案里的品牌名改为 ${config.name}`,
+        transform: (current) =>
+          replaceBrandInMessages(current, { brand: config.name, locale: 'en' }),
+      },
+      {
+        path: 'public/manifest.json',
+        description: `PWA 站点名改为 ${config.name}`,
+        transform: (current) => replaceBrandInManifest(current, config.name),
       },
       {
         path: 'src/config/website.ts',

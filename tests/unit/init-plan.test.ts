@@ -64,6 +64,12 @@ const REPO = {
   'package.json': PACKAGE_JSON,
   'wrangler.jsonc': WRANGLER,
   'src/config/website.ts': WEBSITE,
+  'messages/zh.json': readFileSync(new URL('../../messages/zh.json', import.meta.url), 'utf-8'),
+  'messages/en.json': readFileSync(new URL('../../messages/en.json', import.meta.url), 'utf-8'),
+  'public/manifest.json': readFileSync(
+    new URL('../../public/manifest.json', import.meta.url),
+    'utf-8',
+  ),
 }
 
 describe('replaceConfigLiteral', () => {
@@ -101,9 +107,12 @@ describe('replaceConfigLiteral', () => {
 describe('buildPlan', () => {
   const plan = buildPlan(CONFIG)
 
-  it('计划覆盖包名、站点配置与部署配置', () => {
+  it('计划覆盖包名、两种语言的文案、manifest、站点配置与部署配置', () => {
     expect(plan.files.map((file) => file.path)).toEqual([
       'package.json',
+      'messages/zh.json',
+      'messages/en.json',
+      'public/manifest.json',
       'src/config/website.ts',
       'wrangler.jsonc',
     ])
@@ -158,7 +167,10 @@ describe('applyPlan', () => {
     const result = applyPlan(buildPlan(CONFIG), repo)
 
     expect(result.written.sort()).toEqual([
+      'messages/en.json',
+      'messages/zh.json',
       'package.json',
+      'public/manifest.json',
       'src/config/website.ts',
       'wrangler.jsonc',
     ])
@@ -173,7 +185,10 @@ describe('applyPlan', () => {
 
     expect(second.written).toEqual([])
     expect(second.unchanged.sort()).toEqual([
+      'messages/en.json',
+      'messages/zh.json',
       'package.json',
+      'public/manifest.json',
       'src/config/website.ts',
       'wrangler.jsonc',
     ])
@@ -194,6 +209,9 @@ describe('applyPlan', () => {
   it('文件缺失时抛错，且不会留下改了一半的文件', () => {
     const repo = memoryRepo({
       'package.json': PACKAGE_JSON,
+      'messages/zh.json': '{}',
+      'messages/en.json': '{}',
+      'public/manifest.json': '{}',
       'src/config/website.ts': WEBSITE,
     })
 
