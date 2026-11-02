@@ -9,6 +9,9 @@
 /** 一行 `KEY=value`：key 必须是合法环境变量名，值可含 `=`（base64 结尾常见）。 */
 const ENV_LINE = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/
 
+/** 合法的环境变量名。key 里出现换行等于往 `.env` 里凭空插入一条配置。 */
+const ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/
+
 /** 值里出现这些字符时必须加引号，否则 dotenv 会在空格处截断、把 `#` 当注释起点。 */
 const NEEDS_QUOTING = /[\s#"']/
 
@@ -39,6 +42,12 @@ export function getEnvValue(content: string, key: string): string | undefined {
 export function updateEnv(content: string, updates: Record<string, string>): string {
   const entries = Object.entries(updates)
   if (entries.length === 0) return content
+
+  // 先整体校验再动任何一行：非法输入不该留下「改了一半」的文件。
+  for (const [key, value] of entries) {
+    if (!ENV_KEY.test(key)) throw new Error(`非法的环境变量名：${JSON.stringify(key)}`)
+    if (value.includes('\n')) throw new Error(`环境变量 ${key} 的值含换行，无法写入 .env`)
+  }
 
   const seen = new Set<string>()
   const lines = content.split('\n').map((line) => {

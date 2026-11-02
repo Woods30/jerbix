@@ -93,6 +93,21 @@ describe('updateEnv', () => {
   it('updates 为空时原样返回', () => {
     expect(updateEnv(SAMPLE, {})).toBe(SAMPLE)
   })
+
+  it('key 名非法时抛错，不产出任何内容', () => {
+    // key 里带换行会凭空多出一行环境变量，等于往 .env 里注入配置。
+    expect(() => updateEnv(SAMPLE, { 'FOO\nBAR=baz': 'x' })).toThrow(/环境变量名/)
+  })
+
+  it('key 名非法时不改动原文件', () => {
+    expect(() => updateEnv(SAMPLE, { 'FOO=1\nBAR': 'x' })).toThrow(/环境变量名/)
+    // 抛错时不能已经把前半部分写进去了
+    expect(updateEnv(SAMPLE, { FOO: 'ok' })).toContain('VITE_BASE_URL=http://localhost:3000')
+  })
+
+  it('值含换行时抛错，避免把一条变量拆成两条', () => {
+    expect(() => updateEnv(SAMPLE, { FOO: 'a\nBAREVIL=1' })).toThrow(/换行/)
+  })
 })
 
 describe('getEnvValue', () => {

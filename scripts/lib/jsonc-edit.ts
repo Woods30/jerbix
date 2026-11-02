@@ -46,7 +46,25 @@ export function setJsoncValue(source: string, path: JsoncPath, value: unknown): 
   const encoded = JSON.stringify(value)
   if (encoded === undefined) throw new Error(`JSONC: 值无法序列化：${formatPath(path)}`)
 
-  return source.slice(0, node.start) + encoded + source.slice(node.end)
+  return (
+    source.slice(0, node.start) + encodeValue(source, node.start, encoded) + source.slice(node.end)
+  )
+}
+
+/**
+ * 序列化后的值按**所在行的缩进**对齐。
+ *
+ * 值写在行中间（`  "d1_databases": [`）时，把它整个替换成多行 JSON 会让后续行跑到
+ * 左边；补上所在行的缩进，替换后的排版与原文件一致。
+ */
+function encodeValue(source: string, start: number, encoded: string): string {
+  const lineStart = source.lastIndexOf('\n', start - 1) + 1
+  const indent = /^[ \t]*/.exec(source.slice(lineStart, start))?.[0] ?? ''
+  if (!encoded.includes('\n')) return encoded
+  return encoded
+    .split('\n')
+    .map((line, index) => (index === 0 ? line : indent + line))
+    .join('\n')
 }
 
 /** 沿路径走到目标节点；任一段不存在则返回 `undefined`。 */
