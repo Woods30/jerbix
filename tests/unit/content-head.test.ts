@@ -41,6 +41,11 @@ function alternateHrefs(head: HeadResult): string[] {
     .map((link) => link.href ?? '')
 }
 
+/** `x-default` alternate 的地址。 */
+function xDefaultHref(head: HeadResult): string | undefined {
+  return head.links.find((link) => link.rel === 'alternate' && link.hrefLang === 'x-default')?.href
+}
+
 afterEach(() => {
   overwriteServerAsyncLocalStorage(undefined)
 })
@@ -133,6 +138,33 @@ describe('docs 详情页 head 的 canonical / hreflang', () => {
     for (const href of alternates) {
       expect(href).toMatch(/\/en\/docs\/getting-started$/)
     }
+  })
+
+  it('canonical 带上语言前缀，与 x-default alternate 指向同一地址', () => {
+    // 无前缀的 canonical 会让两个语言版本互相取代：搜索结果只剩一个语言。
+    withRequestLocale('zh')
+    const head = runDocHead({
+      title: '快速开始',
+      description: '描述',
+      content: '',
+      slug: 'getting-started',
+    })
+    const canonical = canonicalHref(head) ?? ''
+
+    expect(canonical).toMatch(/\/zh\/docs\/getting-started$/)
+    expect(canonical).toBe(xDefaultHref(head))
+  })
+
+  it('英文页面的 canonical 指向英文地址', () => {
+    withRequestLocale('en')
+    const head = runDocHead({
+      title: 'Getting Started',
+      description: '描述',
+      content: '',
+      slug: 'getting-started',
+    })
+
+    expect(canonicalHref(head)).toMatch(/\/en\/docs\/getting-started$/)
   })
 })
 
