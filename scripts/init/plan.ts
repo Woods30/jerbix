@@ -9,6 +9,7 @@
  * 磁盘，执行时才读文件，幂等性也由「新内容 === 当前内容」自然得到。
  */
 
+import { basename } from 'node:path'
 import { setJsoncValue } from '../lib/jsonc-edit'
 import { replaceBrandInManifest, replaceBrandInMessages } from './replacements'
 
@@ -192,6 +193,40 @@ function setJsonField(source: string, key: string, value: unknown): string {
   if (!Object.hasOwn(parsed, key)) throw new Error(`JSON 里没有字段 ${key}`)
   parsed[key] = value
   return `${JSON.stringify(parsed, null, 2)}\n`
+}
+
+/** 站名 → 小写短名。推不出合法短名时抛错，而不是产出一个 `acme--` 之类的资源名。 */
+export function deriveSlug(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(slug)) {
+    throw new Error(`无法从「${name}」推导出合法的 slug，请用 --slug 显式指定`)
+  }
+  return slug
+}
+
+/**
+ * 补全默认值。
+ *
+ * 默认值必须让「一路回车」也能跑：站名取目录名，域名用保留域名占位，
+ * 邮箱跟随域名。真实域名由开发者稍后改。
+ */
+export function resolveConfig(args: Partial<InitConfig>, cwd: string): InitConfig {
+  const name = args.name ?? basename(cwd)
+  const slug = args.slug ?? deriveSlug(name)
+  const domain = args.domain ?? `${slug}.example.com`
+  return {
+    name,
+    slug,
+    domain,
+    email: args.email ?? `support@${domain}`,
+    modules: args.modules ?? [],
+    features: args.features,
+  }
 }
 
 /** 计划的可读摘要，供 `--dry-run` 打印。 */
