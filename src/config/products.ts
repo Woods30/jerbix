@@ -28,10 +28,13 @@ export function getProducts(): ProductDefinition[] {
     },
     {
       id: 'template',
+      // 显示名：模板出厂是默认品牌，`pnpm run init` 会换成你自己的。
       name: 'Jerbix',
       description: m.home_pricing_description(),
       features: [m.home_pricing_source(), m.home_pricing_support(), m.home_pricing_updates()],
-      prices: { once: 'jerbix_template' },
+      // 价格引用（Stripe lookup_key）：换成你在 Stripe 建的一次性价格的 lookup_key。
+      // 金额只存在于 Stripe，代码里不存第二份。
+      prices: { once: 'one_time' },
     },
   ]
 }

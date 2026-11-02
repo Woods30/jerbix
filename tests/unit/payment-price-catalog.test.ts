@@ -14,8 +14,8 @@ import {
  */
 
 const catalog = {
-  jerbix_template: {
-    reference: 'jerbix_template',
+  one_time: {
+    reference: 'one_time',
     priceId: 'p1',
     amount: 1,
     currency: 'usd',
@@ -27,21 +27,19 @@ const catalog = {
 
 describe('一次性价格校验', () => {
   it('目录里是一次性价格即视为可用，不比对别处的金额', () => {
-    expect(isOneTimePriceValid(catalog.jerbix_template)).toBe(true)
+    expect(isOneTimePriceValid(catalog.one_time)).toBe(true)
   })
 
   it('订阅型或缺失的条目不可用', () => {
-    expect(isOneTimePriceValid({ ...catalog.jerbix_template, mode: 'subscription' })).toBe(false)
+    expect(isOneTimePriceValid({ ...catalog.one_time, mode: 'subscription' })).toBe(false)
     expect(isOneTimePriceValid(undefined)).toBe(false)
   })
 
   it('指定币种时按币种校验', () => {
-    expect(isOneTimePriceValid(catalog.jerbix_template, { currency: LANDING_PRICE_CURRENCY })).toBe(
-      true,
+    expect(isOneTimePriceValid(catalog.one_time, { currency: LANDING_PRICE_CURRENCY })).toBe(true)
+    expect(isOneTimePriceValid({ ...catalog.one_time, currency: 'eur' }, { currency: 'usd' })).toBe(
+      false,
     )
-    expect(
-      isOneTimePriceValid({ ...catalog.jerbix_template, currency: 'eur' }, { currency: 'usd' }),
-    ).toBe(false)
   })
 })
 

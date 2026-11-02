@@ -56,6 +56,8 @@ landingOffer: {
 
 定价统一展示在首页 `#pricing`，旧 `/pricing` 地址跳转至当前语言首页价格区，不再展示独立演示套餐页。
 
+`productId` 是 `src/config/products.ts` 里声明的商品 ID。`template` 只是历史名，可以改成你自己的商品叫法——配置与 `landingOffer` 两处一起改。
+
 首页复用现有 Checkout：`productId` / `offerId` 指向 `src/config/products.ts` 中一次性商品的
 `prices.once`，无需外部销售地址。把该值改成你在 Stripe 创建的**一次性**价格的 `lookup_key`——
 金额只存在于 Stripe，不写进代码。

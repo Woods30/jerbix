@@ -18,8 +18,8 @@ import { getRouter } from '@/router'
 // 不可执行，loader 会降级为「价格暂不可用」——这里 mock 出目录，页面才显示真实价格。
 vi.mock('@/payment/pricing', () => ({
   fetchPriceCatalog: vi.fn().mockResolvedValue({
-    jerbix_template: {
-      reference: 'jerbix_template',
+    one_time: {
+      reference: 'one_time',
       priceId: 'p_template',
       amount: 9900,
       currency: 'usd',

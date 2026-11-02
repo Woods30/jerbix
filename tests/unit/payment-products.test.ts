@@ -23,8 +23,9 @@ describe('扁平套餐目录', () => {
     // 金额不再与配置里的第二份金额比对：目录里的金额就是事实源。
     expect(isOneTimePriceValid({ ...price, amount: 16900 })).toBe(true)
     expect(isOneTimePriceValid({ ...price, mode: 'subscription', interval: 'month' })).toBe(false)
+    // 模板出厂的价格引用是占位值：使用者要换成自己在 Stripe 建的一次性价格。
     expect(getProducts().find((product) => product.id === 'template')?.prices).toEqual({
-      once: 'jerbix_template',
+      once: 'one_time',
     })
   })
 

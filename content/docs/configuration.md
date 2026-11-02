@@ -56,6 +56,8 @@ landingOffer: {
 
 Pricing is shown in the homepage `#pricing` section. The old `/pricing` URL redirects to that section in the current language and no longer shows the demo plan page.
 
+`productId` is the id declared in `src/config/products.ts`. `template` is only a historical name — rename it to whatever your product is called, in the config and in `landingOffer` alike.
+
 The homepage uses the existing Checkout flow. `productId` / `offerId` select the one-time
 product's `prices.once` in `src/config/products.ts`; no external sales URL is needed. Set that
 value to the Stripe `lookup_key` of a **one-time** price you created — the amount lives only in
