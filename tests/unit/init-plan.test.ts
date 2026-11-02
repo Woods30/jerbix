@@ -23,6 +23,7 @@ const CONFIG: InitConfig = {
 
 // 直接用真实配置文件：配置项改名时这里会立刻红，而不是等到跑 init 才发现。
 const WEBSITE = readFileSync(new URL('../../src/config/website.ts', import.meta.url), 'utf-8')
+const PRODUCTS = readFileSync(new URL('../../src/config/products.ts', import.meta.url), 'utf-8')
 
 const WRANGLER = `{
   // Worker 名决定线上地址。
@@ -64,6 +65,7 @@ const REPO = {
   'package.json': PACKAGE_JSON,
   'wrangler.jsonc': WRANGLER,
   'src/config/website.ts': WEBSITE,
+  'src/config/products.ts': PRODUCTS,
   'messages/zh.json': readFileSync(new URL('../../messages/zh.json', import.meta.url), 'utf-8'),
   'messages/en.json': readFileSync(new URL('../../messages/en.json', import.meta.url), 'utf-8'),
   'public/manifest.json': readFileSync(
@@ -114,6 +116,7 @@ describe('buildPlan', () => {
       'messages/en.json',
       'public/manifest.json',
       'src/config/website.ts',
+      'src/config/products.ts',
       'wrangler.jsonc',
     ])
   })
@@ -136,6 +139,15 @@ describe('buildPlan', () => {
     // 强调段是 Jerbix 的品牌装置，新项目默认没有。
     expect(result).toContain("logoAccent: '',")
     expect(result).toContain("supportEmail: 'hello@acme.dev'")
+  })
+
+  it('一次性商品的显示名改成新品牌', () => {
+    const file = plan.files.find((entry) => entry.path === 'src/config/products.ts')
+    const result = file?.transform(PRODUCTS) ?? ''
+
+    expect(result).toContain("name: 'Acme',")
+    // 价格引用不在 init 范围内：lookup_key 取决于使用者在 Stripe 里建了什么。
+    expect(result).toContain("prices: { once: 'one_time' }")
   })
 
   it('wrangler.jsonc 改 Worker 名、域名与资源名，ID 置为占位符', () => {
@@ -171,6 +183,7 @@ describe('applyPlan', () => {
       'messages/zh.json',
       'package.json',
       'public/manifest.json',
+      'src/config/products.ts',
       'src/config/website.ts',
       'wrangler.jsonc',
     ])
@@ -189,6 +202,7 @@ describe('applyPlan', () => {
       'messages/zh.json',
       'package.json',
       'public/manifest.json',
+      'src/config/products.ts',
       'src/config/website.ts',
       'wrangler.jsonc',
     ])
@@ -213,6 +227,7 @@ describe('applyPlan', () => {
       'messages/en.json': '{}',
       'public/manifest.json': '{}',
       'src/config/website.ts': WEBSITE,
+      'src/config/products.ts': PRODUCTS,
     })
 
     expect(() => applyPlan(buildPlan(CONFIG), repo)).toThrow(/wrangler\.jsonc/)

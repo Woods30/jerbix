@@ -24,6 +24,7 @@ const FIXTURE_FILES = [
   'messages/en.json',
   'public/manifest.json',
   'src/config/website.ts',
+  'src/config/products.ts',
 ]
 
 const createdDirs: string[] = []
@@ -89,6 +90,9 @@ describe('init 端到端', () => {
     expect(en.home_demo_brand).toBe('Acme')
 
     expect(JSON.parse(read(dir, 'public/manifest.json')).name).toBe('Acme')
+
+    // 一次性商品的显示名跟着品牌走，否则新站点里还摆着旧品牌的商品卡。
+    expect(read(dir, 'src/config/products.ts')).toContain("name: 'Acme',")
 
     const website = read(dir, 'src/config/website.ts')
     expect(website).toContain("name: 'Acme',")

@@ -81,7 +81,7 @@ const PLACEHOLDER = 'REPLACE_ME'
 /**
  * 从配置生成变更清单。
  *
- * 顺序固定（包名 → 站点配置 → 部署配置），`--dry-run` 的输出因此可预期。
+ * 顺序固定（包名 → 文案 → 站点配置 → 商品配置 → 部署配置），`--dry-run` 的输出因此可预期。
  */
 export function buildPlan(config: InitConfig): InitPlan {
   return {
@@ -127,6 +127,12 @@ export function buildPlan(config: InitConfig): InitPlan {
           ]),
       },
       {
+        path: 'src/config/products.ts',
+        description: `一次性商品的显示名改为 ${config.name}`,
+        transform: (current) =>
+          replaceConfigLiteral(current, 'name', config.name, '一次性商品的显示名'),
+      },
+      {
         path: 'wrangler.jsonc',
         description: `Worker 名改为 ${config.slug}，域名改为 ${config.domain}，资源 ID 置为占位符`,
         transform: (current) =>
@@ -153,16 +159,23 @@ function applyAll(source: string, steps: Array<(input: string) => string>): stri
  *
  * 匹配数不是 1 就抛错：0 处说明配置项的写法变了（静默跳过等于什么都没做），
  * 多处说明 key 名撞了（改错地方比不改更糟）。
+ *
+ * `what` 只是错误信息里的称呼，便于同一段代码改不同的配置项时说清楚是哪一项。
  */
-export function replaceConfigLiteral(source: string, key: string, value: string): string {
+export function replaceConfigLiteral(
+  source: string,
+  key: string,
+  value: string,
+  what = `配置项 ${key}`,
+): string {
   if (value.includes("'")) {
-    throw new Error(`配置项 ${key} 的新值含单引号，无法写入单引号字符串：${value}`)
+    throw new Error(`${what} 的新值含单引号，无法写入单引号字符串：${value}`)
   }
 
   const pattern = new RegExp(`(\\b${key}: )'[^']*'`, 'g')
   const matches = source.match(pattern) ?? []
   if (matches.length !== 1) {
-    throw new Error(`配置项 ${key} 在源码里匹配到 ${matches.length} 处，期望恰好 1 处`)
+    throw new Error(`${what} 在源码里匹配到 ${matches.length} 处，期望恰好 1 处`)
   }
 
   return source.replace(pattern, `$1'${value}'`)
