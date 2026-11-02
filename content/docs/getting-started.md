@@ -28,6 +28,27 @@ pnpm --version
 
 ## Setup
 
+### 0. Make it your own project
+
+```bash
+pnpm run init
+```
+
+The script asks for a site name, short name, domain, and support email, then:
+
+- replaces the brand name across messages, `manifest`, `package.json`, and `wrangler.jsonc`;
+- resets content module switches to your choices (**all off by default**; use
+  `--modules docs,blog` to enable them);
+- generates `.env` from `.env.example` and fills in empty keys such as `BETTER_AUTH_SECRET`.
+
+Pressing Enter through every prompt gives you a runnable project. `--non-interactive` is for
+scripted setups, and `--dry-run` prints the files that would change. Re-running is safe:
+existing `.env` values and brand names are not rewritten.
+
+> Modules default to off on purpose. The template ships with `mail`, `analytics`, and others
+> enabled, and each of them requires its own credentials — a fresh clone would otherwise fail
+> production validation immediately. Turn on what you need.
+
 ### 1. Install dependencies
 
 ```bash

@@ -26,6 +26,24 @@ pnpm --version
 
 ## 设置
 
+### 0. 把它变成你自己的项目
+
+```bash
+pnpm run init
+```
+
+初始化脚本会问站点名、短名、域名与支持邮箱，然后：
+
+- 把文案、`manifest`、`package.json` 与 `wrangler.jsonc` 里的品牌名换成你的；
+- 按你的选择重设内容模块开关（**默认全关**，用 `--modules docs,blog` 打开）；
+- 从 `.env.example` 生成 `.env`，补上 `BETTER_AUTH_SECRET` 等空着的键。
+
+一路回车即可得到可运行的结果；`--non-interactive` 供脚本化场景使用，
+`--dry-run` 只打印将要改动的文件。重跑是安全的：已有的 `.env` 值与品牌不会被再次改写。
+
+> 模块默认全关是有意的：模板出厂时 `mail`、`analytics` 等模块是开的，而它们各自要求
+> 对应的凭据，一个什么都没配的克隆者会卡在生产校验上。按需打开，缺什么补什么。
+
 ### 1. 安装依赖
 
 ```bash
