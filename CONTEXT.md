@@ -7,7 +7,7 @@
 
 `saas-template`（默认品牌 **Jerbix**）是一个构建在 **Cloudflare Workers** 上的
 **TanStack Start** SaaS 起步模板。目标流程：`git clone` → `pnpm run init` → 部署。
-设计稿见 `docs/superpowers/specs/2026-10-12-saas-template-design.md`。
+架构取舍见 `docs/adr/`。
 
 ## 术语表
 
@@ -90,9 +90,9 @@
   Zod + shadcn `Field`）。
 - **尚未实现**：文件上传、AI 网关、PWA。`websiteConfig.features` 中对应的开关是能力边界
   标记，不注册路由。
-- **待执行（2026-11-02 定）**：本仓拆分为**模板工程**（本仓 `Woods30/saas-template`，
-  含 init 脚本与技术文档）与**官网工程**（另一个仓 `Woods30/jerbix`）。见
-  `docs/superpowers/specs/2026-11-02-template-extraction-and-init-design.md` 与
+- **两仓关系（2026-11-02 定）**：本仓是**模板工程**（`Woods30/saas-template`，含 init
+  脚本与技术文档），**官网工程**是另一个仓（`Woods30/jerbix`，官网 + 支付 + 商业条款
+  文档），保留完整代码副本并靠 `git merge template/main` 跟进本仓。拆分取舍见
   `docs/adr/0004`、`docs/adr/0005`。
 - **Node 下限**：`package.json` 的 `engines.node` 为 `^22.12.0 || ^24.0.0 || >=26.0.0`（`vitest@5`
   排除奇数大版本 23 / 25，故为精确 union 而非简单 `>=`；`wrangler` 要求 ≥22、
