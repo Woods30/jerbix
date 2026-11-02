@@ -45,7 +45,7 @@ describe('websiteConfig 品牌信息', () => {
     expect(config.mail).toEqual({
       enabled: true,
       provider: 'resend',
-      supportEmail: 'service@jerbix.site',
+      supportEmail: 'support@example.com',
     })
     expect(config.auth.requireEmailVerification).toBe(true)
     expect(config.contact.enabled).toBe(false)
