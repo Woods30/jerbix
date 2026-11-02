@@ -411,6 +411,9 @@ Git 会按「本地未改动」静默采用模板仓的版本，不会报冲突 
 | `content/legal/**` | 骨架条款（占位符） | 填充版条款 | 官网的法律页变成占位符 |
 | `src/config/products.ts` | `prices.once: 'one_time'` | 真实 Stripe `lookup_key` | 首页购买链接失效，且历史订单的 `productId` 对不上 |
 | `src/config/website.ts` 的 `mail.supportEmail` | `support@example.com` | 官网真实支持邮箱 | 支持入口与联系表单收件地址失效 |
+| `wrangler.jsonc` | 占位 worker 名、域名与资源 ID | 官网的 worker 名、`www.jerbix.site` 与真实 D1 / KV ID | 部署到错误的 Worker 与域名，生产站点下线 |
+| `CHANGELOG.md` | 模板工程的发布记录 | 官网的发布记录 | 官网的发布历史被模板的覆盖 |
+| `package.json` 的 `version` | 模板版本（`0.9.0` 起） | 官网版本 | Release tag 与 `package.json` 版本对不上，发版流程拒绝 |
 
 其余冲突（品牌文案、消息、模块开关）按「官网定制优先」处理。
 
