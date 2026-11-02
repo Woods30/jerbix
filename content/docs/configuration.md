@@ -15,7 +15,7 @@ updated: 2026-10-29
 export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
   return {
     baseUrl: env.VITE_BASE_URL,
-    metadata: { name: 'Jerbix', images: { /* … */ } },
+    metadata: { name: '<your-site-name>', images: { /* … */ } },
     ui: { defaultTheme: 'system', enableThemeSwitch: true, themeColor: { /* … */ } },
     docs: { enabled: true },
     // …
@@ -33,7 +33,7 @@ A working local setup, see [Getting Started](./getting-started).
 
 ```ts
 metadata: {
-  name: 'Jerbix',                                  // site name, used in titles and OG tags
+  name: '<your-site-name>',                              // site name, used in titles and OG tags
   images: {
     ogImage: '/logo.png',                          // social share image (1200×630)
     logoLight: '/logo-horizontal-transparent.svg', // light-theme wordmark
@@ -56,9 +56,10 @@ landingOffer: {
 
 Pricing is shown in the homepage `#pricing` section. The old `/pricing` URL redirects to that section in the current language and no longer shows the demo plan page.
 
-The homepage uses the existing Checkout flow. `productId` / `offerId` select
-`template.prices.once = 'jerbix_template'` in `src/config/products.ts`; no external sales URL
-is needed. Configure that Stripe `lookup_key` with a **one-time** price.
+The homepage uses the existing Checkout flow. `productId` / `offerId` select the one-time
+product's `prices.once` in `src/config/products.ts`; no external sales URL is needed. Set that
+value to the Stripe `lookup_key` of a **one-time** price you created — the amount lives only in
+Stripe, never in the code.
 
 No amount is stored in config: the Stripe price catalog is the single source of truth, read
 by both the homepage display and checkout. The server only verifies the price is
@@ -97,7 +98,7 @@ Every optional module has `enabled`. When off, its pages 404, its API returns
 docs: { enabled: true },
 blog: { enabled: true },
 changelog: { enabled: true },
-mail: { enabled: true, provider: 'resend', supportEmail: 'service@jerbix.site' },
+mail: { enabled: true, provider: 'resend', supportEmail: '<your-support-email>' },
 contact: { enabled: false },
 newsletter: { enabled: false, provider: 'resend' },
 payment: { enabled: true, provider: 'stripe', /* … */ },
@@ -121,7 +122,7 @@ auth: { enabled: true, requireEmailVerification: true },
 > currently defaults to `true`. Resend mail is also enabled: configure `RESEND_API_KEY`
 > and a plain `MAIL_FROM` address on a verified domain. Required verification with incomplete
 > mail makes `auth` report `incomplete`, the auth API return 503, and `pnpm check:env:prod`
-> fail. Verification is never implicitly disabled. `supportEmail` is `service@jerbix.site` and is
+> fail. Verification is never implicitly disabled. `supportEmail` is `<your-support-email>` and is
 > independent of `MAIL_FROM`; see [Authentication](./auth) and [Email](./email).
 
 ### Feature switches

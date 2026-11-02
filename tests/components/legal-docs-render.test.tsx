@@ -65,7 +65,7 @@ describe('legal 详情页真实渲染', () => {
  * 因此再断言正文、真实联系方式及外部服务链接，而非只检查路由命中。
  */
 describe('legal 详情页正文渲染', () => {
-  it('terms 中英文提供购买与 MIT 授权条款及真实联系方式', async () => {
+  it('terms 中英文提供 MIT 授权条款与占位联系方式', async () => {
     for (const [locale, path, heading] of [
       ['zh', '/zh/marketing/legal/terms', '服务的接受'],
       ['en', '/en/marketing/legal/terms', 'Acceptance'],
@@ -77,21 +77,21 @@ describe('legal 详情页正文渲染', () => {
         `${path} 应渲染章节「${heading}」`,
       ).toBeInTheDocument()
       expect(screen.queryByRole('alert'), `${path} 不应残留占位提示`).not.toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'service@jerbix.site' })).toHaveAttribute(
+      // 模板里的条款是骨架：联系方式与域名都是占位符，填好之前不该有真实信息。
+      expect(screen.getByRole('link', { name: '<your-support-email>' })).toHaveAttribute(
         'href',
-        'mailto:service@jerbix.site',
+        'mailto:<your-support-email>',
       )
-      expect(screen.getByRole('link', { name: 'www.jerbix.site' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: 'https://<your-domain>' })).toHaveAttribute(
         'href',
-        'https://www.jerbix.site',
+        'https://<your-domain>',
       )
       expect(screen.getByText(/MIT License/)).toBeInTheDocument()
-      expect(screen.getByText(/99 USD/)).toBeInTheDocument()
       cleanup()
     }
   })
 
-  it('privacy 中英文披露实际服务商、数据用途与联系渠道', async () => {
+  it('privacy 中英文披露实际服务商、数据用途与占位联系方式', async () => {
     for (const [locale, path, heading] of [
       ['zh', '/zh/marketing/legal/privacy', '我们收集哪些信息'],
       ['en', '/en/marketing/legal/privacy', 'What we collect'],
@@ -103,9 +103,9 @@ describe('legal 详情页正文渲染', () => {
         `${path} 应渲染章节「${heading}」`,
       ).toBeInTheDocument()
       expect(screen.queryByRole('alert'), `${path} 不应残留占位提示`).not.toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'service@jerbix.site' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: '<your-support-email>' })).toHaveAttribute(
         'href',
-        'mailto:service@jerbix.site',
+        'mailto:<your-support-email>',
       )
       for (const [name, href] of [
         ['Cloudflare', 'https://www.cloudflare.com/privacypolicy/'],

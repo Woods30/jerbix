@@ -91,7 +91,7 @@ export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
   return {
     baseUrl: env.VITE_BASE_URL,
     metadata: {
-      name: 'Jerbix',                        // ← 改成你的站点名
+      name: '<your-site-name>',                // ← 改成你的站点名
       images: { ogImage: '/logo.png', /* … */ },
     },
     docs: { enabled: true },                 // ← 不需要文档站就改 false

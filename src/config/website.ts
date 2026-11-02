@@ -131,7 +131,8 @@ export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
     docs: { enabled: true },
     blog: { enabled: true },
     changelog: { enabled: true },
-    mail: { enabled: true, provider: 'resend', supportEmail: 'service@jerbix.site' },
+    // 支持收件邮箱：出厂是占位地址，`pnpm run init` 会换成你自己的。
+    mail: { enabled: true, provider: 'resend', supportEmail: 'support@example.com' },
     contact: { enabled: false },
     newsletter: { enabled: false, provider: 'resend' },
     payment: {

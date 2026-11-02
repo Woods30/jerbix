@@ -3,9 +3,17 @@ title: Privacy Policy
 locale: en
 ---
 
-Effective date: October 29, 2026
+> **Template skeleton.** Replace `<your-site-name>`, `<your-domain>`, `<your-operator>`, and
+> `<your-support-email>` with your own details, delete this note, and have the text reviewed
+> before you go live. The sections below describe what this codebase does by default; adjust
+> them to match the modules you actually enable.
 
-Jerbix ("we" or "us") operates [www.jerbix.site](https://www.jerbix.site). This policy explains our handling of personal information when you browse, register, buy source-code products, or contact us. Operators of their own deployments of Jerbix source code must provide their own privacy information; this policy does not cover their services.
+Effective date: <your-effective-date>
+
+<your-site-name> ("we", "us", or "our") operates [https://<your-domain>](https://<your-domain>).
+This policy explains how we handle personal information when you browse the site, register an
+account, place an order, or contact us. Operators who deploy this codebase for their own
+services must publish their own privacy information; this policy does not cover their services.
 
 ## What we collect
 
@@ -13,15 +21,15 @@ Depending on the features you use, we process:
 
 - **Account information:** email, display name, verification status, and creation and update times. Passwords are stored as hashes, not plaintext.
 - **Sign-in and security information:** session identifiers, sign-in times, session expiry, and IP addresses and browser/device information associated with sessions. API-key use also involves key identifiers, permissions, and usage records. Keep your keys secure.
-- **Order and payment information:** purchaser account, product and price identifiers, amounts, currency, payment status, payment-provider customer and transaction identifiers, and information needed for after-sales service. Stripe handles payment details on its payment pages. We do not receive or store your complete card number or security code.
+- **Order and payment information** (only if you enable the payment module): purchaser account, product and price identifiers, amounts, currency, payment status, payment-provider customer and transaction identifiers, and information needed for after-sales service. The payment provider handles card details on its own payment pages. We do not receive or store your complete card number or security code.
 - **Email and support information:** recipient email, name, and action links needed for verification, password resets, and welcome messages, plus correspondence and order details you voluntarily send to support.
 - **Website operation information:** information normally present in network requests, such as IP address, path, time, and technical errors, used for delivery, security, and troubleshooting. Infrastructure providers may also process request information for these purposes.
 
-The site currently does not enable advertising tracking, third-party visitor analytics, marketing newsletter subscriptions, or user file uploads. Avoid sending unnecessary personal information, passwords, or full payment details in support messages or attachments.
+Unless you enable them, this project does not include advertising tracking, third-party visitor analytics, marketing newsletter subscriptions, or user file uploads. Avoid sending unnecessary personal information, passwords, or full payment details in support messages or attachments.
 
 ## How we use information
 
-We use information to provide accounts and purchases: verifying email, maintaining sign-in, resetting passwords, confirming orders, delivering source code, providing updates and support, processing refunds, and answering enquiries. We also use it to prevent fraud and abuse, secure the service, troubleshoot problems, and meet applicable accounting, tax, or other legal obligations.
+We use information to provide the service: verifying email, maintaining sign-in, resetting passwords, confirming orders, delivering paid access, providing updates and support, handling payments and refunds where the payment module is enabled, and answering enquiries. We also use it to prevent fraud and abuse, secure the service, troubleshoot problems, and meet applicable accounting, tax, or other legal obligations.
 
 Where applicable law requires a processing basis, relevant bases include performing a transaction or taking requested steps before it, complying with legal obligations, and legitimate interests in security and responding to enquiries. We rely on consent only where needed and validly obtained. You may withdraw that consent without affecting the lawfulness of earlier processing.
 
@@ -29,13 +37,13 @@ We do not sell personal information or use account or order details for unrelate
 
 ## Sharing and third parties
 
-We share necessary information with these providers to deliver the relevant service:
+We share necessary information with these providers to deliver the relevant service. Keep this table in sync with the services you actually use:
 
 | Provider | Purpose and information involved |
 |---|---|
 | [Cloudflare](https://www.cloudflare.com/privacypolicy/) | Hosting, network delivery, security, databases, and related infrastructure; may process requests and the account, session, and order information stored by the site |
-| [Stripe](https://stripe.com/privacy) | Hosted payments, transaction confirmation, and refunds; processes checkout submissions and necessary email, order amounts, and transaction identifiers |
-| [Resend](https://resend.com/legal/privacy-policy) | Account verification, password-reset, and welcome email delivery; processes recipient addresses, message content, action links, and delivery-related information |
+| [Stripe](https://stripe.com/privacy) | Hosted payments, transaction confirmation, and refunds; processes checkout submissions and necessary email, order amounts, and transaction identifiers (only if you enable the payment module) |
+| [Resend](https://resend.com/legal/privacy-policy) | Account verification, password-reset, and welcome email delivery; processes recipient addresses, message content, action links, and delivery-related information (only if you enable the email module) |
 
 Providers may also process information under their own service and legal obligations; their privacy information is linked above. Email providers process correspondence when you contact our support inbox.
 
@@ -59,7 +67,7 @@ We use cookies and browser storage needed for sign-in, security, and preferences
 | Language | `NEXT_LOCALE` | Remembers the language choice for one year when written by the language switcher; you can clear it in the browser |
 | Appearance and layout | `THEME`, `DOCS_SIDEBAR`, and related interface preference storage | Remembers theme and documentation sidebar preferences until expiry, replacement, or browser-data removal |
 
-Advertising and analytics tracking cookies are not enabled. Third parties such as Stripe may use payment-security cookies on their own pages; see their policies. You can inspect, block, or clear storage in your browser, although blocking necessary cookies may break sign-in or preferences.
+Advertising and analytics tracking cookies are not enabled by default. Third parties such as Stripe may use payment-security cookies on their own pages; see their policies. You can inspect, block, or clear storage in your browser, although blocking necessary cookies may break sign-in or preferences.
 
 ## Your choices and rights
 
@@ -71,13 +79,13 @@ Depending on applicable law, you may have rights to access, correct, delete, obt
 
 We use password hashing, session validation, and access controls, but no network or storage system can guarantee absolute security. Protect your passwords, verification links, and API keys; do not send them through ordinary support email.
 
-The site is intended for purchasers and developers with the necessary legal capacity, not children. Contact us if you believe a child has provided personal information without appropriate authorisation.
+The site is intended for adult users with the necessary legal capacity, not children. Contact us if you believe a child has provided personal information without appropriate authorisation.
 
 Updates and their effective date will appear here. Material changes to processing purposes or user rights will be notified through the site or registered email as appropriate, with consent obtained where legally required.
 
 ## Contact
 
-Operating name: Jerbix. The service is operated by an individual under the Jerbix name, so no
-registered entity name is listed here.
+Operator: <your-operator>. Put your registered entity name or the individual operator's name here
+before going live.
 
-Privacy requests and support: [service@jerbix.site](mailto:service@jerbix.site).
+Privacy requests and support: [<your-support-email>](mailto:<your-support-email>).

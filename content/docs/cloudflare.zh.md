@@ -210,11 +210,11 @@ curl -s "https://api.cloudflare.com/client/v4/zones?name=your-domain.com" \
 | Secret | `DISCORD_WEBHOOK_URL` | Discord 频道 Webhook URL；开启通知模块时必填，当前已关闭 |
 | Variable | `VITE_GA_ID` | GA4 Measurement ID（`G-…`）；开启分析模块时必填，当前已关闭 |
 
-现有仓库 Secrets 中的 `CLOUDFLARE_ACCOUNT_ID`、`VITE_BASE_URL` 仍兼容，不强制迁移。其他公开配置请使用 Variables。Stripe 中还需在相同环境配置启用的 `jerbix_template`、USD 99、一次性价格；Webhook 事件配置见[支付文档](./payment)。不使用通知或分析时在 `src/config/website.ts` 关闭对应模块并合并，不能仅留空变量。
+现有仓库 Secrets 中的 `CLOUDFLARE_ACCOUNT_ID`、`VITE_BASE_URL` 仍兼容，不强制迁移。其他公开配置请使用 Variables。Stripe 中还需在相同环境配置一次性价格，其 `lookup_key` 为 `<one-time-price-lookup-key>`；Webhook 事件配置见[支付文档](./payment)。不使用通知或分析时在 `src/config/website.ts` 关闭对应模块并合并，不能仅留空变量。
 
 `RESEND_API_KEY` 和 `MAIL_FROM` 均不加 `VITE_` 前缀。`MAIL_FROM` 是发件地址，支持收件邮箱另在
-`websiteConfig.mail.supportEmail` 配置，不会自动互相填充。当前支持邮箱为 `service@jerbix.site`，
-部署目标域名为 `https://www.jerbix.site`；在 production Environment 将 `VITE_BASE_URL` 和
+`websiteConfig.mail.supportEmail` 配置，不会自动互相填充。当前支持邮箱为 `<your-support-email>`，
+部署目标域名为 `https://<your-domain>`；在 production Environment 将 `VITE_BASE_URL` 和
 `BETTER_AUTH_URL` 设为该 origin，并单独配置 Resend 发件地址。域名绑定和环境变量在实际部署时生效。
 
 按需配置：Google 登录使用 Variable `GOOGLE_CLIENT_ID` 和 Secret `GOOGLE_CLIENT_SECRET`；Turnstile 使用 Variable `VITE_TURNSTILE_SITE_KEY` 和 Secret `TURNSTILE_SECRET_KEY`；管理员邮件列表使用 Variable `ADMIN_EMAILS`。工作流已映射这些字段以及 Resend 的两个字段；以后启用其他服务时，也要同步增加其 workflow env 与运行时上传字段。

@@ -20,10 +20,10 @@ Authentication, Resend mail, and email verification are enabled by default:
 ```ts
 // src/config/website.ts
 auth: { enabled: true, requireEmailVerification: true },
-mail: { enabled: true, provider: 'resend', supportEmail: 'service@jerbix.site' },
+mail: { enabled: true, provider: 'resend', supportEmail: '<your-support-email>' },
 ```
 
-`supportEmail` is `service@jerbix.site`. It receives support messages and is configured separately
+`supportEmail` is `<your-support-email>`. It receives support messages and is configured separately
 from the sending address `MAIL_FROM`; see [Email](./email).
 
 | Config / variable | When required | Purpose |
@@ -157,11 +157,11 @@ button, users on `reset-password` / `forgot-password` are not creating an accoun
 has no action to consent to. Of register's two `AuthLayout` call sites, only the form one passes
 it — by the time "check your inbox" appears the account exists and consent already happened.
 
-Terms and privacy content lives in `content/legal/`, written for Jerbix,
-`https://www.jerbix.site`, and `service@jerbix.site`. It covers one-time source-code purchases,
-MIT licensing, refunds, and actual data processing. It does not select an exclusive jurisdiction;
-operator identity or address disclosures may still be required by applicable operating or target-market
-rules. When reusing the project, adapt the content to your own operation and providers.
+Terms and privacy content lives in `content/legal/`. The shipped version is a skeleton: it
+uses `<your-domain>`, `<your-operator>`, and `<your-support-email>` placeholders and covers
+account data, payments, cookies, and retention. It does not select an exclusive jurisdiction;
+operator identity or address disclosures may still be required by applicable operating or
+target-market rules. Replace the placeholders with your own details before going live.
 
 ## Production
 
@@ -210,8 +210,8 @@ Also register `http://localhost:3000` and `http://localhost:3000/api/auth/callba
 for local development. One client can include both environments. Leave both
 `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` empty if unused; the provider and button remain absent.
 
-Production currently uses `https://www.jerbix.site`, so the redirect URI must be
-`https://www.jerbix.site/api/auth/callback/google`. Configure the credentials in the GitHub
+The production origin must be `https://<your-domain>`, so the redirect URI must be
+`https://<your-domain>/api/auth/callback/google`. Configure the credentials in the GitHub
 `production` Environment as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. The workflow accepts
 either a Variable or a Secret for both, but **Secret is safer** — a client secret must never
 reach the client bundle.

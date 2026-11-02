@@ -20,7 +20,7 @@ The current configuration enables Resend and email verification and sets the sup
 
 ```ts
 // src/config/website.ts
-mail: { enabled: true, provider: 'resend', supportEmail: 'service@jerbix.site' },
+mail: { enabled: true, provider: 'resend', supportEmail: '<your-support-email>' },
 auth: { enabled: true, requireEmailVerification: true },
 ```
 
@@ -65,10 +65,10 @@ at `p=none` (report only), then tighten to `quarantine` and `reject` once every 
 
 ```bash
 # _dmarc record; the name is _dmarc
-v=DMARC1; p=none; rua=mailto:service@jerbix.site
+v=DMARC1; p=none; rua=mailto:<your-support-email>
 ```
 
-Point `rua` at an address that receives reports. `service@jerbix.site` works once that address has
+Point `rua` at an address that receives reports. `<your-support-email>` works once that address has
 inbound forwarding configured.
 
 ### 5. Automatic Release deployment
@@ -90,7 +90,7 @@ validation, and runtime values consistent within each environment; see [Cloudfla
 `mail.supportEmail` is the contact form's **recipient** and the site's support contact;
 `MAIL_FROM` is the **sender** for verification, password reset, and welcome emails. They
 serve independent purposes: setting one does not populate the other, and you can choose
-the addresses separately. The support address is `service@jerbix.site`; the sender must still
+the addresses separately. The support address is `<your-support-email>`; the sender must still
 be configured for a Resend-verified domain. Setting support contact information does not enable the contact form.
 
 With verification currently required, a missing API key / sender or disabled mail leaves
