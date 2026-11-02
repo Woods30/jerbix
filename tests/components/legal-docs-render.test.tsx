@@ -63,6 +63,18 @@ describe('legal 详情页真实渲染', () => {
     await renderRoute('/en/marketing/legal/privacy')
     expect(pageTitle()).toBe('Privacy Policy')
   })
+
+  it('/zh/marketing/legal/purchase-faq 渲染中文标题「购买常见问题」而非 404', async () => {
+    setLocale('zh', { reload: false })
+    await renderRoute('/zh/marketing/legal/purchase-faq')
+    expect(pageTitle()).toBe('购买常见问题')
+  })
+
+  it('/en/marketing/legal/purchase-faq 渲染英文标题 "Purchase FAQ" 而非 404', async () => {
+    setLocale('en', { reload: false })
+    await renderRoute('/en/marketing/legal/purchase-faq')
+    expect(pageTitle()).toBe('Purchase FAQ')
+  })
 })
 
 /**
@@ -127,6 +139,35 @@ describe('legal 详情页正文渲染', () => {
     setLocale('en', { reload: false })
     await renderRoute('/en/marketing/legal/does-not-exist')
     expect(pageTitle()).toBe('404')
+  })
+
+  it('purchase-faq 中英文覆盖交付、授权与退款，并链回服务条款', async () => {
+    for (const [locale, path, question, terms] of [
+      ['zh', '/zh/marketing/legal/purchase-faq', '付款后多久能拿到源码？', '服务条款'],
+      [
+        'en',
+        '/en/marketing/legal/purchase-faq',
+        'How soon do I get the source?',
+        'Terms of Service',
+      ],
+    ] as const) {
+      setLocale(locale as 'zh' | 'en', { reload: false })
+      await renderRoute(path)
+      expect(
+        screen.getByRole('heading', { level: 3, name: question }),
+        `${path} 应渲染问题「${question}」`,
+      ).toBeInTheDocument()
+      expect(screen.getByText(/99 USD/)).toBeInTheDocument()
+      // 授权条款在正文里出现多次（授权范围与转售限制各一处）。
+      expect(screen.getAllByText(/MIT License/).length).toBeGreaterThan(0)
+      // 条款链接在 FAQ 里出现两次（开头与联系方式），用 getAllByRole。
+      const termsLinks = screen.getAllByRole('link', { name: terms })
+      expect(termsLinks.length).toBeGreaterThan(0)
+      for (const link of termsLinks) {
+        expect(link).toHaveAttribute('href', `/${locale}/marketing/legal/terms`)
+      }
+      cleanup()
+    }
   })
 })
 

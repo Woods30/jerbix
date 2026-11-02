@@ -13,7 +13,7 @@ These terms apply to [www.jerbix.site](https://www.jerbix.site), its account ser
 
 Jerbix is a SaaS source-code starter that you can deploy and customise. The current standard product costs 99 USD as a one-time payment, including the complete product source code, free updates, and lifetime support, with no automatic renewal. The amount, currency, applicable taxes, and discounts shown and accepted at checkout govern your order. Later price changes do not alter completed orders.
 
-Stripe processes payments. After confirming payment, we provide instructions for accessing the source through the account and email associated with your order. If delivery information does not arrive or access fails, contact us with your order information so we can investigate and resend it.
+Stripe processes payments. After confirming payment, we provide instructions for accessing the source through the account and email associated with your order. If delivery information does not arrive or access fails, contact us with your order information so we can investigate and resend it. Questions that come up before buying are answered in the [Purchase FAQ](/en/marketing/legal/purchase-faq).
 
 The price excludes your own domain, Cloudflare resources, email, payment processing, and other third-party running costs. You must configure, test, and adapt the source to your business. A purchase does not include custom development, managed hosting, or any earnings guarantee.
 
