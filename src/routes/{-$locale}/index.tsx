@@ -1,7 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { LandingPage } from '@/components/marketing/LandingPage'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { websiteConfig } from '@/config/website'
+import { getRequestLocale } from '@/lib/locale'
 import { seo } from '@/lib/seo'
 import { m } from '@/locale/paraglide/messages.js'
 import { getLocale } from '@/locale/paraglide/runtime.js'
@@ -9,6 +10,12 @@ import { findCatalogAmount } from '@/payment/price-catalog'
 import { fetchPriceCatalog } from '@/payment/pricing'
 
 export const Route = createFileRoute('/{-$locale}/')({
+  beforeLoad: () => {
+    // 文档站部署在独立域时，根路径直接进文档首页。
+    if (!websiteConfig.docs.asHome) return
+    const locale = getRequestLocale()
+    throw redirect({ to: '/{-$locale}/docs', params: { locale } })
+  },
   head: () =>
     seo('/', {
       title: m.home_page_title(),
