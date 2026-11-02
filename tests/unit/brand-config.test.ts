@@ -39,13 +39,15 @@ describe('websiteConfig 品牌信息', () => {
     expect(createWebsiteConfig).toBeTypeOf('function')
     const config = createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: 'https://jerbix.dev' }))
     expect(config.baseUrl).toBe('https://jerbix.dev')
-    expect(config.docs.enabled).toBe(true)
+    // 官网不提供文档站：文档站部署在模板仓的独立域，入口指过去。
+    expect(config.docs.enabled).toBe(false)
+    expect(config.docs.siteUrl).toBe('https://docs.jerbix.site/docs')
     expect(config.blog.enabled).toBe(true)
     expect(config.changelog.enabled).toBe(true)
     expect(config.mail).toEqual({
       enabled: true,
       provider: 'resend',
-      supportEmail: 'support@example.com',
+      supportEmail: 'service@jerbix.site',
     })
     expect(config.auth.requireEmailVerification).toBe(true)
     expect(config.contact.enabled).toBe(false)
@@ -81,7 +83,7 @@ describe('websiteConfig 品牌信息', () => {
     const second = createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: 'https://second.example' }))
     expect(second.baseUrl).toBe('https://second.example')
     expect(second.payment.enabled).toBe(true)
-    expect(second.docs.enabled).toBe(true)
+    expect(second.docs.enabled).toBe(false)
   })
 })
 
@@ -95,6 +97,7 @@ describe('环境变量覆盖模块与能力开关', () => {
   it('VITE_MODULES 只保留名单里的模块', () => {
     const config = createWebsiteConfig(parsePublicEnv({ VITE_MODULES: 'docs' }))
     expect(config.docs.enabled).toBe(true)
+    // 白名单语义：不在名单里的模块一律关闭，与各仓默认值无关。
     expect(config.blog.enabled).toBe(false)
     expect(config.payment.enabled).toBe(false)
     expect(config.auth.enabled).toBe(false)
@@ -108,17 +111,18 @@ describe('环境变量覆盖模块与能力开关', () => {
   })
 
   it('覆盖模块开关时保留同一模块的其它字段', () => {
+    const base = createWebsiteConfig(parsePublicEnv({}))
     const config = createWebsiteConfig(parsePublicEnv({ VITE_MODULES: 'docs' }))
     // 文档站地址不是开关，覆盖不能把它抹掉。
-    expect(config.docs.siteUrl).toBeUndefined()
-    expect(config.mail.provider).toBe('resend')
+    expect(config.docs.siteUrl).toBe(base.docs.siteUrl)
+    expect(config.mail.provider).toBe(base.mail.provider)
   })
 
   it('两个变量都缺省时沿用代码里的默认值', () => {
+    const base = createWebsiteConfig(parsePublicEnv({}))
     const config = createWebsiteConfig(parsePublicEnv({}))
-    expect(config.docs.enabled).toBe(true)
-    expect(config.payment.enabled).toBe(true)
-    expect(config.features.enableApiKeys).toBe(true)
+    expect(config.docs).toEqual(base.docs)
+    expect(config.features).toEqual(base.features)
   })
 
   it('VITE_DOCS_AS_HOME 决定根路径是否进文档首页', () => {
@@ -132,8 +136,9 @@ describe('环境变量覆盖模块与能力开关', () => {
   })
 
   it('空值按「没给」处理，仍走代码里的默认值', () => {
+    const base = createWebsiteConfig(parsePublicEnv({}))
     const config = createWebsiteConfig(parsePublicEnv({ VITE_MODULES: '' }))
-    expect(config.docs.enabled).toBe(true)
-    expect(config.payment.enabled).toBe(true)
+    expect(config.docs).toEqual(base.docs)
+    expect(config.payment.enabled).toBe(base.payment.enabled)
   })
 })
