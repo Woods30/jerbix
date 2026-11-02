@@ -457,7 +457,7 @@ function renderInline(text: string): React.ReactNode {
   let match: RegExpExecArray | null = re.exec(text)
   while (match !== null) {
     if (match.index > last) {
-      parts.push(escapeText(text.slice(last, match.index)))
+      parts.push(text.slice(last, match.index))
     }
     if (match[1] !== undefined) {
       parts.push(<code key={match.index}>{match[1]}</code>)
@@ -481,7 +481,7 @@ function renderInline(text: string): React.ReactNode {
   }
 
   if (last < text.length) {
-    parts.push(escapeText(text.slice(last)))
+    parts.push(text.slice(last))
   }
 
   return parts.length === 1 ? parts[0] : parts
@@ -501,8 +501,4 @@ function safeHref(href: string): string | undefined {
   if (/^(https?:|mailto:)/i.test(value)) return value
   if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return undefined
   return value
-}
-
-function escapeText(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }

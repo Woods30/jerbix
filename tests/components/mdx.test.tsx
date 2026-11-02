@@ -117,6 +117,13 @@ describe('Mdx 行内链接', () => {
     const link = screen.getByRole('link')
     expect(link.querySelector('strong')?.textContent).toBe('重要')
   })
+
+  it('链接文字里的占位符按原样显示，不被二次转义', () => {
+    render(<Mdx source="联系 [<your-support-email>](mailto:<your-support-email>)" />)
+    const link = screen.getByRole('link', { name: '<your-support-email>' })
+    expect(link).toHaveAttribute('href', 'mailto:<your-support-email>')
+    expect(document.body.textContent).not.toContain('&lt;')
+  })
 })
 
 describe('Mdx 标题锚点', () => {
