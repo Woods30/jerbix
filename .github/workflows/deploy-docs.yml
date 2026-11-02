@@ -1,0 +1,111 @@
+name: Deploy docs site
+
+# 文档站是**第二个 Worker**（docs.jerbix.site），与官网 Worker（jerbix）分开。
+#
+# 为什么分开：官网仓关闭了 docs 模块（官网 /docs 呈现 404），文档站是它的独立部署。
+# 两边用同一份源码，靠构建环境变量区分——VITE_MODULES=docs 只开文档模块，
+# VITE_DOCS_AS_HOME 让根路径跳到文档首页。
+#
+# 为什么在官网仓部署：`docs.jerbix.site` 的区域与官网 Worker 同属一个 Cloudflare 账号，
+# Cloudflare 自定义域名要求区域与 Worker 在同一账号。模板仓的账号没有 jerbix.site
+# 的区域，因此模板仓只能把文档站发到 workers.dev。
+#
+# 手动触发；main 合并只跑 CI，不部署。
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-docs-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  deploy:
+    # 与官网部署一致：生产部署只认 main，避免任意分支借用生产密钥。
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run content:build
+      - name: Build and deploy docs worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+          VITE_BASE_URL: https://docs.jerbix.site
+          # 只开文档模块：官网仓的配置里 docs 是关着的，构建时用环境变量打开。
+          VITE_MODULES: docs
+          VITE_FEATURES: enableI18n
+          # 根路径跳文档首页，而不是营销首页。
+          VITE_DOCS_AS_HOME: 'true'
+          BETTER_AUTH_URL: https://docs.jerbix.site
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+        run: |
+          set -euo pipefail
+          pnpm run check:env:prod
+          pnpm run build
+          pnpm run check:client-bundle
+          # 仅上传明确列出的运行时字段，不把 Cloudflare 部署凭据送进 Worker。
+          # 临时文件权限受限，命令退出时清理；不输出任何 secret 值。
+          umask 077
+          secrets_file=$(mktemp "$RUNNER_TEMP/worker-secrets.XXXXXX.json")
+          trap 'rm -f "$secrets_file"' EXIT
+          node --input-type=module - "$secrets_file" <<'NODE'
+          import { writeFileSync } from 'node:fs'
+          const keys = ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL']
+          const bindings = Object.fromEntries(keys.filter(key => process.env[key]).map(key => [key, process.env[key]]))
+          writeFileSync(process.argv[2], JSON.stringify(bindings))
+          NODE
+          # 复用默认配置里的构建产物（main / assets / D1 / KV 绑定），
+          # 只覆盖 Worker 名与自定义域名——文档站与官网站共享同一套代码，
+          # 差别只在构建时注入的环境变量。
+          pnpm exec wrangler deploy \
+            --name jerbix-docs \
+            --routes '[{"pattern":"docs.jerbix.site","custom_domain":true}]' \
+            --secrets-file "$secrets_file"
+      - name: Smoke test
+        env:
+          BASE_URL: https://docs.jerbix.site
+        run: |
+          set -euo pipefail
+          # 首次绑定自定义域名时 DNS 与证书签发需要时间（通常几分钟）。直接检查会以
+          # 「Could not resolve host」失败，掩盖真正的部署问题，故先等待域名就绪。
+          echo "等待 $BASE_URL 可解析并响应…"
+          ready=0
+          for attempt in $(seq 1 60); do
+            code=$(curl -sS -L --max-time 20 -o /dev/null -w '%{http_code}' "$BASE_URL/" 2>/dev/null || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "就绪（第 $attempt 次探测，HTTP $code）"
+              ready=1
+              break
+            fi
+            echo "第 $attempt 次探测：HTTP $code，5 秒后重试"
+            sleep 5
+          done
+          if [ "$ready" != "1" ]; then
+            echo "::error::5 分钟内 $BASE_URL 未就绪；检查自定义域名绑定与 DNS 记录"
+            exit 1
+          fi
+          # 根路径跳到文档首页，/docs 是文档正文的正式地址，两者都要通。
+          for path in / /docs /zh/docs; do
+            code=$(curl --retry 3 --retry-delay 2 --max-time 30 -sS -L -o /dev/null -w '%{http_code}' "$BASE_URL$path")
+            echo "$path → $code"
+            if [ "$code" != "200" ]; then
+              echo "::error::冒烟检查失败：$path 返回 $code"
+              exit 1
+            fi
+          done
