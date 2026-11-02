@@ -9,7 +9,7 @@
 
 import { randomBytes } from 'node:crypto'
 import { pathToFileURL } from 'node:url'
-import { prepareEnvFile } from '../lib/env-file'
+import { prepareEnvFile, writeEnvFile } from '../lib/env-file'
 import { updateEnv } from '../lib/env-merge'
 import { applyPlan, fsIo } from './apply'
 import { buildInitEnvUpdates, initEnvValues } from './env'
@@ -109,7 +109,7 @@ export async function run(argv: string[], cwd = process.cwd()): Promise<void> {
   })
   const envUpdates = buildInitEnvUpdates({ current: currentEnv, desired })
   if (Object.keys(envUpdates).length > 0) {
-    fsIo.write('.env', updateEnv(currentEnv, envUpdates))
+    writeEnvFile('.env', updateEnv(currentEnv, envUpdates))
     console.log('✅ 已补全 .env')
   }
 

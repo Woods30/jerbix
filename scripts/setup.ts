@@ -1,10 +1,11 @@
 #!/usr/bin/env tsx
 import { execFileSync, execSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { confirm, input, password, select } from '@inquirer/prompts'
+import { prepareEnvFile, writeEnvFile } from './lib/env-file'
 import { updateEnv } from './lib/env-merge'
 import { buildEnvUpdates } from './lib/setup-env'
 import {
@@ -16,21 +17,6 @@ import {
 function run(cmd: string, options: { stdio?: 'inherit' | 'pipe' } = {}) {
   console.log(`$ ${cmd}`)
   return execSync(cmd, { stdio: options.stdio ?? 'inherit' })
-}
-
-/**
- * 读出 `.env` 的**原文**；不存在时从 `.env.example` 复制一份。
- *
- * 保留原文而非解析成键值对，是为了不丢注释：`.env` 里写着「生产必须改成实际
- * 域名」这类说明，整体覆盖会把它们连同手填的凭据一起抹掉。
- */
-export function prepareEnvFile(envPath = '.env', examplePath = '.env.example'): string {
-  if (existsSync(envPath)) return readFileSync(envPath, 'utf-8')
-  if (!existsSync(examplePath)) {
-    throw new Error(`缺少 ${envPath} 与 ${examplePath}；请先创建 ${examplePath}`)
-  }
-  copyFileSync(examplePath, envPath)
-  return readFileSync(envPath, 'utf-8')
 }
 
 export async function main() {
@@ -109,7 +95,7 @@ export async function main() {
     authSecret,
     optional,
   })
-  writeFileSync('.env', updateEnv(currentEnv, updates))
+  writeEnvFile('.env', updateEnv(currentEnv, updates))
   console.log('✅ .env 已更新')
 
   const wranglerRaw = readFileSync('wrangler.jsonc', 'utf-8')
