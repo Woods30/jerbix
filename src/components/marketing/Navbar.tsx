@@ -59,7 +59,7 @@ export function Navbar() {
           aria-label={websiteConfig.metadata.name}
           className="flex shrink-0 items-center rounded-lg bg-logo-plate px-2 py-1 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
         >
-          <BrandLogo className="w-32 sm:w-40" />
+          <BrandLogo className="text-xl sm:text-2xl" />
         </Link>
         <div className="hidden items-center lg:flex">
           <MenuItems

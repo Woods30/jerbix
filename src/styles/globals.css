@@ -72,6 +72,13 @@
   --font-mono:
     "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, "PingFang SC", monospace;
   --font-serif: Georgia, "Songti SC", serif;
+  /*
+   * 品牌字标用的展示字体：Quicksand 的圆角几何形最接近品牌稿里的字标，
+   * 且已随 `@fontsource-variable/quicksand` 自托管。品牌 Logo 的站名用它渲染。
+   */
+  --font-display:
+    "Quicksand Variable", "Inter Variable", ui-sans-serif, system-ui, "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   /* 导出稿的 `--tracking-normal: -0.01em`：紧排字距，与 Inter 的字形配套。 */
   --tracking-normal: -0.01em;
 

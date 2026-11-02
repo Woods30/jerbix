@@ -132,9 +132,19 @@
 Logo 走**内联 SVG，不用 `<img>`**。CSS 变量无法穿透 `<img>` 的文档边界，用 `<img src>`
 的话主题切换对 Logo 完全无效。
 
-- `BrandLogo` 用 `?raw` 把 `src/components/layout/brand/jerbix-horizontal.svg` 当文本
-  导入，剥离资产自带的 `<style>`（它带 `:root{--jbx-*}` 默认值，不剥会覆盖站点主题），
-  再按 class 名改写成呈现属性后注入。
+Logo 分成**图形标记**与**站名**两部分：
+
+- 图形标记是静态资产（默认 `src/components/layout/brand/jerbix-icon.svg`）。`BrandLogo`
+  用 `?raw` 把它当文本导入，剥离资产自带的 `<style>`（它带 `:root{--jbx-*}` 默认值，
+  不剥会覆盖站点主题），再按 class 名改写成呈现属性后注入。注入时抹掉资产自带的
+  `aria-label`：可访问名称由旁边的站名文字承担。
+- 站名是**文本**，取自 `src/config/website.ts` 的 `metadata.name`，用 `--font-display`
+  （Quicksand Variable）渲染。字标刻意不烘焙进 SVG —— 矢量路径里的品牌名改不动，
+  换了项目名页头上还是旧品牌。
+- 双色字标由 `metadata.logoAccent` 表达：站名末尾匹配该后缀的部分用 `--jbx-accent`
+  渲染（Jerbix 是紫色的 `x`），其余用 `--jbx-text`。品牌稿没有双色字标时设为 `''`。
+- `BrandLogo` 的 `className` 给的是**字号**（如 `text-xl`），不是宽度：标记与文字都按
+  `em` 派生，名字长短不影响整体比例。
 - `--jbx-*` 用**品牌稿原色**，不映射站点 token：墨色 `#111318`、品牌紫
   `#6948FF` / `#8066FF` 是设计方定的识别色。站点 `--primary` 浅色档同取 `#6948FF`，
   两者天然一致；深色档 `--primary` 提亮到 `#8C77FF`（对比度需要），与 `--jbx-accent`
@@ -147,9 +157,10 @@ Logo 走**内联 SVG，不用 `<img>`**。CSS 变量无法穿透 `<img>` 的文�
 
 **替换成你自己的品牌**：
 
-1. 把 SVG 放进 `src/components/layout/brand/`，保持 `--jbx-*` 变量名；
-2. 改 `src/config/website.ts` 的 `metadata.images`（`logoLight` / `logoDark` / `icon` /
-   `ogImage`）；
+1. 把图形标记 SVG 放进 `src/components/layout/brand/`，保持 `--jbx-*` 变量名；
+2. 改 `src/config/website.ts` 的 `metadata.name`（站名）、`metadata.logoAccent`
+   （双色字标的强调后缀，没有就留空）与 `metadata.images`
+   （`logoLight` / `logoDark` / `icon` / `ogImage`）；
 3. 若品牌色与紫系差异大，按下面的「换主题」流程重定 `--primary` 等 token。
 
 ## 换主题

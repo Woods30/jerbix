@@ -28,6 +28,13 @@ export interface WebsiteConfig {
   baseUrl: string
   metadata: {
     name: string
+    /**
+     * 字标末尾用强调色渲染的部分（如 Jerbix 的紫色 `x`）。
+     *
+     * 纯展示用：`name` 仍是 SEO / `<title>` / manifest 的唯一来源。留空则整串用墨色。
+     * 品牌稿若没有双色字标，改成 `''` 即可。
+     */
+    logoAccent: string
     images: { ogImage: string; logoLight: string; logoDark: string; icon: string }
   }
   ui: {
@@ -102,6 +109,8 @@ export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
     baseUrl: env.VITE_BASE_URL,
     metadata: {
       name: 'Jerbix',
+      // 品牌稿的字标是双色：`Jerbi` 墨色、`x` 紫色。
+      logoAccent: 'x',
       images: {
         ogImage: '/logo.png',
         logoLight: '/logo-horizontal-transparent.svg',

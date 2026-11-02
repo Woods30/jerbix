@@ -85,7 +85,7 @@ export function DashboardLayout({
             aria-label={websiteConfig.metadata.name}
             className="flex items-center rounded-lg bg-logo-plate px-2 py-1 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
           >
-            <BrandLogo className="w-36 group-data-[collapsible=icon]:hidden" />
+            <BrandLogo className="text-2xl group-data-[collapsible=icon]:hidden" />
             <img
               src={websiteConfig.metadata.images.icon}
               alt=""

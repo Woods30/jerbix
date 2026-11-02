@@ -31,7 +31,7 @@ export function AuthLayout({ title, description, legalNotice, children }: AuthLa
         aria-label={websiteConfig.metadata.name}
         className="mx-auto mb-6 flex items-center rounded-lg bg-logo-plate px-2 py-1 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
       >
-        <BrandLogo className="w-32" />
+        <BrandLogo className="text-xl" />
       </Link>
       <Card>
         <CardHeader>

@@ -65,7 +65,7 @@ export function DocsLayout({ locale, children }: { locale: Locale; children: Rea
           aria-label={websiteConfig.metadata.name}
           className="flex min-w-0 shrink items-center rounded-lg bg-logo-plate px-1 py-1 transition-opacity hover:opacity-80"
         >
-          <BrandLogo className="w-28" />
+          <BrandLogo className="text-lg" />
         </Link>
         <button
           type="button"
@@ -198,7 +198,7 @@ function SidebarPanel({
           aria-label={websiteConfig.metadata.name}
           className="flex min-w-0 items-center rounded-lg bg-logo-plate py-1 transition-opacity hover:opacity-80"
         >
-          <BrandLogo className="w-24" />
+          <BrandLogo className="text-base" />
         </Link>
         <span className="hidden text-sm text-muted-foreground lg:inline">
           {m.docs_sidebar_title()}
