@@ -11,7 +11,7 @@ describe('扁平套餐目录', () => {
   it('首页售卖的商品只允许一次性价格，金额以 Stripe 目录为准', () => {
     const price = {
       priceId: 'p_template',
-      reference: 'jerbix_template',
+      reference: 'one_time',
       amount: 9900,
       currency: 'usd',
       mode: 'payment',
@@ -32,7 +32,7 @@ describe('扁平套餐目录', () => {
   it('指定币种时按币种校验', () => {
     const price = {
       priceId: 'p_template',
-      reference: 'jerbix_template',
+      reference: 'one_time',
       amount: 9900,
       currency: 'usd',
       mode: 'payment',
