@@ -5,9 +5,9 @@
 
 ## 项目定位
 
-`saas-template`（品牌名 **Jerbix**）是一个构建在 **Cloudflare Workers** 上的
-**TanStack Start** SaaS 起步模板。目标流程：`git clone` → 修改 `src/config/website.ts`
-→ 部署。设计稿见 `docs/superpowers/specs/2026-10-12-saas-template-design.md`。
+`saas-template`（默认品牌 **Jerbix**）是一个构建在 **Cloudflare Workers** 上的
+**TanStack Start** SaaS 起步模板。目标流程：`git clone` → `pnpm run init` → 部署。
+设计稿见 `docs/superpowers/specs/2026-10-12-saas-template-design.md`。
 
 ## 术语表
 
@@ -49,10 +49,10 @@
 - **AuthFormMessages**：`src/auth/validation.ts` 的校验文案契约。schema 工厂接收文案而非
   自己调 `m.*()`，使校验逻辑不依赖 Paraglide 运行时、可脱离组件单测；页面用
   `authFormMessages()` 求值。
-- **模板工程**：独立仓 `Woods30/saas-template`，含模板源码、技术文档与 init 脚本。默认品牌
+- **模板工程**：本仓 `Woods30/saas-template`，含模板源码、技术文档与 init 脚本。默认品牌
   为 Jerbix。**唯一源码源**。
-- **官网工程**：本仓（改名后 `Woods30/jerbix`），定位为模板的官网 + 支付 + 商业条款文档。
-  保留完整代码副本，通过 `git merge template/main` 跟进模板工程。
+- **官网工程**：另一个仓 `Woods30/jerbix`，定位为模板的官网 + 支付 + 商业条款文档。
+  保留完整代码副本，通过 `git merge template/main` 跟进本仓。
 - **实例项目**：开发者用 init 脚本从模板工程生成的项目。
 - **init 脚本**：模板工程内的 `pnpm run init`，把模板改造成实例项目。
 - **替换表**：init 脚本内声明式的「文件 → 改什么」清单。分三类条目：品牌字面量替换、
@@ -90,8 +90,8 @@
   Zod + shadcn `Field`）。
 - **尚未实现**：文件上传、AI 网关、PWA。`websiteConfig.features` 中对应的开关是能力边界
   标记，不注册路由。
-- **待执行（2026-11-02 定）**：本仓拆分为**模板工程**（新仓 `Woods30/saas-template`，
-  含 init 脚本与技术文档）与**官网工程**（本仓改名 `Woods30/jerbix`）。见
+- **待执行（2026-11-02 定）**：本仓拆分为**模板工程**（本仓 `Woods30/saas-template`，
+  含 init 脚本与技术文档）与**官网工程**（另一个仓 `Woods30/jerbix`）。见
   `docs/superpowers/specs/2026-11-02-template-extraction-and-init-design.md` 与
   `docs/adr/0004`、`docs/adr/0005`。
 - **Node 下限**：`package.json` 的 `engines.node` 为 `^22.12.0 || ^24.0.0 || >=26.0.0`（`vitest@5`
