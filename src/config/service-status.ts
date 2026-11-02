@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { PublicEnv } from '@/env/public'
 import type { ServerEnv } from '@/env/server'
-import { collectPriceReferences, productConfigErrors } from './products'
+import { productConfigErrors, resolvePriceReference } from './products'
 import type { ServiceModule, WebsiteConfig } from './website'
 
 /**
@@ -63,7 +63,8 @@ export function getServiceStatuses(input: {
   const result = {} as Record<ServiceModule, ServiceStatus>
   const check = (
     name: ServiceModule,
-    requirements: Array<[string, boolean, ConfigIssue['location']]>,
+    // 每项是「键名 / 是否齐备 / 位置 / 原因」；原因缺省时用通用的「缺少必要配置」。
+    requirements: Array<[string, boolean, ConfigIssue['location'], string?]>,
     manualIssues: ConfigIssue[] = [],
     // 与 manualIssues 不同：这些**计入** completeness 判定，用于表达字段存在但取值互斥。
     conflictIssues: ConfigIssue[] = [],
@@ -71,7 +72,11 @@ export function getServiceStatuses(input: {
     const issues = config[name].enabled
       ? requirements
           .filter(([, valid]) => !valid)
-          .map(([key, , location]) => ({ key, location, reason: REQUIRED_CONFIG_REASON }))
+          .map(([key, , location, reason]) => ({
+            key,
+            location,
+            reason: reason ?? REQUIRED_CONFIG_REASON,
+          }))
       : []
     result[name] = {
       state: !config[name].enabled
@@ -137,8 +142,15 @@ export function getServiceStatuses(input: {
     [
       ['STRIPE_SECRET_KEY', !!env.STRIPE_SECRET_KEY, 'env'],
       ['STRIPE_WEBHOOK_SECRET', !!env.STRIPE_WEBHOOK_SECRET, 'env'],
-      // 一个 lookup key 都没配：定价页取不到任何价格，结账也无从下手。
-      ['payment.products', collectPriceReferences().length > 0, 'src/config/products.ts'],
+      // 首页 CTA 指向的那个商品与购买方式必须有价格引用，否则首页取不到价格、
+      // 结账也无从下手。查「所有已声明的引用」没有意义：声明过的 lookup key
+      // 未必在 Stripe 上真的建过 Price，那种情况在配置层看不出来。
+      [
+        'payment.products',
+        resolvePriceReference(config.template.productId, config.template.offerId) !== undefined,
+        'src/config/products.ts',
+        '首页要卖的商品在 Stripe 上没有对应的 Price（lookup key 未创建或已迁移）',
+      ],
     ],
     [],
     // 重复产品 ID 或价格引用会让价格归属判定出错，
