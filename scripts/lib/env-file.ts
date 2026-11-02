@@ -2,17 +2,21 @@
  * `.env` 读取与合并的共享实现，供 `scripts/check-env*.ts` 复用，保证三个脚本规则一致。
  * 空串归一由 `src/env/normalize.ts` 处理，此处不重复实现。
  */
+import { randomBytes } from 'node:crypto'
 import {
   chmodSync,
   closeSync,
   constants,
   copyFileSync,
-  fchmodSync,
+  fsyncSync,
   lstatSync,
   openSync,
   readFileSync,
+  renameSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs'
+import { basename, dirname, join } from 'node:path'
 import { parseEnv } from 'node:util'
 
 const DEFAULT_DOTENV_PATH = '.env'
@@ -47,23 +51,36 @@ export function prepareEnvFile(envPath = '.env', examplePath = '.env.example'): 
 }
 
 /**
- * 写 `.env`：内容经文件描述符写入，权限固定 0600。
+ * 写 `.env`：先写同目录的临时文件，再原子改名覆盖。
  *
- * 用 `O_NOFOLLOW` 而不是普通 `writeFileSync`：后者会跟着符号链接写，
- * 目标路径一旦被换成链接，凭据就会落到链接指向的文件里。
+ * 两道防线：
+ * - 目标是符号链接时直接拒绝——链接指向哪里由仓库内容说了算，跟着写等于替别人改文件；
+ * - 写入走「临时文件 + rename」：临时文件以 0600 创建，凭据落盘时权限已经收紧，
+ *   且 rename 替换的是路径本身，不会顺着链接写，也避免写到一半留下半个文件。
  */
 export function writeEnvFile(path: string, content: string): void {
-  const fd = openSync(
-    path,
-    constants.O_WRONLY | constants.O_CREAT | constants.O_NOFOLLOW,
-    ENV_FILE_MODE,
-  )
+  const stat = lstatSync(path, { throwIfNoEntry: false })
+  if (stat?.isSymbolicLink()) {
+    throw new Error(`${path} 是符号链接，拒绝写入：请改成普通文件后再试`)
+  }
+
+  const temp = join(dirname(path), `.${basename(path)}.${randomBytes(6).toString('hex')}.tmp`)
+  let fd: number | undefined
   try {
+    fd = openSync(
+      temp,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+      ENV_FILE_MODE,
+    )
     writeFileSync(fd, content)
-    // 文件已存在时 open 的 mode 不生效，这里再收紧一次。
-    fchmodSync(fd, ENV_FILE_MODE)
-  } finally {
+    fsyncSync(fd)
     closeSync(fd)
+    fd = undefined
+    renameSync(temp, path)
+  } catch (error) {
+    if (fd !== undefined) closeSync(fd)
+    rmSync(temp, { force: true })
+    throw error
   }
 }
 

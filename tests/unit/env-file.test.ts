@@ -2,6 +2,7 @@ import {
   existsSync,
   lstatSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
@@ -113,5 +114,15 @@ describe('writeEnvFile', () => {
     writeEnvFile(envPath, 'A=1\n')
 
     expect(existsSync(envPath)).toBe(true)
+  })
+
+  it('写完不留临时文件', () => {
+    const dir = makeDir()
+    const envPath = join(dir, '.env')
+
+    writeEnvFile(envPath, 'A=1\n')
+    writeEnvFile(envPath, 'B=2\n')
+
+    expect(readdirSync(dir)).toEqual(['.env'])
   })
 })
