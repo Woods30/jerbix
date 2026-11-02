@@ -1,19 +1,25 @@
 import { expect, test } from '@playwright/test'
 
-/** E2E: `/docs` 重定向、搜索跳转、侧栏收起偏好由服务端 cookie 回读。 */
+/** E2E: `/docs` 落地页、`/docs/index` 重定向、搜索跳转、侧栏收起偏好由服务端 cookie 回读。 */
 test.describe('Docs', () => {
   test.beforeEach(async ({ context }) => {
     // 无前缀 URL 按 Accept-Language 协商，Playwright 默认 en-US，不固定则文案随环境漂移。
     await context.addCookies([{ name: 'NEXT_LOCALE', value: 'zh', url: 'http://localhost:3000' }])
   })
 
-  test('/docs 重定向到干净的 slug，且渲染对应译文', async ({ page }) => {
+  test('/docs 渲染文档首页（文档概览），地址不带 /index', async ({ page }) => {
     const response = await page.goto('/docs')
-    await page.waitForURL('**/docs/**')
     expect(response?.status()).toBe(200)
     expect(page.url()).not.toContain('index.zh')
-    expect(page.url()).toMatch(/\/docs\/[a-z-]+$/)
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('快速开始')
+    // 首页的正式地址是 `/docs`；`/docs/index` 只是历史地址。
+    expect(page.url()).not.toContain('/docs/index')
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('文档概览')
+  })
+
+  test('/docs/index 重定向到 /docs（同一篇内容只有一个地址）', async ({ page }) => {
+    await page.goto('/docs/index')
+    await page.waitForURL(/\/docs$/)
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('文档概览')
   })
 
   test('搜索可过滤并跳转到命中文档', async ({ page }) => {

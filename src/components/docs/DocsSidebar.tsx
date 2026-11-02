@@ -3,7 +3,8 @@ import { Link } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { DOC_FALLBACK_ICON, DOC_ICON } from '@/components/docs/doc-icons'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { type DocEntry, type DocGroup, groupDocs } from '@/lib/docs'
+import { DOCS_INDEX_SLUG, type DocEntry, type DocGroup, groupDocs } from '@/lib/docs'
+import type { Locale } from '@/lib/locale'
 import { m } from '@/locale/paraglide/messages.js'
 
 /**
@@ -25,11 +26,14 @@ export function DocsSidebar({
   docs,
   activeSlug,
   onNavigate,
+  locale,
 }: {
   docs: DocEntry[]
   /** 当前打开的文档 slug；所在分组会被强制展开。 */
   activeSlug?: string
   onNavigate?: () => void
+  /** 当前语言；侧栏链接要带上语言前缀，canonical 才与站内其它地址一致。 */
+  locale: Locale
 }) {
   const groups = groupDocs(docs)
 
@@ -67,7 +71,13 @@ export function DocsSidebar({
         group.title === '' ? (
           <ul key="__root__" className="mb-4 space-y-0.5">
             {group.items.map((doc) => (
-              <DocLink key={doc.slug} doc={doc} onNavigate={onNavigate} />
+              <DocLink
+                key={doc.slug}
+                doc={doc}
+                locale={locale}
+                activeSlug={activeSlug}
+                onNavigate={onNavigate}
+              />
             ))}
           </ul>
         ) : (
@@ -76,6 +86,8 @@ export function DocsSidebar({
             group={group}
             open={!collapsedGroups.has(group.title)}
             onToggle={() => toggleGroup(group.title)}
+            locale={locale}
+            activeSlug={activeSlug}
             onNavigate={onNavigate}
           />
         ),
@@ -88,11 +100,15 @@ function DocGroupSection({
   group,
   open,
   onToggle,
+  locale,
+  activeSlug,
   onNavigate,
 }: {
   group: DocGroup
   open: boolean
   onToggle: () => void
+  locale: Locale
+  activeSlug?: string
   onNavigate?: () => void
 }) {
   const title = GROUP_TITLE[group.title]?.() ?? group.title
@@ -114,7 +130,13 @@ function DocGroupSection({
         {/* 不加左侧竖线与缩进：分组标题已表达从属关系，240px 侧栏经不起层层嵌套。 */}
         <ul className="mt-0.5 space-y-0.5">
           {group.items.map((doc) => (
-            <DocLink key={doc.slug} doc={doc} onNavigate={onNavigate} />
+            <DocLink
+              key={doc.slug}
+              doc={doc}
+              locale={locale}
+              activeSlug={activeSlug}
+              onNavigate={onNavigate}
+            />
           ))}
         </ul>
       </CollapsibleContent>
@@ -122,24 +144,49 @@ function DocGroupSection({
   )
 }
 
-function DocLink({ doc, onNavigate }: { doc: DocEntry; onNavigate?: () => void }) {
+function DocLink({
+  doc,
+  locale,
+  activeSlug,
+  onNavigate,
+}: {
+  doc: DocEntry
+  locale: Locale
+  activeSlug?: string
+  onNavigate?: () => void
+}) {
   const Icon = DOC_ICON[doc.slug] ?? DOC_FALLBACK_ICON
+  // 文档首页渲染在 `/docs`，没有 slug 一段；其余文档按 `/docs/<slug>`。
+  const isIndex = doc.slug === DOCS_INDEX_SLUG
+  // 选中态自己算，不交给路由的 activeProps：首页的地址是 `/docs`，与
+  // `/docs/$slug` 不是同一条路由，交给路由判断会漏掉首页。
+  const isActive = activeSlug === doc.slug
+
+  const content = (
+    <>
+      <Icon className="size-4 shrink-0" aria-hidden />
+      <span className="truncate">{doc.title}</span>
+    </>
+  )
+
+  const className = [
+    'group flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+    // 与工作台侧栏同一套选中态语义，避免站内出现两套导航观感。
+    isActive ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <li>
       <Link
-        to="/{-$locale}/docs/$slug"
-        params={{ slug: doc.slug }}
-        // 与工作台侧栏同一套选中态语义，避免站内出现两套导航观感。
-        activeProps={{
-          className: 'bg-sidebar-accent font-medium text-sidebar-accent-foreground',
-        }}
+        to={isIndex ? '/{-$locale}/docs' : '/{-$locale}/docs/$slug'}
+        params={isIndex ? { locale } : { slug: doc.slug, locale }}
         // 窄屏抽屉里点击后必须收起，否则新正文被抽屉盖住。
         onClick={onNavigate}
-        className="group flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        className={className}
       >
-        <Icon className="size-4 shrink-0" aria-hidden />
-        <span className="truncate">{doc.title}</span>
+        {content}
       </Link>
     </li>
   )

@@ -417,6 +417,38 @@ export default [
     }
   },
   {
+    "title": "Documentation",
+    "description": "How to use the template — getting started, configuration, deployment, and each module",
+    "locale": "en",
+    "order": 0,
+    "group": "",
+    "updated": "2026-11-02",
+    "content": "This documentation describes a deployable SaaS starter: a TanStack Start application on the\nCloudflare Workers runtime, plus auth, payments, email, and other modules that are switched on\nor off. The docs ship with the code, so they never drift from the implementation.\n\n## Where to start\n\n- [Getting Started](./getting-started) — one line from clone to production, including\n  `pnpm run init`.\n- [Configuration](./configuration) — site name, logo, and module switches live in one file.\n- [Environment](./environment) — the two-layer env model and who owns each variable.\n- [Cloudflare](./cloudflare) — domains, secrets, variables, and automated deploys.\n\n## Map of the docs\n\n| Group | Covers |\n|---|---|\n| Start | From clone to a running site |\n| Config | Site configuration, navigation, and environment variables |\n| Deploy | Cloudflare, D1, storage, and cache |\n| Features | Integrations, auth, email, newsletter, payments, notifications, analytics, API keys, and user management |\n| Develop | Project structure, design system, forms, and testing |\n\n## Conventions\n\n- Commands always start with `pnpm`; the scripts live in `package.json`.\n- Configuration files keep stable locations: `src/config/website.ts` (site config),\n  `src/config/products.ts` (pricing plans), `wrangler.jsonc` (deployment and bindings), and\n  `.env` (local environment variables).\n- Amounts live only in the provider's price catalog — the code never keeps a second copy.",
+    "_meta": {
+      "filePath": "index.md",
+      "fileName": "index.md",
+      "directory": ".",
+      "extension": "md",
+      "path": "index"
+    }
+  },
+  {
+    "title": "文档概览",
+    "description": "模板工程的使用说明：快速开始、站点配置、部署与各功能模块",
+    "locale": "zh",
+    "order": 0,
+    "group": "",
+    "updated": "2026-11-02",
+    "content": "这套文档描述一个可直接部署的 SaaS 起步工程：TanStack Start 应用、Cloudflare Workers\n运行时，以及按开关装配的认证、支付、邮件等模块。文档随代码演进，没有与实现脱节的版本。\n\n## 从哪里开始\n\n- [快速开始](./getting-started)——从克隆到上线的一条线，含 `pnpm run init` 的用法。\n- [网站配置](./configuration)——站名、Logo、模块开关都集中在一个文件里。\n- [环境变量](./environment)——两层 env 模型，以及每个变量归谁管。\n- [Cloudflare 部署](./cloudflare)——域名、Secrets、Variables 与自动部署。\n\n## 文档地图\n\n| 分组 | 覆盖内容 |\n|---|---|\n| 开始 | 从克隆到跑起来 |\n| 配置 | 站点配置、导航与环境变量 |\n| 部署 | Cloudflare、D1、存储与缓存 |\n| 功能 | 集成、认证、邮件、订阅、支付、通知、分析、API 密钥与用户管理 |\n| 开发 | 目录结构、设计系统、表单与测试 |\n\n## 约定\n\n- 命令一律以 `pnpm` 开头，脚本定义在 `package.json`。\n- 配置文件位置固定：`src/config/website.ts`（站点配置）、`src/config/products.ts`（套餐）、\n  `wrangler.jsonc`（部署与绑定）、`.env`（本地环境变量）。\n- 金额只存在于服务商的价格目录，代码里不存第二份。",
+    "_meta": {
+      "filePath": "index.zh.md",
+      "fileName": "index.zh.md",
+      "directory": ".",
+      "extension": "md",
+      "path": "index.zh"
+    }
+  },
+  {
     "title": "Integrations Overview",
     "description": "Gate semantics, endpoints, and wiring for the service modules",
     "locale": "en",

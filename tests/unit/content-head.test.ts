@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { articleJsonLd } from '@/lib/json-ld'
 import { overwriteServerAsyncLocalStorage } from '@/locale/paraglide/runtime.js'
 import { Route as DocSlugRoute } from '@/routes/{-$locale}/_layout/docs/$slug'
+import { Route as DocsIndexRoute } from '@/routes/{-$locale}/_layout/docs/index'
 import { Route as LegalSlugRoute } from '@/routes/{-$locale}/_layout/marketing/legal/$slug'
 
 /**
@@ -177,5 +178,53 @@ describe('articleJsonLd 的 Article.url', () => {
       path: '/marketing/blog/hello-world',
     })
     expect(data.url).toMatch(/\/marketing\/blog\/hello-world$/)
+  })
+})
+
+describe('docs 首页（/docs）的 head 与 slug 约定', () => {
+  interface LoaderData {
+    title: string
+    description: string
+  }
+
+  function runIndexHead(loaderData: LoaderData): HeadResult {
+    const head = DocsIndexRoute.options.head as unknown as (ctx: {
+      loaderData: LoaderData
+    }) => HeadResult
+    return head({ loaderData })
+  }
+
+  it('canonical 指向 /docs（带语言前缀），与 x-default alternate 一致', () => {
+    // 首页的正式地址是 `/docs`，不带 `/index`；canonical 必须与 hreflang 同址。
+    withRequestLocale('zh')
+    const head = runIndexHead({ title: '文档概览', description: '描述' })
+    const canonical = canonicalHref(head) ?? ''
+
+    expect(canonical).toMatch(/\/zh\/docs$/)
+    expect(canonical).toBe(xDefaultHref(head))
+  })
+
+  it('英文首页的 canonical 指向英文地址', () => {
+    withRequestLocale('en')
+    const head = runIndexHead({ title: 'Documentation', description: '描述' })
+    expect(canonicalHref(head)).toMatch(/\/en\/docs$/)
+  })
+
+  it('访问 /docs/index 时重定向到 /docs，避免同一篇内容有两个 URL', () => {
+    withRequestLocale('zh')
+    const beforeLoad = DocSlugRoute.options.beforeLoad as unknown as (ctx: {
+      params: { slug: string }
+    }) => unknown
+
+    let thrown: unknown
+    try {
+      beforeLoad({ params: { slug: 'index' } })
+    } catch (error) {
+      thrown = error
+    }
+
+    const options = (thrown as { options?: { to?: string; params?: unknown } }).options
+    expect(options?.to).toBe('/{-$locale}/docs')
+    expect(options?.params).toEqual({ locale: 'zh' })
   })
 })

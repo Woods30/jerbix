@@ -237,7 +237,7 @@ function SidebarPanel({
         />
       </div>
       <div className="flex-1 overflow-y-auto p-3">
-        <DocsSidebar docs={docs} activeSlug={activeSlug} onNavigate={onNavigate} />
+        <DocsSidebar docs={docs} activeSlug={activeSlug} locale={locale} onNavigate={onNavigate} />
       </div>
       {/* 工具条固定在侧栏底部（GitBook 风格），不随正文滚动。 */}
       <div className="flex items-center justify-end gap-1 border-t border-border p-3">

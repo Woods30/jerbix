@@ -3,6 +3,7 @@ import { allBlogs, allDocs } from 'content-collections'
 import type { WebsiteConfig } from '@/config/website'
 import { websiteConfig } from '@/config/website'
 import { contentSlug } from '@/lib/content-locale'
+import { DOCS_INDEX_SLUG } from '@/lib/docs'
 import { LOCALES, type Locale, parseLocale } from '@/lib/locale'
 
 /** 单条 sitemap 记录：绝对 loc、同页其他语言的 alternate 链接、内容更新时间。 */
@@ -80,7 +81,17 @@ export function getSitemapPaths(
   pushStatic('/marketing/legal/terms')
   pushStatic('/marketing/legal/privacy')
 
-  if (config.docs.enabled) pushStatic('/docs')
+  if (config.docs.enabled) {
+    // 文档首页的正式地址是 `/docs`；它的更新时间取首页文档的 `updated`。
+    const landingUpdated = source.docs.find(
+      (d) => d.locale === locale && contentSlug(d._meta.fileName) === DOCS_INDEX_SLUG,
+    )?.updated
+    entries.push({
+      loc: buildUrl(baseUrl, locale, '/docs'),
+      alternates: staticAlternates('/docs'),
+      ...(landingUpdated ? { lastmod: landingUpdated } : {}),
+    })
+  }
   if (config.blog.enabled) pushStatic('/marketing/blog')
   if (config.changelog.enabled) pushStatic('/marketing/changelog')
   if (config.contact.enabled) pushStatic('/marketing/contact')
@@ -115,6 +126,8 @@ export function getSitemapPaths(
     for (const doc of source.docs) {
       if (doc.locale !== locale) continue
       const slug = slugOf(doc)
+      // 首页文档已按 `/docs` 收录；这里跳过，否则同一篇内容会有两个 URL。
+      if (slug === DOCS_INDEX_SLUG) continue
       const alternates = source.docs
         .filter((d) => d.locale !== locale && slugOf(d) === slug)
         .flatMap((d) => {

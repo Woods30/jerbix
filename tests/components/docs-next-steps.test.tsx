@@ -91,7 +91,7 @@ describe('DocNextSteps', () => {
         ?.getAttribute('class')
         ?.match(/tabler-icon-([a-z-]+)/)?.[1]
 
-    const sidebar = render(<DocsSidebar docs={[SIDEBAR_DOC]} />)
+    const sidebar = render(<DocsSidebar docs={[SIDEBAR_DOC]} locale="en" />)
     const sidebarIcon = iconName(sidebar.container, 'li svg')
     sidebar.unmount()
     expect(sidebarIcon).toBe('settings')
