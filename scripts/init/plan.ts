@@ -116,6 +116,7 @@ export function buildPlan(config: InitConfig): InitPlan {
             (source) => replaceConfigLiteral(source, 'name', config.name),
             (source) => replaceConfigLiteral(source, 'logoAccent', ''),
             (source) => replaceConfigLiteral(source, 'supportEmail', config.email),
+            (source) => clearDocsSiteUrl(source),
             ...MODULE_NAMES.map(
               (module) => (source: string) =>
                 setModuleEnabled(source, module, config.modules.includes(module)),
@@ -191,6 +192,22 @@ export function setModuleEnabled(source: string, module: ModuleName, enabled: bo
   const pattern = new RegExp(`(\\b${module}: \\{[^}]*?enabled: )(true|false)`)
   if (!pattern.test(source)) throw new Error(`配置里找不到模块 ${module} 的 enabled 开关`)
   return source.replace(pattern, `$1${enabled}`)
+}
+
+/**
+ * 清掉外部文档站地址。
+ *
+ * `docs.siteUrl` 指向的是**原来那个站**的文档站。新项目要么自己提供文档，
+ * 要么把地址改掉 —— 留着旧地址等于把访客送到别人的文档站。
+ */
+export function clearDocsSiteUrl(source: string): string {
+  return source.replace(
+    /(\bdocs: \{)([^}]*)(\})/,
+    (_all, head: string, body: string, tail: string) => {
+      const cleaned = body.replace(/,?\s*siteUrl:\s*'[^']*'/, '').replace(/,\s*$/, '')
+      return `${head}${cleaned}${tail}`
+    },
+  )
 }
 
 /** 改某个能力开关。 */

@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { applyPlan } from '../../scripts/init/apply'
-import { buildPlan, type InitConfig, replaceConfigLiteral } from '../../scripts/init/plan'
+import {
+  buildPlan,
+  clearDocsSiteUrl,
+  type InitConfig,
+  replaceConfigLiteral,
+} from '../../scripts/init/plan'
 
 /**
  * init 的「计划 / 执行」分离。
@@ -247,5 +252,17 @@ describe('真实仓库文件', () => {
     const step = buildPlan(CONFIG).files.find((file) => file.path === 'wrangler.jsonc')
     if (!step) throw new Error('计划里没有 wrangler.jsonc')
     expect(() => step.transform(real)).not.toThrow()
+  })
+})
+
+describe('clearDocsSiteUrl', () => {
+  it('清掉 docs 配置里的外部文档站地址', () => {
+    const source = "    docs: { enabled: false, siteUrl: 'https://docs.example.com/docs' },"
+    expect(clearDocsSiteUrl(source)).toBe('    docs: { enabled: false },')
+  })
+
+  it('没有 siteUrl 时原样返回', () => {
+    const source = '    docs: { enabled: true },'
+    expect(clearDocsSiteUrl(source)).toBe(source)
   })
 })
