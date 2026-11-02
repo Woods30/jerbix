@@ -113,6 +113,8 @@ describe('Navbar 消费菜单配置（真实 Router）', () => {
     ).not.toBeInTheDocument()
   })
   it('渲染首页锚点、Docs、登录与主按钮的 href', async () => {
+    // 显式打开 docs：各仓是否提供文档站不同。
+    websiteConfig.docs = { enabled: true }
     await renderRoute('/en')
     const header = within(screen.getByRole('banner'))
 
@@ -142,6 +144,7 @@ describe('Navbar 消费菜单配置（真实 Router）', () => {
   // 不走 `renderRoute`：`shellComponent` 渲染的嵌套 `<html>` 会让 React 挂载进入循环，
   // 此后任何 state 更新都不返回，还会拖死同 run 的其他文件。
   it('移动端 Escape 关闭面板并把焦点还给触发按钮', async () => {
+    websiteConfig.docs = { enabled: true }
     await renderNavbar()
     const header = within(screen.getByRole('banner'))
     const trigger = screen.getByRole('button', { name: 'Open navigation menu' })
@@ -158,7 +161,8 @@ describe('Navbar 消费菜单配置（真实 Router）', () => {
   })
 
   it('关闭 docs 后移除 Docs 链接，主按钮回退首页 features 锚点', async () => {
-    websiteConfig.docs.enabled = false
+    // 整体替换：留 siteUrl 时入口是外链，不会随模块开关消失。
+    websiteConfig.docs = { enabled: false }
     await renderRoute('/en')
 
     const header = within(screen.getByRole('banner'))
@@ -173,6 +177,7 @@ describe('Navbar 消费菜单配置（真实 Router）', () => {
 
 describe('Footer 消费菜单配置（真实 Router）', () => {
   it('渲染产品 / 资源分组与法律 slug 链接', async () => {
+    websiteConfig.docs = { enabled: true }
     await renderRoute('/en')
     const footer = within(screen.getByRole('contentinfo'))
 
@@ -296,6 +301,7 @@ describe('MenuItems 共享 renderer', () => {
 
 describe('首页 CTA 的 docs 回退', () => {
   it('docs 启用时指向 /{locale}/docs，关闭时回退 #features', async () => {
+    websiteConfig.docs = { enabled: true }
     await renderRoute('/en')
 
     expect(screen.getByRole('link', { name: 'Get the source · $99' })).toHaveAttribute(
@@ -308,7 +314,7 @@ describe('首页 CTA 的 docs 回退', () => {
     )
 
     cleanup()
-    websiteConfig.docs.enabled = false
+    websiteConfig.docs = { enabled: false }
     await renderRoute('/en')
 
     expect(screen.getByRole('link', { name: 'Get the source · $99' })).toHaveAttribute(

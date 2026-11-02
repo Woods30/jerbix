@@ -108,6 +108,8 @@ describe('LandingPage', () => {
   })
 
   it('locale 连续切换时标题与文档入口跟随语言', () => {
+    // 显式打开 docs 模块：本文只断言「入口跟着语言走」，不该受各仓默认开关影响。
+    websiteConfig.docs = { enabled: true }
     const { rerender } = render(<LandingPage priceCents={9900} />)
     for (const locale of ['zh', 'en', 'zh'] as const) {
       setLocale(locale, { reload: false })
@@ -121,12 +123,21 @@ describe('LandingPage', () => {
     }
   })
 
+  it('文档站部署在外部时，首页的文档入口指向外链', () => {
+    websiteConfig.docs = { enabled: false, siteUrl: 'https://docs.example.com' }
+    render(<LandingPage priceCents={9900} />)
+    expect(screen.getByRole('link', { name: '看看如何开始' })).toHaveAttribute(
+      'href',
+      'https://docs.example.com',
+    )
+  })
+
   it.each([true, false])(
     '支付模块 enabled=%s 不改变模板定价，文档关闭时不导向关闭页面',
     (enabled) => {
       auth.session = { user: { id: 'user_1' } }
       websiteConfig.payment.enabled = enabled
-      websiteConfig.docs.enabled = false
+      websiteConfig.docs = { enabled: false }
       const { container } = render(<LandingPage priceCents={9900} />)
       expect(container.querySelector('#pricing')).toHaveTextContent('$99')
       expect(

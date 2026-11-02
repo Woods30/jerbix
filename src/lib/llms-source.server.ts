@@ -1,4 +1,5 @@
 import { allBlogs, allChangelogs, allDocs, allLegals } from 'content-collections'
+import { type WebsiteConfig, websiteConfig } from '@/config/website'
 import { contentSlug } from '@/lib/content-locale'
 import { DOCS_INDEX_SLUG } from '@/lib/docs'
 import type { LlmsContentSource, LlmsEntry } from '@/lib/llms'
@@ -99,10 +100,15 @@ function toLegalEntries(): LlmsEntry[] {
   }))
 }
 
-/** 全部内容的默认来源。 */
-export function defaultLlmsSource(): LlmsContentSource {
+/**
+ * 全部内容的默认来源。
+ *
+ * docs 模块关闭时不收文档：那些 URL 在站内是 404，写进 llms 索引等于把死链
+ * 发给爬虫与模型。
+ */
+export function defaultLlmsSource(config: WebsiteConfig = websiteConfig): LlmsContentSource {
   return {
-    docs: toDocEntries(),
+    docs: config.docs.enabled ? toDocEntries() : [],
     blogs: toBlogEntries(),
     changelogs: toChangelogEntries(),
     legals: toLegalEntries(),

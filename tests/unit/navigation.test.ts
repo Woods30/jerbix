@@ -107,7 +107,10 @@ describe('导航配置工厂', () => {
   })
 
   it('Navbar 保留三个真实首页锚点和独立 Docs 链接', () => {
-    const items = getNavbarLinks('en', { config: createConfig(), authenticated: false })
+    // 显式打开 docs 模块：本文只断言导航结构，不该受各仓默认开关影响。
+    const config = createConfig()
+    config.docs = { enabled: true }
+    const items = getNavbarLinks('en', { config, authenticated: false })
     expect(items.map((item) => item.id)).toEqual(['features', 'workflow', 'template', 'docs'])
     expect(items.map((item) => item.kind === 'link' && item.destination)).toEqual([
       { kind: 'internal', options: getPublicLinkOptions('home', 'en', 'features') },
@@ -117,8 +120,40 @@ describe('导航配置工厂', () => {
     ])
   })
 
+  it('文档站部署在外部时，导航与页脚的文档入口都指向外链，且不受 docs 模块开关影响', () => {
+    const config = createConfig()
+    // 本仓不提供文档站（模块关闭），但访客仍要能跳到外部文档站。
+    config.docs = { enabled: false, siteUrl: 'https://docs.example.com' }
+    const ctx = { config, authenticated: false }
+
+    const navDocs = getNavbarLinks('en', ctx).find((item) => item.id === 'docs')
+    expect(navDocs?.kind === 'link' && navDocs.destination).toEqual({
+      kind: 'external',
+      href: 'https://docs.example.com',
+      newTab: true,
+    })
+
+    const resources = getFooterLinks('en', ctx).find((item) => item.id === 'resources')
+    const footerDocs =
+      resources?.kind === 'group' ? resources.items.find((item) => item.id === 'docs') : undefined
+    expect(footerDocs?.kind === 'link' && footerDocs.destination).toEqual({
+      kind: 'external',
+      href: 'https://docs.example.com',
+      newTab: true,
+    })
+  })
+
+  it('没有外部文档站地址时，文档入口跟随 docs 模块开关', () => {
+    const config = createConfig()
+    config.docs = { enabled: false }
+    const items = getNavbarLinks('en', { config, authenticated: false })
+    expect(items.map((item) => item.id)).not.toContain('docs')
+  })
+
   it('Footer 独立定义 product / resources 的 children 与目标', () => {
-    const items = getFooterLinks('en', { config: createConfig(), authenticated: false })
+    const config = createConfig()
+    config.docs = { enabled: true }
+    const items = getFooterLinks('en', { config, authenticated: false })
     expect(items.map((item) => item.id)).toEqual(['product', 'resources'])
     const product = items[0]
     const resources = items[1]
@@ -150,7 +185,8 @@ describe('导航配置工厂', () => {
 
   it('关闭 docs 后 Navbar / Footer 移除 Docs，主按钮回退首页 features', () => {
     const config = createConfig()
-    config.docs.enabled = false
+    // 整体替换：留 siteUrl 时入口是外链，不会随模块开关消失。
+    config.docs = { enabled: false }
     const ctx = { config, authenticated: false }
     expect(getNavbarLinks('zh', ctx).map((item) => item.id)).toEqual([
       'features',
@@ -195,7 +231,9 @@ describe('导航配置工厂', () => {
   })
 
   it('启用 docs 时主按钮指向 Docs', () => {
-    expect(getNavbarActions('en', createConfig()).primary.destination).toEqual({
+    const config = createConfig()
+    config.docs = { enabled: true }
+    expect(getNavbarActions('en', config).primary.destination).toEqual({
       kind: 'internal',
       options: getPublicLinkOptions('docs', 'en'),
     })
@@ -203,6 +241,7 @@ describe('导航配置工厂', () => {
 
   it('Footer 分别按 blog / changelog 开关过滤', () => {
     const config = createConfig()
+    config.docs = { enabled: true }
     config.blog.enabled = false
     config.changelog.enabled = false
     const items = getFooterLinks('en', { config, authenticated: false })

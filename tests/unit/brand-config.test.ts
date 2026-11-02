@@ -39,7 +39,9 @@ describe('websiteConfig 品牌信息', () => {
     expect(createWebsiteConfig).toBeTypeOf('function')
     const config = createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: 'https://jerbix.dev' }))
     expect(config.baseUrl).toBe('https://jerbix.dev')
-    expect(config.docs.enabled).toBe(true)
+    // 官网不提供文档站：文档站部署在模板仓的独立域，入口指过去。
+    expect(config.docs.enabled).toBe(false)
+    expect(config.docs.siteUrl).toBe('https://docs.jerbix.site/docs')
     expect(config.blog.enabled).toBe(true)
     expect(config.changelog.enabled).toBe(true)
     expect(config.mail).toEqual({
@@ -81,6 +83,6 @@ describe('websiteConfig 品牌信息', () => {
     const second = createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: 'https://second.example' }))
     expect(second.baseUrl).toBe('https://second.example')
     expect(second.payment.enabled).toBe(true)
-    expect(second.docs.enabled).toBe(true)
+    expect(second.docs.enabled).toBe(false)
   })
 })

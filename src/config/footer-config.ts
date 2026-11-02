@@ -1,6 +1,11 @@
 import type { Locale } from '@/lib/locale'
 import { m } from '@/locale/paraglide/messages.js'
-import { filterMenuItems, getPublicLinkOptions, type MenuContext } from './navigation'
+import {
+  filterMenuItems,
+  getDocsMenuEntry,
+  getPublicLinkOptions,
+  type MenuContext,
+} from './navigation'
 
 export function getFooterLinks(locale: Locale, ctx: MenuContext) {
   return filterMenuItems(
@@ -55,8 +60,7 @@ export function getFooterLinks(locale: Locale, ctx: MenuContext) {
             kind: 'link',
             id: 'docs',
             title: m.nav_docs(),
-            visibility: { module: 'docs' },
-            destination: { kind: 'internal', options: getPublicLinkOptions('docs', locale) },
+            ...getDocsMenuEntry(ctx.config, locale),
           },
           {
             kind: 'link',

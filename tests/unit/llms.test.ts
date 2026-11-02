@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { llmsConfig } from '@/config/llms'
+import { createWebsiteConfig } from '@/config/website'
+import { parsePublicEnv } from '@/env/public'
 import { type LlmsContentSource, renderLlmsFull, renderLlmsIndex } from '@/lib/llms'
-import { toBlogEntries } from '@/lib/llms-source.server'
+import { defaultLlmsSource, toBlogEntries } from '@/lib/llms-source.server'
 
 /**
  * llms.txt / llms-full.txt：给模型看的站点索引与全文包。
@@ -290,5 +292,19 @@ describe('llms 内容源', () => {
       '/marketing/blog/newer',
       '/marketing/blog/older',
     ])
+  })
+})
+
+describe('默认内容来源', () => {
+  it('docs 模块关闭时不把文档写进 llms 索引', () => {
+    const config = createWebsiteConfig(parsePublicEnv({}))
+    config.docs = { enabled: false }
+    expect(defaultLlmsSource(config).docs).toEqual([])
+  })
+
+  it('docs 模块开启时文档进入 llms 索引', () => {
+    const config = createWebsiteConfig(parsePublicEnv({}))
+    config.docs = { enabled: true }
+    expect(defaultLlmsSource(config).docs.length).toBeGreaterThan(0)
   })
 })

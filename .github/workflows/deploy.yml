@@ -167,8 +167,13 @@ jobs:
 
           const config = readFileSync('wrangler.jsonc', 'utf8')
           const d1Name = config.match(/"database_name":\s*"([^"]+)"/)?.[1]
-          const kvTitle = 'saas-template-cache'
+          const workerName = config.match(/"name":\s*"([^"]+)"/)?.[1]
+          const kvId = config.match(/"binding":\s*"CACHE",\s*"id":\s*"([^"]+)"/)?.[1]
           if (!d1Name) throw new Error('wrangler.jsonc 中缺少 database_name')
+          if (!workerName) throw new Error('wrangler.jsonc 中缺少 name')
+          // KV 命名空间的标题不在 wrangler.jsonc 里（那里只有 binding 与 id），
+          // 按「Worker 名 + -cache」推导，与 D1 的 database_name 同源。
+          const kvTitle = `${workerName}-cache`
 
           const databases = await api(`/accounts/${accountId}/d1/database`)
           let d1 = databases.find((db) => db.name === d1Name)
@@ -181,7 +186,10 @@ jobs:
           }
 
           const namespaces = await api(`/accounts/${accountId}/storage/kv/namespaces`)
-          let kv = namespaces.find((ns) => ns.title === kvTitle)
+          // 先按 id 找：改过 Worker 名或沿用旧命名空间时不必新建，
+          // 也不必把命名空间改名 —— id 才是绑定关系的真相。
+          let kv = kvId ? namespaces.find((ns) => ns.id === kvId) : undefined
+          if (!kv) kv = namespaces.find((ns) => ns.title === kvTitle)
           if (!kv) {
             console.log(`创建 KV 命名空间 ${kvTitle}`)
             kv = await api(`/accounts/${accountId}/storage/kv/namespaces`, {
@@ -271,7 +279,8 @@ jobs:
             echo "::error::5 分钟内 $BASE_URL 未就绪；检查自定义域名绑定与 DNS 记录"
             exit 1
           fi
-          for path in / /docs/getting-started; do
+          # 冒烟路径用 /pricing：它是首页定价锚点的正式地址，站内始终可用。
+          for path in / /pricing; do
             code=$(curl --retry 3 --retry-delay 2 --max-time 30 -sS -L -o /dev/null -w '%{http_code}' "$BASE_URL$path")
             echo "$path → $code"
             if [ "$code" != "200" ]; then

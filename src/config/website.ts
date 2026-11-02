@@ -58,7 +58,20 @@ export interface WebsiteConfig {
    * 读同一份目录。配置里再存一份金额只会让两者漂移。
    */
   landingOffer: { productId: string; offerId: string }
-  docs: { enabled: boolean }
+  docs: {
+    /**
+     * 本仓是否提供文档站：关闭时整棵 docs 子树以 404 呈现。
+     */
+    enabled: boolean
+    /**
+     * 外部文档站地址（可选）。
+     *
+     * 文档站部署在另一个域（如模板仓的独立文档域）时，导航与页脚的「文档」入口
+     * 指向这里，而不是站内路由；此时本仓可以关闭 docs 模块，访客仍有去处。
+     * 留空表示文档就在本仓的 `/docs`。
+     */
+    siteUrl?: string
+  }
   blog: { enabled: boolean }
   changelog: { enabled: boolean }
   mail: { enabled: boolean; provider: 'resend' | 'cloudflare'; supportEmail: string }
@@ -128,7 +141,9 @@ export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
       themeColor: { light: '#FCFAFF', dark: '#0A0A0F' },
     },
     landingOffer: { productId: 'template', offerId: 'once' },
-    docs: { enabled: true },
+    // 官网不提供文档站：文档站部署在模板仓的独立域，入口指过去。
+    // docs 子树因此以 404 呈现，sitemap 与 llms 索引也不再收录文档。
+    docs: { enabled: false, siteUrl: 'https://docs.jerbix.site/docs' },
     blog: { enabled: true },
     changelog: { enabled: true },
     mail: { enabled: true, provider: 'resend', supportEmail: 'service@jerbix.site' },

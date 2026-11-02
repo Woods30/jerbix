@@ -2,6 +2,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { websiteConfig } from '@/config/website'
 import { setLocale } from '@/locale/paraglide/runtime.js'
 import { getRouter } from '@/router'
 
@@ -12,10 +13,14 @@ import { getRouter } from '@/router'
  * 绕过了谓词，掩盖了该路由恒 404 的缺陷。
  */
 
+// 站点配置是模块级单例，afterEach 用快照整体复原，避免用例相互污染。
+const originalConfig = structuredClone(websiteConfig)
+
 beforeEach(() => setLocale('en', { reload: false }))
 afterEach(() => {
   cleanup()
   setLocale('zh', { reload: false })
+  Object.assign(websiteConfig, structuredClone(originalConfig))
 })
 
 /** 用真实 Router + memory history 渲染真实页面。 */
@@ -126,6 +131,11 @@ describe('legal 详情页正文渲染', () => {
 })
 
 describe('docs 详情页真实渲染', () => {
+  // 显式打开 docs：各仓是否提供文档站不同，官网仓不提供文档站。
+  beforeEach(() => {
+    websiteConfig.docs = { enabled: true }
+  })
+
   it('/zh/docs/getting-started 渲染中文标题「快速开始」而非 404', async () => {
     setLocale('zh', { reload: false })
     await renderRoute('/zh/docs/getting-started')
