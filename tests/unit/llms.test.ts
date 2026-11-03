@@ -43,7 +43,7 @@ const source: LlmsContentSource = {
       description: 'Drizzle on D1',
       content: 'D1 is SQLite at the edge, accessed through Drizzle ORM.',
       order: 2,
-      group: 'features',
+      group: 'payment',
       updated: '2026-10-18',
     },
   ],
@@ -183,7 +183,7 @@ describe('renderLlmsFull', () => {
   it('按 frontmatter 的 group 分节，组内按 order 升序', () => {
     const out = renderFull('en')
     expect(out.indexOf('## Start')).toBeGreaterThan(-1)
-    expect(out.indexOf('## Feature Modules')).toBeGreaterThan(-1)
+    expect(out.indexOf('## Payments')).toBeGreaterThan(-1)
     expect(out.indexOf('### Getting Started')).toBeLessThan(out.indexOf('### Database'))
   })
 

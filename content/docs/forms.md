@@ -1,26 +1,28 @@
 ---
-title: Form conventions
-description: The unified TanStack Form + Zod + shadcn Field pattern, with a minimal copyable example
+title: Form Conventions
+description: The TanStack Form + Zod + shadcn Field pattern and its three hard rules
 locale: en
-order: 21
+order: 23
 group: develop
-updated: 2026-10-14
+updated: 2026-11-03
 ---
 
-Every form in this repo uses **TanStack Form + Zod `validators` + shadcn `Field`**. Do not
-hand-roll `useState` for errors, and do not write your own input controls.
+Every form uses **TanStack Form + Zod `validators` + shadcn `Field`**: error state lives in
+the form library, input controls come from `src/components/ui` (the shadcn Base UI build).
+Do not hand-roll `useState` for errors, and do not write your own input controls.
 
 ## Minimal example
 
 ```tsx
 import { useForm } from '@tanstack/react-form'
 import { z } from 'zod'
-import { AuthFormField } from '@/components/auth/AuthFormField'
+import { Field, FieldError, FieldLabel } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
 import { SubmitButton } from '@/components/auth/SubmitButton'
 
 const schema = z.object({ email: z.email() })
 
-function ExampleForm() {
+export function ExampleForm() {
   const form = useForm({
     defaultValues: { email: '' },
     validators: { onSubmit: schema },
@@ -39,7 +41,20 @@ function ExampleForm() {
       }}
     >
       <form.Field name="email">
-        {(field) => <AuthFormField field={field} label="Email" type="email" />}
+        {(field) => (
+          <Field data-invalid={field.state.meta.errors.length > 0}>
+            <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+            <Input
+              id={field.name}
+              type="email"
+              value={field.state.value}
+              aria-invalid={field.state.meta.errors.length > 0 || undefined}
+              onBlur={field.handleBlur}
+              onChange={(e) => field.handleChange(e.target.value)}
+            />
+            <FieldError errors={field.state.meta.errors} />
+          </Field>
+        )}
       </form.Field>
       <form.Subscribe selector={(state) => state.isSubmitting}>
         {(isSubmitting) => <SubmitButton pending={isSubmitting}>Save</SubmitButton>}
@@ -51,26 +66,20 @@ function ExampleForm() {
 
 ## Three rules you must follow
 
-### 1. `<form>` must set `noValidate`
-
-`<Input type="email">` triggers native **constraint validation**. On an invalid value the
-browser blocks the `submit` event outright, so `onSubmit` never runs — and neither does
-TanStack Form's schema validation nor its error messages. Validation belongs to the schema,
-so `noValidate` is not optional.
-
-### 2. Submit buttons must be disabled before hydration
-
-`SubmitButton` is disabled until hydration (see `useHydrated`). Without that defence, a
-click landing before React takes over degrades into a native GET submission, writing the
-fields (password included) into the URL, browser history, and the `Referer` header. Supply
-`pending` from `form.Subscribe`'s `isSubmitting` rather than a separate `useState`.
-
-### 3. Validation messages are injected by the schema factory
-
-The schema factories in `src/auth/validation.ts` **take the messages as an argument**
-(`AuthFormMessages`) instead of calling `m.*()` themselves. That keeps validation free of
-the Paraglide runtime and unit-testable without components; pages evaluate
-`authFormMessages()`, so error messages follow the language automatically.
+1. **`<form>` must set `noValidate`.** `<Input type="email">` triggers native constraint
+   validation; on an invalid value the browser blocks the `submit` event outright, so
+   `onSubmit` never runs and neither the schema validation nor its error messages ever
+   appear. Validation belongs to the schema.
+2. **Submit buttons must be disabled before hydration.** `SubmitButton` implements that
+   defence with `useHydrated`: a click landing before React takes over degrades into a
+   native GET submission, writing the fields into the URL, browser history, and the
+   `Referer` header. Feed `pending` from `form.Subscribe`'s `isSubmitting` rather than
+   opening a separate `useState` for submit state.
+3. **Validation messages are injected by the schema factory.** The factories in
+   `src/auth/validation.ts` **take the messages as an argument** (`AuthFormMessages`)
+   instead of calling `m.*()` themselves, so validation stays free of the Paraglide
+   runtime and unit-testable without components; pages evaluate `authFormMessages()`, so
+   error messages follow the language automatically.
 
 ```ts
 export function createLoginSchema(msg: AuthFormMessages) {
@@ -82,77 +91,30 @@ Each field uses `superRefine` to emit **exactly one** error: chained `.min().reg
 report both "required" and "invalid format" for the same empty value, and the user only
 needs the first.
 
-## Server errors
+## Where server errors go
 
-Field values, field-level errors, and submit state all live in TanStack Form. A **page-level**
-message (such as "incorrect email or password") stays in a component `useState`: TanStack
-Form 1.33 offers no type-safe way to set an arbitrary page-level error (`errorMap.onServer`
-requires declaring an `onServer` validator before it is writable).
+| Case | Where it goes |
+|---|---|
+| Successful action (save, update, send, delete) | toast: `toast.add({ type: 'success', title: '…' })` from `@/components/ui/toast` |
+| Failed form submission (the user has to go back and edit) | in-form: `<p role="alert" className="text-sm text-destructive">` |
 
-```tsx
-const [serverError, setServerError] = useState<string | null>(null)
+A page-level message (such as "incorrect email or password") stays in a component
+`useState`: TanStack Form 1.33 has no type-safe way to set an arbitrary page-level error
+(`errorMap.onServer` requires declaring an `onServer` validator before it is writable).
+Field-level errors are carried by `FieldError`, no hand-written wiring.
 
-const form = useForm({
-  // ...
-  onSubmit: async ({ value }) => {
-    setServerError(null)
-    const { error } = await signIn.email(value)
-    if (error) setServerError(error.message?.split('\n')[0] ?? m.auth_error_generic())
-  },
-})
-
-// rendering
-{serverError && <p role="alert" className="text-sm text-destructive">{serverError}</p>}
-```
-
-Field-level errors are wired to `aria-invalid` and `aria-describedby` automatically by
-`AuthFormField` — no hand-written wiring.
-
-## Where feedback goes: toast or in-page
-
-A message in the wrong place is worse than no message: an "already subscribed" line at the
-bottom of the page is outside the viewport right after the click that triggered it, so the
-user never sees it. Feedback is split by **where the user is looking**:
-
-| Case | Where it goes | Why |
-|---|---|---|
-| Successful action (save, update, send, delete) | toast | The result may be half a screen away from the control |
-| Checkout outcome (success / cancel / duplicate) | toast | The page is rebuilt after the redirect; there is no anchor for an inline line |
-| Failed form submission | in-form `<p role="alert">` | The user has to go back and edit; the clue must stay in place |
-| Field validation | under the field | Wired by `AuthFormField` |
-| Failure inside a dialog | inside the dialog | A toast sits behind the overlay and the focus trap |
-| List load failure | in page | That is page state, not the result of an action |
-
-`<Toaster />` is mounted once in `src/routes/__root.tsx`; business code only calls the
-singleton:
-
-```tsx
-import { toast } from '@/components/ui/toast'
-
-toast.add({ type: 'success', title: m.settings_profile_name_success() })
-```
-
-- `type` picks the icon: `success` / `info` / `warning` / `error` / `loading`.
-- Use `description` for a second line. Toasts dismiss after 5 seconds by default; pass an
-  explicit `timeout` when the copy needs longer.
-- One-shot messages driven by a `?query` parameter (Stripe checkout results, for example)
-  must be followed by a `replace` navigation that clears the parameter — otherwise every
-  reload re-shows a message that was already handled.
+The toast's `<Toaster />` is mounted once in `src/routes/__root.tsx`; business code only
+calls the singleton. `type` picks the icon (`success` / `info` / `warning` / `error` /
+`loading`) and toasts dismiss after 5 seconds by default.
 
 ## Where the components come from
 
-Input controls, labels, and error display all come from `src/components/ui` (the shadcn
-**Base UI** variant). Do **not** modify those files locally — that keeps them updatable from
-upstream. Add new controls with the CLI:
+Input controls, labels, and error display all come from `src/components/ui`. Do **not**
+modify those files locally — that keeps them updatable from upstream. Add new controls
+with the CLI:
 
 ```bash
 pnpm dlx shadcn@latest add <component> -y
 ```
 
-`AuthFormField` is a **thin adapter** between TanStack Form and `Field`: it only wires things
-up and carries no styling of its own.
-
-## Next steps
-
-- [Authentication](./auth) — full implementations of the sign-in / sign-up / forgot-password forms
-- [Account center](./auth-account) — the profile and security forms
+Full examples live in [Sign-in and Sign-up](./auth) and [Account Settings](./auth-account).

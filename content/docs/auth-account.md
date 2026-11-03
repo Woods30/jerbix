@@ -1,136 +1,52 @@
 ---
-title: Account center
-description: The session guard on protected routes, plus the profile, security, sessions, and notifications sections
+title: Account Settings
+description: The account area behind sign-in: profile, security, devices, and section entries
 locale: en
-order: 11
-group: features
-updated: 2026-10-20
+order: 10
+group: auth
+updated: 2026-11-03
 ---
 
-The account management area behind sign-in, at `/{locale}/dashboard/*`. Reach it from
-"Account settings" in the navbar user menu.
+The account area behind sign-in lives at `/{locale}/dashboard/*` and is reachable from the user menu in the navbar. Opening it while signed out redirects to `/{locale}/auth/login`.
 
-## Route structure
+![Account center · Profile](/docs/screenshots/settings-profile.png "Account center · Profile: name and email, with a verification entry point when the address is unverified")
 
-`dashboard.tsx` is a pathless layout route (the same technique as `docs`): it holds only the
-guard and the shell, no page content, so `/dashboard` itself is not a content page.
+## Routes and sections
 
-```
-src/routes/{-$locale}/_layout/dashboard.tsx              # guard + session + shell + <Outlet/>
-src/routes/{-$locale}/_layout/dashboard/index.tsx        # /dashboard → redirect to profile
-src/routes/{-$locale}/_layout/dashboard/profile.tsx      # Profile
-src/routes/{-$locale}/_layout/dashboard/security.tsx     # Security
-src/routes/{-$locale}/_layout/dashboard/sessions.tsx     # Sessions
-src/routes/{-$locale}/_layout/dashboard/notifications.tsx # Notifications (needs newsletter)
-```
+| Path | Section | What it does |
+|---|---|---|
+| `/dashboard/profile` | Profile | Change the display name, see the email verification state, resend verification when unverified |
+| `/dashboard/security` | Security | Change the password, change the email address, delete the account |
+| `/dashboard/sessions` | Sessions | See signed-in devices, revoke one or sign out all other devices |
+| `/dashboard/notifications` | Notifications | Subscribe and unsubscribe from mail; needs the `newsletter` module |
+| `/dashboard/billing` | Billing | Subscription state, renewal date, and transactions; needs the `payment` module |
+| `/dashboard/api-keys` | API keys | Create and delete keys; needs `features.enableApiKeys`, see [API Keys](./api-keys) |
+| `/dashboard/admin/users` | Users | Change roles, ban, delete, impersonate; needs the `admin` role and `features.enableAdmin`, see [Users and Roles](./user-management) |
+| `/dashboard/admin/revenue` | Revenue | Revenue and subscription overview; same gate as Users |
 
-To add a section: add a nav entry in `src/config/settings.ts`, add a page under `dashboard/`,
-and add a title in `getSettingsSectionMeta`. The shell renders it automatically.
+`/dashboard` is not a page of its own — it lands on Profile.
 
 ## Session guard
 
-`beforeLoad` in `dashboard.tsx` does two things:
+The `beforeLoad` in `src/routes/{-$locale}/_layout/dashboard.tsx` does two things: `assertPageEnabled('auth')` confirms the auth module is on, then `fetchSession()` reads the session. Without a session it redirects to the login page.
+
+The session cookie is httpOnly, so the client cannot read it — the session has to be read server-side:
 
 ```ts
-beforeLoad: async ({ params }) => {
-  assertPageEnabled('auth')
-  const session = await fetchSession()
-  if (!session) {
-    throw redirect({ to: '/{-$locale}/auth/login', params: { locale: params.locale } })
-  }
-  return { session }
-}
+// src/auth/session.ts
+const session = await getAuth(env).api.getSession({ headers: getRequestHeaders() })
 ```
 
-`fetchSession()` (`src/auth/session.ts`) is a **server function** reading the session via
-`getAuth(env).api.getSession({ headers: getRequestHeaders() })`. It has to be, because:
+Only the fields the pages need are handed down (`id` / `name` / `email` / `emailVerified` / `image` / `role`); child pages read them with `Route.useRouteContext()`.
 
-- the session cookie is httpOnly and unreadable from the client;
-- `getAuth` needs per-request env (the D1 binding), which the client does not have.
+## Add your own section
 
-The server function evaluates in place during SSR (no network round trip) and degrades to
-one RPC on client navigation, so both paths see the real session — the same reasoning as
-`fetchAuthProviderAvailability`.
+1. Add a nav entry in `getSettingsSections()` in `src/config/settings.ts` with its `id`, title, icon, and target route.
+2. Add the page file under `src/routes/{-$locale}/_layout/dashboard/`, with the file path matching the entry's `id`.
+3. Add the section title and description in `getSettingsSectionMeta()` in the same `src/config/settings.ts` file.
 
-The return value carries **only the fields the pages need** (`id` / `name` / `email` /
-`emailVerified` / `image`) rather than the whole session. Child pages read it via
-`Route.useRouteContext()`.
+The shell renders the sidebar entry and the breadcrumb from the `id`, so the layout component needs no change.
 
-## The four sections
+## Verify
 
-![Account center · Sessions](/docs/screenshots/settings-sessions.png "Sessions: the current session plus past devices, revocable individually or all at once")
-
-| Section | better-auth calls | Components used |
-|---|---|---|
-| **Profile** | `updateUser({ name })`; `sendVerificationEmail({ email, callbackURL })` when unverified | `Field` / `Input` / `Button` / `Badge` |
-| **Security** | `changePassword({ currentPassword, newPassword })`, `changeEmail({ newEmail, callbackURL })`, `deleteUser()` | `Field` / `AlertDialog` |
-| **Sessions** | `listSessions()`, `revokeSession({ token })`, `revokeOtherSessions()` | `Table` / `Button` / `Spinner` |
-| **Notifications** | `GET` / `POST` / `DELETE` `/api/newsletter` (see [Newsletter](./newsletter)) | `Switch` / `Field` |
-
-Conventions:
-
-- **Destructive actions** use `AlertDialog` for confirmation, never `window.confirm`.
-  Deleting the account navigates the whole page because the session is gone.
-- **Status markers** use `Badge` (e.g. email verification state), not a hand-rolled
-  `<span>` with a background colour.
-- **Empty and loading states** use `Spinner`, not a hand-rolled placeholder.
-- **Notifications** is gated entirely by the `newsletter` module: `beforeLoad` calls
-  `assertPageEnabled('newsletter')`, so when the module is off the page 404s and the menu
-  entry disappears too (`filterMenuItems` filters on `visibility.module`).
-- The **current password** field in change-password is only checked for presence, not against
-  `MIN_PASSWORD_LENGTH` — an old password may be shorter than the current floor, and
-  enforcing it there would lock users out of changing their password. Only the new
-  password uses the length floor.
-
-## Sidebar
-
-The shell (`src/components/dashboard/DashboardLayout.tsx`) **uses shadcn's `sidebar` (Base UI
-variant) directly** rather than reimplementing collapse, cookie persistence, or the mobile
-drawer — `SidebarProvider` and `Sidebar` already provide those, switching to a `Sheet` on
-narrow screens. This file only assembles them.
-
-It is deliberately **not shared** with the hand-built sidebar in `DocsLayout`: that one has
-its own cookie and collapse semantics, and merging them would only tangle both.
-
-The sidebar has three sections, bottom-up:
-
-| Section | Contents |
-|---|---|
-| `SidebarHeader` | Site logo, links to home; white plate in dark theme (same treatment as the marketing Navbar) |
-| `SidebarContent` | The section menu described above, copy from `getSettingsSections` |
-| `SidebarFooter` | User card (`SettingsUserCard`): avatar + name + email, expand to sign out |
-
-The user card is the **only** sign-out entry inside the account area — `dashboard` is a
-`_layout` route that does not render the marketing Navbar, so `UserMenu` is not visible
-here. The avatar comes from `SessionInfo.user.image` (the `users.image` column, written by
-Google sign-in); when empty it falls back to the first letter of `name` or email.
-
-The top bar (the `header` inside `SidebarInset`) holds three things, left to right:
-
-1. `SidebarTrigger` — the collapse button; click to shrink the sidebar to an icon rail,
-   click again to expand. Visible on every breakpoint; on narrow screens the sidebar is a
-   `Sheet` drawer and needs this button to open.
-2. A three-level breadcrumb — `Home › Account › Current section`. The first two levels are
-   `BreadcrumbLink`s, the last is a `BreadcrumbPage` (with `aria-current="page"`).
-3. `ThemeToggle` — top right. In the sidebar header it would fight the logo for space (the
-   collapsed sidebar is only ~3rem wide), and the marketing Navbar already puts it there.
-
-The top bar has **no** `<h1>`: the last breadcrumb level is already the page title, and
-repeating it would surface the same word twice — once visually, once in the accessibility
-tree. There is also **no** "Back to site" link — the logo is that entry point.
-
-## Page metadata
-
-Each child page's `head()` runs `seo()` for meta and canonical and passes
-`noindex: true` — personal pages should not be indexed.
-
-## References
-
-- [Better Auth options](https://www.better-auth.com/docs/reference/options) — account fields and session settings
-- [TanStack Start authentication guide](https://tanstack.com/start/latest/docs/framework/react/guide/authentication) — `beforeLoad` guards and full-page redirects
-
-## Next steps
-
-- [Authentication](./auth) — sign-in, sign-up, and the email flows
-- [Form conventions](./forms) — the TanStack Form pattern these forms use
-- [Newsletter](./newsletter) — the subscribe API behind notification preferences
+Sign in and open `/{locale}/dashboard/profile`; the name and email should be there. Opening the same address while signed out sends you to the login page.

@@ -142,9 +142,9 @@ describe('docs 详情页真实渲染', () => {
     expect(pageTitle()).toBe('快速开始')
   })
 
-  it('/en/docs/getting-started 渲染英文标题 "Getting Started" 而非 404', async () => {
+  it('/en/docs/getting-started 渲染英文标题 "Quick Start" 而非 404', async () => {
     setLocale('en', { reload: false })
     await renderRoute('/en/docs/getting-started')
-    expect(pageTitle()).toBe('Getting Started')
+    expect(pageTitle()).toBe('Quick Start')
   })
 })

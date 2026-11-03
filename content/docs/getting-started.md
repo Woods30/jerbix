@@ -1,147 +1,118 @@
 ---
-title: Getting Started
-description: From clone to live — run it, customize it, deploy it
+title: Quick Start
+description: Six steps from clone to live
 locale: en
 order: 1
 group: start
-updated: 2026-10-21
+updated: 2026-11-03
 ---
 
-This page takes you from cloning the repo to a live site. Four stages, every step with a
-copyable command.
-
-When you finish you have a site on Cloudflare Workers with your own name, logo, and
-navigation.
+Six steps take you from a fresh clone to a live site. Every step comes with a command, and every step leaves you with something you can look at.
 
 ## Prerequisites
 
 | Need | Notes |
 |---|---|
-| Node.js 22 / 24 | Even LTS only. Odd versions (23 / 25) are unsupported by `vitest@5` |
-| pnpm | Version pinned by `packageManager` in `package.json`; do not use pnpm 9 |
-| Cloudflare account | The free plan is enough. You can run locally without one |
+| Node.js 22 / 24 | `package.json` `engines` allows `^22.12.0`, `^24.0.0`, and newer |
+| pnpm | Version pinned by `packageManager` in `package.json` (currently `pnpm@12.4.2`) — do not use another |
+| Cloudflare account | Optional. You can run locally without one; it is needed for deploys and for creating resources |
 
-```bash
-node --version   # v22.x or v24.x
-pnpm --version
-```
+## Steps
 
-## Setup
+1. **Install dependencies.**
 
-### 0. Make it your own project
+   ```bash
+   pnpm install
+   ```
 
-```bash
-pnpm run init
-```
+2. **Make it your own project.**
 
-The script asks for a site name, short name, domain, and support email, then:
+   ```bash
+   pnpm run init
+   ```
 
-- replaces the brand name across messages, `manifest`, `package.json`, and `wrangler.jsonc`;
-- resets content module switches to your choices (**all off by default**; use
-  `--modules docs,blog` to enable them);
-- generates `.env` from `.env.example` and fills in empty keys such as `BETTER_AUTH_SECRET`.
+   The script asks for a site name, a short name, a production domain, a support email, and which
+   modules to enable, then rewrites in one pass: the package name in `package.json`, the brand copy
+   in `messages/zh.json` and `messages/en.json`, the site name in `public/manifest.json`, the name /
+   wordmark accent / support email / module and feature switches in `src/config/website.ts`, the
+   one-time product name in `src/config/products.ts`, the Worker name / domain / resource names in
+   `wrangler.jsonc`, and the empty `BETTER_AUTH_SECRET` and site URL in `.env`. To skip the prompts,
+   pass everything at once:
 
-Pressing Enter through every prompt gives you a runnable project. `--non-interactive` is for
-scripted setups, and `--dry-run` prints the files that would change. Re-running is safe:
-existing `.env` values and brand names are not rewritten.
+   ```bash
+   pnpm run init -- --name "<your-site-name>" --slug <your-slug> \
+     --domain <your-domain.com> --email <your-support-email> --modules docs,auth
+   ```
 
-> Modules default to off on purpose. The template ships with `mail`, `analytics`, and others
-> enabled, and each of them requires its own credentials — a fresh clone would otherwise fail
-> production validation immediately. Turn on what you need.
+   `--dry-run` prints the planned changes without writing them; `--non-interactive` never asks anything.
 
-### 1. Install dependencies
+   > The initializer **turns every module off by default** — `docs`, `blog`, `mail`, `payment` and
+   > the rest stay off unless you list them in `--modules`. The template ships with them on, but
+   > each one needs credentials, so a clone with nothing configured would fail production
+   > validation. Turn on what you need — see [Site Configuration](./configuration).
 
-```bash
-pnpm install
-```
+3. **Create the Cloudflare resources and write your local env.**
 
-### 2. Provision local resources
+   ```bash
+   pnpm run setup
+   ```
 
-```bash
-pnpm run setup
-```
+   How `setup` differs from `init`: `init` only touches code and copy, never the cloud; `setup`
+   creates (or reuses) a D1 database and a KV namespace in your account, writes their IDs back into
+   `wrangler.jsonc`, writes `CLOUDFLARE_DATABASE_ID` and `BETTER_AUTH_SECRET` into `.env`, and
+   applies a local migration while it is at it. It also asks whether you want Stripe or Creem, which
+   email provider, and whether to send Discord notifications — whatever you answer lands in `.env`.
 
-The script asks for a project name, then creates (or reuses) a D1 database and a KV
-namespace, generates the auth secret, and writes the results to `.env` and
-`wrangler.jsonc`. Existing `.env` values are kept — only the keys the script manages
-are rewritten.
+   Values already present in `.env` are kept: re-running `setup` will not replace your
+   `BETTER_AUTH_SECRET` or sign everyone out.
 
-R2 is **not** created for you: the bucket must be activated once in the Cloudflare
-dashboard (it requires a payment method, so the API cannot do it). See
-[Storage](./storage) for the manual steps.
+   R2 is **not** created for you — the bucket must be activated once in the Cloudflare dashboard (it
+   requires a payment method, so the API cannot do it); see [File Storage](./storage) for the manual
+   steps. If you are not logged in to Cloudflare the script warns and continues — local development
+   uses a SQLite-backed D1 and needs no real resources:
 
-If you are not logged in to Cloudflare it warns you but continues — local development uses
-a SQLite-backed D1 and needs no real resources. To log in:
+   ```bash
+   pnpm exec wrangler login
+   ```
 
-```bash
-pnpm exec wrangler login
-```
+4. **Start the dev server.**
 
-### 3. Start the dev server
+   ```bash
+   pnpm dev
+   ```
 
-```bash
-pnpm dev
-```
+   Open `http://localhost:3000`. If the database was not initialized, run it by hand:
 
-Open `http://localhost:3000`. If the database was not initialized, run it manually:
+   ```bash
+   pnpm run db:migrate:local
+   ```
 
-```bash
-pnpm exec wrangler d1 migrations apply DB --local
-```
+5. **Customize the site.** Name, logo, theme colors, module switches, and social links all live in
+   `src/config/website.ts` — field by field in [Site Configuration](./configuration).
 
-### 4. Customize the site
+6. **Deploy.**
 
-All site identity lives in `src/config/website.ts`:
+   ```bash
+   pnpm deploy
+   ```
 
-```ts
-// src/config/website.ts
-export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
-  return {
-    baseUrl: env.VITE_BASE_URL,
-    metadata: {
-      name: '<your-site-name>',                // ← your site name
-      images: { ogImage: '/logo.png', /* … */ },
-    },
-    docs: { enabled: true },                 // ← set false to drop the docs site
-    // …
-  }
-}
-```
+   This runs production env validation → build → client bundle leak check → `wrangler deploy`.
 
-See [Website Config](./configuration) for every field.
+## Verification
 
-### 5. Deploy
+- Local: open `http://localhost:3000` in a browser; a rendered homepage passes.
+- Live: the output of `pnpm deploy` includes the live URL (`<worker name>.<account subdomain>.workers.dev`) — if it opens, the deploy passed.
 
-```bash
-pnpm deploy
-```
+## Notes
 
-This runs production env validation → build → client bundle leak check → `wrangler deploy`.
+- A secret must never carry the `VITE_` prefix: `VITE_` variables are inlined into the browser
+  bundle at build time and anyone who opens the page can read them. `pnpm check:client-bundle`
+  scans the build output and fails on a leak.
+- Values in your local `.env` do **not** become production secrets on their own. Configure production
+  values separately (GitHub production Environment or `wrangler secret put`) — see
+  [Environment Variables](./environment).
+- Before deploying, set `VITE_BASE_URL` in `.env.production` to a real HTTPS domain:
+  `pnpm check:env:prod` rejects `localhost` and placeholder domains.
 
-> Local `.env` values do **not** become production secrets. Configure them separately with
-> `wrangler secret put`, and **never** put a secret behind a `VITE_` prefix — those are
-> inlined into the browser bundle.
-
-To deploy automatically on push to `main`, see
-[Cloudflare · CI deployment](./cloudflare#ci-deployment).
-
-## Commands
-
-| Command | Purpose |
-|---|---|
-| `pnpm dev` | Dev server on port 3000 |
-| `pnpm build` | Production build |
-| `pnpm deploy` | Validate → build → check → deploy |
-| `pnpm check` | Biome + TypeScript + env + locale (run before committing) |
-| `pnpm test` | Unit and component tests |
-
-## References
-
-- [Wrangler configuration](https://developers.cloudflare.com/workers/wrangler/configuration/)
-- [Cloudflare D1](https://developers.cloudflare.com/d1/)
-
-## Next steps
-
-- [Website Config](./configuration) — name, logo, module switches
-- [Cloudflare](./cloudflare) — account setup and CI deployment
-- [Project Structure](./project-structure) — where to change things
+Once it is configured, continue with [Site Configuration](./configuration) and
+[Deploy to Cloudflare](./cloudflare).

@@ -151,7 +151,11 @@ export const llmsConfig: LlmsConfig = {
     start: { en: 'Start', zh: '开始' },
     config: { en: 'Configuration', zh: '配置' },
     deploy: { en: 'Deployment', zh: '部署' },
-    features: { en: 'Feature Modules', zh: '功能模块' },
+    auth: { en: 'Authentication & Accounts', zh: '认证与账户' },
+    payment: { en: 'Payments', zh: '支付' },
+    email: { en: 'Email', zh: '邮件' },
+    notification: { en: 'Notifications', zh: '通知' },
+    analytics: { en: 'Analytics', zh: '分析' },
     develop: { en: 'Development', zh: '开发' },
   },
   sections: {

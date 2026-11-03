@@ -1,136 +1,89 @@
 ---
-title: Storage
-description: Creating and binding Cloudflare R2, plus the file API
+title: File Storage
+description: Enabling, binding, and using Cloudflare R2
 locale: en
 order: 7
 group: deploy
-updated: 2026-10-21
+updated: 2026-11-03
 ---
 
-Files live in **Cloudflare R2**, accessed through the `BUCKET` binding, with zero egress
-fees. Code is in `src/storage/`.
+User uploads live in **Cloudflare R2**, reached through the Workers `BUCKET` binding with zero egress fees. The code is in `src/storage/`.
 
-> **The storage module is implemented but not wired up**: `features.enableFileUpload` is
-> `false` by default and no route uses it. This page covers what to do when you need it —
-> R2 not being enabled does not affect the template.
+> The storage layer is implemented, but the repository ships **no upload route**: `features.enableFileUpload` is `false` by default and there is no `/api/files` route under `src/routes/api/`. This page covers how to wire it up when you need it. Not connecting R2 does not affect the template.
 
-## Prerequisites
+## Steps
 
-The token needs **Account → Workers R2 Storage → Edit**, see [Cloudflare](./cloudflare).
+1. **Enable R2 in the Dashboard.** This cannot be done through the API — R2 must be activated once in the Dashboard (a payment method is required; the free tier costs nothing). Until then the API rejects requests:
 
-## Setup
+   ```text
+   [code: 10042] Please enable R2 through the Cloudflare Dashboard.
+   ```
 
-### 1. Enable R2 in the Dashboard
+2. **Create a bucket.**
 
-**This cannot be skipped and cannot be done via API.** R2 must be activated once:
+   ```bash
+   pnpm exec wrangler r2 bucket create <your-bucket-name>
+   ```
 
-> Dashboard → **R2** → follow the prompt
+3. **Configure the binding.** Uncomment the `r2_buckets` block in `wrangler.jsonc` and fill it in:
 
-A payment method is required (the free tier covers 10 GB storage and 1M Class A
-operations per month).
+   ```jsonc title="wrangler.jsonc"
+   "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "<your-bucket-name>" }]
+   ```
 
-Without it the API rejects requests:
+   The `binding` is the name code reads (`env.BUCKET`) and must match `src/types/cloudflare.d.ts`. Without the binding `env.BUCKET` is `undefined` and `getStorageProvider()` throws — that is the intended degradation.
 
-```
-[code: 10042] Please enable R2 through the Cloudflare Dashboard.
-```
+4. **Turn on the file upload flag.**
 
-### 2. Create a bucket
+   ```ts
+   // src/config/website.ts
+   features: {
+     enableFileUpload: true,
+   }
+   ```
 
-```bash
-pnpm exec wrangler r2 bucket create saas-template-uploads
-```
+   Rebuild and redeploy afterwards.
 
-### 3. Add the binding
-
-```jsonc title="wrangler.jsonc"
-{
-  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "saas-template-uploads" }]
-}
-```
-
-`binding` is the name code reads (`env.BUCKET`) and must match `src/types/cloudflare.d.ts`.
-
-> The block is **commented out** by default because R2 needs Dashboard activation. Uncomment
-> it and redeploy once enabled. Without the binding `env.BUCKET` is `undefined` and
-> `getStorageProvider()` throws — the expected degraded behavior.
-
-### 4. Enable uploads
-
-```ts
-// src/config/website.ts
-features: {
-  enableFileUpload: true,
-}
-```
-
-Rebuild and redeploy.
+5. **Add your own upload route.** The repository has no upload API; create a route under `src/routes/api/` and call `uploadFile` inside it (see the usage below).
 
 ## Usage
 
-Import from `@/storage`; each function resolves the provider from AsyncLocalStorage:
+All functions are imported from `@/storage` and resolve the current request's provider through AsyncLocalStorage:
 
 ```ts
 import { uploadFile, deleteFile, downloadFile, getFileInfo, listUserFiles } from '@/storage'
-```
 
-### Upload
-
-```ts
-const result = await uploadFile(fileArrayBuffer, 'photo.png', 'image/png', {
-  folder: 'uploads',        // allowlist: uploads / avatars / documents
-  userId: 'user_abc',       // optional, becomes part of the key
-  visibility: 'private',    // 'private' (default) | 'public'
+// Upload: folder is limited to uploads / avatars / documents
+const result = await uploadFile(arrayBuffer, 'photo.png', 'image/png', {
+  folder: 'uploads',
+  userId: 'user_abc',
+  visibility: 'private',
 })
 // → { key, url, metadata }
+
+// Delete: the second argument true means the caller confirmed ownership
+await deleteFile(key, true)
+
+// Download: private files require an explicit true
+const stream = await downloadFile(key, true)
+
+// Look up
+const info = await getFileInfo(key)                 // { key, size, contentType, uploadedAt } | null
+const { objects, nextCursor } = await listUserFiles('user_abc')
 ```
 
-The key looks like `uploads/user_abc/1729000000000-photo.png`.
+## Security rules
 
-### Delete and download
+- **The bucket stays private.** Do not attach a public domain and do not use an `r2.dev` subdomain; every read and write goes through the Worker on the server.
+- **Authorization is not in the storage layer.** `deleteFile` and `downloadFile` only look at the `authorized` boolean and never query ownership, so the caller must check the session and the ownership first — otherwise any signed-in user can delete or overwrite someone else's files.
+- The key is assembled on the server, shaped like `uploads/<userId>/<timestamp>-<filename>`: `folder` must be a whitelisted value, and `/`, `\`, `..` and a leading `.` in the filename or user id are stripped while other illegal characters become `_`.
 
-Neither method checks ownership — callers must verify the key belongs to the current user:
+## Common commands
 
-```ts
-await deleteFile(key, true)      // second arg true = authorization confirmed
-await downloadFile(key, true)    // required for private objects
-```
-
-Omitting `authorized` throws. That is deliberate: it prevents forgetting the check.
-
-### Inspect
-
-```ts
-const info = await getFileInfo(key)          // { key, size, contentType, uploadedAt } | null
-const { files, cursor } = await listUserFiles(userId)
-```
-
-## Security notes
-
-`buildKey` sanitizes user input: strips `/`, `\`, `..`, and leading `.`, replaces other
-unsafe characters with `_`; `folder` only accepts allowlisted values; the assembled key is
-then asserted to start with an allowlisted prefix.
-
-> **Authorization is not part of the storage layer.** `deleteFile` / `downloadFile` only
-> honor the `authorized` boolean and never query ownership. Any upload route must verify
-> the session and ownership first, or any signed-in user can delete someone else's files.
-
-## Commands
-
-| Command | Purpose |
+| Command | What it does |
 |---|---|
 | `pnpm exec wrangler r2 bucket create <name>` | Create a bucket |
 | `pnpm exec wrangler r2 bucket list` | List buckets |
 | `pnpm exec wrangler r2 object put <bucket>/<key> --file <path>` | Upload an object |
 
-## References
-
-- [Cloudflare R2](https://developers.cloudflare.com/r2/)
-- [R2 Workers API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/)
-- [R2 pricing and free tier](https://developers.cloudflare.com/r2/pricing/)
-
-## Next steps
-
-- [Cache](./cache) — KV cache
-- [Website config](./configuration) — the `features.enableFileUpload` switch
-- [Database](./database) — where file metadata lives
+Once this is wired up you can move on to [Cache](./cache).

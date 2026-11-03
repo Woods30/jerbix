@@ -1,77 +1,37 @@
 ---
 title: 测试
-description: 三层测试的分工、常用命令与新增用例的取舍
+description: 三层测试的分工、常用命令与新增 E2E 的判断标准
 locale: zh
-order: 22
+order: 25
 group: develop
-updated: 2026-10-29
+updated: 2026-11-03
 ---
 
-**E2E 只守「用户能不能完成一件事」，细节交互交给组件测试。** 这页讲怎么分工，
-以及新增用例前该先问自己什么。
+**E2E 只守「用户能不能完成一件事」，细节交互交给组件测试。** 这页讲三层测试怎么分工，
+以及新增用例前该先问什么。
 
-## 前提条件
+## 三层分工
 
-本地能跑 `pnpm test`，见[快速开始](./getting-started)。
+| 层 | 范围 | 位置 | 运行方式 |
+|---|---|---|---|
+| 单元 | 纯逻辑：模块门禁、主题解析、locale 归一化、env 校验、邮件模板 | `tests/unit/` | `vitest run --project unit` |
+| 组件 | 单页面 / 单组件的交互与渲染：表单校验、菜单开关、断点布局、文案 | `tests/components/` | `vitest run --project components`（jsdom） |
+| E2E | 跨页面、跨服务的用户旅程：注册登录、个人中心读写、模块门禁、关键页面可访问 | `e2e/` | `pnpm test:e2e`（Playwright） |
 
-## 设置
+另有 `tests/workers/`，在 Cloudflare Workers 运行时里跑，用 `pnpm test:workers` 单独执行，
+不并入 `pnpm test`。
 
-### 三层分工
+## 什么该写 E2E
 
-| 层 | 范围 | 位置 |
-|---|---|---|
-| 单元测试 | 纯逻辑：门禁、主题解析、locale 归一化、env 校验、邮件模板 | `tests/unit/` |
-| 组件测试 | 单页面 / 单组件的交互与渲染：表单校验、菜单开关、断点布局、锚点、文案 | `tests/components/` |
-| E2E | 跨页面、跨服务的用户旅程：注册登录、个人中心读写、模块门禁、关键页面可访问 | `e2e/` |
+新增 E2E 前先问这两句：
 
-### 什么该写 E2E
+1. **这条用例守的是哪条核心流程？** 答不上来就下沉到组件测试。
+2. **它真的需要真实浏览器、真实服务端、真实数据库吗？** 只是元素位置、断点下的溢出、
+   动画开关、hover 位移、锚点滚动、TOC 结构、单个字段的校验提示、静态文件内容
+   （sitemap / robots / manifest）的话，用组件测试或构建期断言覆盖，成本低一个数量级。
 
-**写**：需要真实浏览器、真实服务端、真实数据库才能验证的路径——会话 cookie、重定向、
-SSR 与 hydration、路由守卫、API 与页面联动。
-
-**不写**：元素位置、断点下的溢出、动画开关、hover 位移、锚点滚动、TOC 结构、单个字段
-的校验提示、静态文件内容（sitemap / robots / manifest）。这些用组件测试或构建期断言
-覆盖，成本低一个数量级。
-
-新增 E2E 前先问：「这条用例守的是哪条核心流程？」答不上来就下沉到组件测试。单个 spec
-保持在 10 条以内，整套 E2E 目标 5 分钟内跑完。跨语言行为由单元测试覆盖，E2E 只在**一个**
-locale 上跑主流程。
-
-### 当前 E2E 基线
-
-| spec | 守什么 |
-|---|---|
-| `auth.spec.ts` | 注册无会话 → 未验证登录被拒绝 → 邮件验证并自动登录 → 登出；字段校验在提交前拦下 |
-| `settings.spec.ts` | 路由守卫、默认落点、昵称写入 D1、登出后会话失效 |
-| `docs.spec.ts` | `/docs` 重定向、⌘K 搜索 → 跳转、侧栏偏好由服务端回读 |
-| `marketing.spec.ts` | 首页渲染 + 语言切换走真实 `/en` 前缀 |
-| `hydration.spec.ts` | zh / en 首页水合无 React / CSP 报错 |
-| `site-config.spec.ts` | 关闭模块的 API 返回 404 而非假成功 |
-| `payment.spec.ts` | 已订阅后不能再买；账单页显示套餐名 / 续费日期 / 金额 |
-
-> `payment.spec.ts` 需要 `.env` 里配好 `VITE_PAYMENT_PROVIDER` 与 `STRIPE_SECRET_KEY`。
-> 未配置时**跳过**而不是失败——模板开箱没有凭据是正常状态。
-> 它不真的打 Stripe：用 `scripts/e2e-seed-subscription.ts` 往本地 D1 写一条 `active`
-> 订阅来复现「已订阅」。价格锚点（`lookup_key`）写在 `src/config/products.ts` 里，
-> 不在 env。
-
-### 本地邮件捕获
-
-`pnpm test:e2e` 自动启动测试专用 server，在 Vite 传输层将 Resend 请求定向到本地内存捕获服务，并使用合成邮件配置。注册、模板渲染、验证链接和会话仍走真实产品实现，不发送真实邮件。个人中心与支付测试使用本地 D1 的已验证账号 fixture，再通过真实密码登录。
-
-测试不复用普通 `pnpm dev` server，也不接受 `.dev.vars` 覆盖。若 3000 端口已占用，可以使用独立端口：
-
-```bash
-E2E_BASE_URL=http://localhost:3107 pnpm test:e2e
-```
-
-CI 手工启动 server 时使用 `pnpm exec tsx e2e/global-setup.ts`，再以 `E2E_NO_SERVER=1` 运行测试；global setup 会检查本地邮件捕获入口，拒绝连接未安装测试传输层的 server。
-
-### 写测试的两个坑
-
-- **点按钮前要等水合。** 水合未完成时点击会静默失败——没有报错、没有导航，表现和
-  产品 bug 完全一样。
-- **并发注册的邮箱要加随机段。** 只用 `Date.now()` 在 `fullyParallel` 下会撞车。
+单条 spec 保持在 10 条以内，整套 E2E 目标 5 分钟内跑完。跨语言行为由单元测试覆盖，
+E2E 只在一个 locale 上跑主流程。
 
 ## 命令
 
@@ -80,21 +40,26 @@ CI 手工启动 server 时使用 `pnpm exec tsx e2e/global-setup.ts`，再以 `E
 | `pnpm test` | 全部单元 + 组件测试 |
 | `pnpm test:affected` | 仅跑受影响的测试 |
 | `pnpm test:watch` | watch 模式 |
+| `pnpm test:workers` | Workers 运行时测试 |
 | `pnpm test:e2e` | Playwright E2E |
 | `pnpm test:e2e:ui` | Playwright UI 模式 |
 | `pnpm exec vitest run --project unit` | 只跑单元测试 |
 | `pnpm exec vitest run --project components` | 只跑组件测试（jsdom） |
 
-> `pnpm test` 会先跑 `locale:compile`，在非交互环境可能被提问卡住。CI 里按 `--project`
-> 分开跑更稳。
+`pnpm test` 会先跑 `locale:compile`，在非交互环境可能被提问卡住——CI 里按 `--project`
+分开跑更稳。
 
-## 参考资料
+E2E 会启动一个测试专用 server，端口被占用时换一个：
 
-- [Vitest](https://vitest.dev/)
-- [Playwright](https://playwright.dev/docs/intro)
+```bash
+E2E_BASE_URL=http://localhost:3107 pnpm test:e2e
+```
 
-## 下一步
+## 两个坑
 
-- [目录结构](./project-structure)——测试文件放在哪
-- [表单约定](./forms)——表单相关的组件测试
-- [Cloudflare](./cloudflare)——CI 与自动部署
+- **点按钮前要等水合。** 水合未完成时点击会静默失败——没有报错、没有导航，表现和
+  产品 bug 完全一样。
+- **并发注册的邮箱要加随机段。** 只用 `Date.now()` 在 `fullyParallel` 下会撞车。
+
+测试文件放哪、怎么配模块开关见 [目录结构](./project-structure)；表单相关的组件测试见
+[表单约定](./forms)。

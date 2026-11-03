@@ -1,137 +1,110 @@
 ---
 title: 快速开始
-description: 从克隆到上线的一条线：跑起来、改站点信息、部署
+description: 从克隆到上线的六个步骤
 locale: zh
 order: 1
 group: start
-updated: 2026-10-21
+updated: 2026-11-03
 ---
 
-这页带你从克隆仓库走到线上可访问。全程只有四个阶段，每一步都给出可复制的命令。
+从克隆仓库到线上可访问，一共六步。每一步都给命令，跑完就能看到结果。
 
-做完之后你会得到一个跑在 Cloudflare Workers 上的站点，名称、Logo、导航都是你自己的。
-
-## 前提条件
+## 前提
 
 | 需要 | 说明 |
 |---|---|
-| Node.js 22 / 24 | 偶数 LTS。奇数版本（23 / 25）不受 `vitest@5` 支持 |
-| pnpm | 版本由 `package.json` 的 `packageManager` 指定，不要用 pnpm 9 |
-| Cloudflare 账号 | 免费套餐足够。没有也能先在本地跑通 |
+| Node.js 22 / 24 | `package.json` 的 `engines` 允许 `^22.12.0`、`^24.0.0` 及更高 |
+| pnpm | 版本由 `package.json` 的 `packageManager` 指定（当前 `pnpm@12.4.2`），不要用别的版本 |
+| Cloudflare 账号 | 可选。没有也能先在本地跑通，部署与建资源时才需要 |
 
-```bash
-node --version   # v22.x 或 v24.x
-pnpm --version
-```
+## 步骤
 
-## 设置
+1. **安装依赖。**
 
-### 0. 把它变成你自己的项目
+   ```bash
+   pnpm install
+   ```
 
-```bash
-pnpm run init
-```
+2. **把它变成你自己的项目。**
 
-初始化脚本会问站点名、短名、域名与支持邮箱，然后：
+   ```bash
+   pnpm run init
+   ```
 
-- 把文案、`manifest`、`package.json` 与 `wrangler.jsonc` 里的品牌名换成你的；
-- 按你的选择重设内容模块开关（**默认全关**，用 `--modules docs,blog` 打开）；
-- 从 `.env.example` 生成 `.env`，补上 `BETTER_AUTH_SECRET` 等空着的键。
+   脚本问站点名、短名、生产域名、支持邮箱，以及要开哪些模块，然后一次性改好：`package.json`
+   的包名、`messages/zh.json` 与 `messages/en.json` 的品牌文案、`public/manifest.json` 的站点名、
+   `src/config/website.ts` 的站名 / 字标强调色 / 支持邮箱 / 模块与功能开关、
+   `src/config/products.ts` 的一次性商品名、`wrangler.jsonc` 的 Worker 名 / 域名 / 资源名，
+   以及 `.env` 里空着的 `BETTER_AUTH_SECRET` 与站点地址。不想交互就一次给全：
 
-一路回车即可得到可运行的结果；`--non-interactive` 供脚本化场景使用，
-`--dry-run` 只打印将要改动的文件。重跑是安全的：已有的 `.env` 值与品牌不会被再次改写。
+   ```bash
+   pnpm run init -- --name "<your-site-name>" --slug <your-slug> \
+     --domain <your-domain.com> --email <your-support-email> --modules docs,auth
+   ```
 
-> 模块默认全关是有意的：模板出厂时 `mail`、`analytics` 等模块是开的，而它们各自要求
-> 对应的凭据，一个什么都没配的克隆者会卡在生产校验上。按需打开，缺什么补什么。
+   `--dry-run` 只打印将要改动的文件，`--non-interactive` 不提问。
 
-### 1. 安装依赖
+   > 初始化脚本**默认把所有模块关掉**（`docs`、`blog`、`mail`、`payment` 等不在
+   > `--modules` 名单里就是关的）。模板出厂时这些模块是开的，而它们各自要凭据，
+   > 全开会让什么都没配的克隆者卡在生产校验上。按需再开，见[网站配置](./configuration)。
 
-```bash
-pnpm install
-```
+3. **创建 Cloudflare 资源并写好本地环境变量。**
 
-### 2. 配置本地资源
+   ```bash
+   pnpm run setup
+   ```
 
-```bash
-pnpm run setup
-```
+   `setup` 与 `init` 的分工：`init` 只改代码与文案，不碰云端；`setup` 在你的账号下建（或复用）
+   D1 数据库与 KV namespace，把资源 ID 写回 `wrangler.jsonc`，把 `CLOUDFLARE_DATABASE_ID` 与
+   `BETTER_AUTH_SECRET` 写进 `.env`，并顺手应用一次本地迁移。它还会问你要不要 Stripe / Creem、
+   哪种邮件 provider、要不要 Discord 通知，填了就一并写进 `.env`。
 
-脚本会问你项目名，然后创建（或复用）D1 数据库与 KV namespace，生成认证密钥，
-把结果写进 `.env` 与 `wrangler.jsonc`。`.env` 里已有的值会保留——脚本只改写自己管的那几个键。
+   已有的 `.env` 值不会被覆盖：重跑一次 `setup` 不会换掉你的 `BETTER_AUTH_SECRET`，也不会把
+   已登录的人踢下线。
 
-R2 **不会**被自动创建：bucket 需要先在 Cloudflare Dashboard 开通一次（要绑支付方式，
-API 代劳不了）。手动步骤见 [存储](./storage)。
+   R2 **不会**被自动创建——bucket 要先在 Cloudflare Dashboard 开通一次（需绑支付方式，API
+   代劳不了），手动步骤见[文件存储](./storage)。没有登录 Cloudflare 时脚本只警告、继续执行，
+   本地开发用 D1 的 SQLite 模拟，不需要真实资源：
 
-没有登录 Cloudflare 时脚本会提示，但仍可继续——本地开发用 D1 的 SQLite 模拟，
-不需要真实资源。登录方式：
+   ```bash
+   pnpm exec wrangler login
+   ```
 
-```bash
-pnpm exec wrangler login
-```
+4. **启动开发服务器。**
 
-### 3. 启动
+   ```bash
+   pnpm dev
+   ```
 
-```bash
-pnpm dev
-```
+   打开 `http://localhost:3000`。数据库没初始化成功就手动跑一次：
 
-打开 `http://localhost:3000`。若数据库没初始化成功，手动跑一次：
+   ```bash
+   pnpm run db:migrate:local
+   ```
 
-```bash
-pnpm exec wrangler d1 migrations apply DB --local
-```
+5. **改站点信息。** 站名、Logo、主题配色、模块开关、社交链接都在 `src/config/website.ts`，
+   逐项见[网站配置](./configuration)。
 
-### 4. 改站点信息
+6. **部署。**
 
-所有站点信息集中在 `src/config/website.ts`：
+   ```bash
+   pnpm deploy
+   ```
 
-```ts
-// src/config/website.ts
-export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
-  return {
-    baseUrl: env.VITE_BASE_URL,
-    metadata: {
-      name: '<your-site-name>',                // ← 改成你的站点名
-      images: { ogImage: '/logo.png', /* … */ },
-    },
-    docs: { enabled: true },                 // ← 不需要文档站就改 false
-    // …
-  }
-}
-```
+   依次跑生产 env 校验 → 构建 → 客户端 bundle 泄漏检查 → `wrangler deploy`。
 
-完整字段见[网站配置](./configuration)。
+## 验证
 
-### 5. 部署
+- 本地：浏览器打开 `http://localhost:3000`，首页正常渲染即通过。
+- 线上：`pnpm deploy` 输出里带线上地址（`<Worker 名>.<账号子域>.workers.dev`），能打开即通过。
 
-```bash
-pnpm deploy
-```
+## 注意事项
 
-依次执行生产 env 校验 → 构建 → 客户端 bundle 泄漏检查 → `wrangler deploy`。
+- secret 绝不能带 `VITE_` 前缀：`VITE_` 变量在构建时就被内联进浏览器 bundle，任何访客都能
+  看到。`pnpm check:client-bundle` 会扫描构建产物，发现泄漏即失败。
+- 本地 `.env` 里的值**不会**自动变成生产 secret。生产值要单独配（GitHub production
+  Environment 或 `wrangler secret put`），见[环境变量](./environment)。
+- 部署前把 `.env.production` 的 `VITE_BASE_URL` 改成真实 HTTPS 域名，
+  `pnpm check:env:prod` 会拒绝 `localhost` 与占位域名。
 
-> 本地 `.env` **不会**自动成为生产 secret。部署前需用 `wrangler secret put` 单独配置，
-> 且**不得**把 secret 放进 `VITE_` 变量——它们会进入浏览器 bundle。
-
-想推送到 `main` 就自动部署，见 [Cloudflare · 自动部署](./cloudflare#自动部署)。
-
-## 命令
-
-| 命令 | 作用 |
-|---|---|
-| `pnpm dev` | 开发服务器，端口 3000 |
-| `pnpm build` | 生产构建 |
-| `pnpm deploy` | 校验 → 构建 → 检查 → 部署 |
-| `pnpm check` | Biome + TypeScript + env + locale（提交前必跑） |
-| `pnpm test` | 单元与组件测试 |
-
-## 参考资料
-
-- [Wrangler 配置](https://developers.cloudflare.com/workers/wrangler/configuration/) —— `wrangler.jsonc` 字段与 binding
-- [Cloudflare D1](https://developers.cloudflare.com/d1/) —— 数据库创建与迁移
-
-## 下一步
-
-- [网站配置](./configuration)——改名称、Logo、模块开关
-- [Cloudflare](./cloudflare)——配好账号与自动部署
-- [目录结构](./project-structure)——改哪里一目了然
+配好后可以接着看[网站配置](./configuration)与[部署到 Cloudflare](./cloudflare)。

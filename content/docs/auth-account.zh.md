@@ -1,127 +1,55 @@
 ---
 title: 个人中心
-description: 受保护路由的会话守卫，以及资料 / 安全 / 登录设备 / 通知偏好四个板块
+description: 登录后的账号设置区：资料、安全、设备与各板块入口
 locale: zh
-order: 11
-group: features
-updated: 2026-10-20
+order: 10
+group: auth
+updated: 2026-11-03
 ---
 
-登录后的账号管理区域，位于 `/{locale}/dashboard/*`。从导航栏用户菜单的「个人中心」进入。
+个人中心是登录后的账号设置区，地址在 `/{locale}/dashboard/*`，入口在导航栏的用户菜单里。
+未登录访问会被重定向到 `/{locale}/auth/login`。
 
 ![个人中心 · 资料页](/docs/screenshots/settings-profile.png "个人中心 · 资料：昵称与邮箱，邮箱未验证时提供验证入口")
 
-## 路由结构
+## 路由与板块
 
-`dashboard.tsx` 是 pathless layout 路由（与 `docs` 同一手法）：它只做守卫与外壳，不含页面
-内容，因此 `/dashboard` 自身不是内容页。
+| 路径 | 板块 | 做什么 |
+|---|---|---|
+| `/dashboard/profile` | 资料 | 改昵称、看邮箱验证状态，未验证时可重发验证邮件 |
+| `/dashboard/security` | 安全 | 改密码、换邮箱、注销账号 |
+| `/dashboard/sessions` | 登录设备 | 看已登录设备，单个吊销或一次性注销其它设备 |
+| `/dashboard/notifications` | 通知偏好 | 订阅与退订邮件，需 `newsletter` 模块 |
+| `/dashboard/billing` | 账单 | 订阅状态、续费日期与交易记录，需 `payment` 模块 |
+| `/dashboard/api-keys` | API 密钥 | 创建与删除密钥，需 `features.enableApiKeys`，见 [API 密钥](./api-keys) |
+| `/dashboard/admin/users` | 用户管理 | 改角色、封禁、删除、模拟登录，需 `admin` 角色且 `features.enableAdmin` 打开，见 [用户与管理员](./user-management) |
+| `/dashboard/admin/revenue` | 营收 | 收入与订阅总览，门禁同「用户管理」 |
 
-```
-src/routes/{-$locale}/_layout/dashboard.tsx              # 守卫 + 会话 + 外壳 + <Outlet/>
-src/routes/{-$locale}/_layout/dashboard/index.tsx        # /dashboard → 重定向到 profile
-src/routes/{-$locale}/_layout/dashboard/profile.tsx      # 资料
-src/routes/{-$locale}/_layout/dashboard/security.tsx     # 安全
-src/routes/{-$locale}/_layout/dashboard/sessions.tsx     # 登录设备
-src/routes/{-$locale}/_layout/dashboard/notifications.tsx # 通知偏好（依赖 newsletter）
-```
-
-新增板块时：在 `src/config/settings.ts` 加一条导航项、在 `dashboard/` 下加一个页面、
-在 `getSettingsSectionMeta` 补一段标题文案即可，外壳会自动渲染。
+`/dashboard` 本身不是内容页，进入后直接落到「资料」。
 
 ## 会话守卫
 
-`dashboard.tsx` 的 `beforeLoad` 做两件事：
+`src/routes/{-$locale}/_layout/dashboard.tsx` 的 `beforeLoad` 做两件事：先 `assertPageEnabled('auth')`
+确认认证模块开着，再 `fetchSession()` 读会话；没有会话就重定向到登录页。
+
+会话 cookie 是 httpOnly，客户端读不到，所以只能由 server function 在服务端读：
 
 ```ts
-beforeLoad: async ({ params }) => {
-  assertPageEnabled('auth')
-  const session = await fetchSession()
-  if (!session) {
-    throw redirect({ to: '/{-$locale}/auth/login', params: { locale: params.locale } })
-  }
-  return { session }
-}
+// src/auth/session.ts
+const session = await getAuth(env).api.getSession({ headers: getRequestHeaders() })
 ```
 
-`fetchSession()`（`src/auth/session.ts`）是 **server function**，用
-`getAuth(env).api.getSession({ headers: getRequestHeaders() })` 读会话。必须如此，因为：
+返回给页面的只有页面要用的字段（`id` / `name` / `email` / `emailVerified` / `image` / `role`），
+子页用 `Route.useRouteContext()` 取。
 
-- 会话 cookie 是 httpOnly 的，客户端读不到；
-- `getAuth` 需要每请求 env（D1 binding），客户端没有。
+## 加一个自己的板块
 
-server function 在 SSR 阶段就地执行（无网络往返），客户端导航时降级为一次 RPC，两条路径
-都拿到真实会话。这与 `fetchAuthProviderAvailability` 的理由相同。
+1. 在 `src/config/settings.ts` 的 `getSettingsSections()` 里加一条导航项，写明 `id`、标题、图标与目标路由。
+2. 在 `src/routes/{-$locale}/_layout/dashboard/` 下加页面文件，文件路径与导航项的 `id` 一致。
+3. 在 `src/config/settings.ts` 的 `getSettingsSectionMeta()` 里补这个板块的标题与说明。
 
-返回值**只取页面要用的字段**（`id` / `name` / `email` / `emailVerified` / `image`），不回传整个
-session。子页经 `Route.useRouteContext()` 取到它。
+外壳会按 `id` 自动渲染侧栏项与面包屑，不用改布局组件。
 
-## 四个板块
+## 验证
 
-![个人中心 · 登录设备](/docs/screenshots/settings-sessions.png "登录设备：当前会话与历史设备，可单独吊销或一次性注销其他设备")
-
-| 板块 | better-auth 调用 | 用到的组件 |
-|---|---|---|
-| **资料** | `updateUser({ name })`；未验证时可 `sendVerificationEmail({ email, callbackURL })` | `Field` / `Input` / `Button` / `Badge` |
-| **安全** | `changePassword({ currentPassword, newPassword })`、`changeEmail({ newEmail, callbackURL })`、`deleteUser()` | `Field` / `AlertDialog` |
-| **登录设备** | `listSessions()`、`revokeSession({ token })`、`revokeOtherSessions()` | `Table` / `Button` / `Spinner` |
-| **通知偏好** | `GET` / `POST` / `DELETE` `/api/newsletter`（见 [邮件订阅](./newsletter)） | `Switch` / `Field` |
-
-几个约定：
-
-- **破坏性操作**用 `AlertDialog` 二次确认，不要用 `window.confirm`。注销账号后整页跳转，
-  因为会话已失效。
-- **状态标记**用 `Badge`（如邮箱验证状态），不要手写带背景色的 `<span>`。
-- **空态与加载态**用 `Spinner`，不要手写占位。
-- **通知偏好**整块受 `newsletter` 模块门禁：`beforeLoad` 调 `assertPageEnabled('newsletter')`，
-  模块关闭时页面 404、菜单项也自动消失（`filterMenuItems` 按 `visibility.module` 过滤）。
-- 改密码的**当前密码只判必填**，不套用 `MIN_PASSWORD_LENGTH`——老密码可能短于当前下限，
-  卡长度会让用户永远改不了密码。新密码才用长度下限。
-
-## 侧边栏
-
-外壳（`src/components/dashboard/DashboardLayout.tsx`）**直接用 shadcn 的 `sidebar`（Base UI 版）**，
-不自己实现折叠、cookie 持久化或移动端抽屉——`SidebarProvider` 与 `Sidebar` 已提供这些，
-窄屏自动切为 `Sheet`。这里只做组装。
-
-与 `DocsLayout` 自建的侧栏**不共用**：docs 侧栏有自己的 cookie 与折叠语义，强行合并只会
-互相牵制。
-
-侧栏自底向上分三段：
-
-| 段 | 内容 |
-|---|---|
-| `SidebarHeader` | 站点 logo，点击回首页；深色主题下加白底片（与营销站 Navbar 同一处理） |
-| `SidebarContent` | 上文所述的板块菜单，文案来自 `getSettingsSections` |
-| `SidebarFooter` | 用户卡片（`SettingsUserCard`）：头像 + 名字 + 邮箱，展开后登出 |
-
-用户卡片是工作台内**唯一**的登出入口——`dashboard` 是 `_layout` 路由，不渲染营销导航栏，
-`UserMenu` 在这里不可见。头像取 `SessionInfo.user.image`（`users.image` 列，Google 登录
-会写入）；为空时回退到 `name` 或邮箱的首字母。
-
-顶栏（`SidebarInset` 内的 `header`）放三样东西，从左到右：
-
-1. `SidebarTrigger`——折叠按钮，点击把侧栏收成图标窄条，再点展开；宽窄屏都常驻，
-   窄屏下侧栏是 `Sheet` 抽屉，同样靠它打开。
-2. 三级面包屑——`首页 › 个人中心 › 当前板块`，前两级是 `BreadcrumbLink`，末级是
-   `BreadcrumbPage`（带 `aria-current="page"`）。
-3. `ThemeToggle`——右上角。放侧栏头会和 logo 抢位（折叠后侧栏只剩约 3rem），
-   且营销站 Navbar 就在这个位置，用户预期一致。
-
-顶栏**没有** `<h1>`：面包屑末级已是页面标题，再放一个会让同一个词在屏幕与无障碍树里
-各出现一次。也**没有**「返回站点」链接——logo 就是回站点入口。
-
-## 页面元数据
-
-每个子页的 `head()` 走 `seo()` 生成 meta 与 canonical，并传 `noindex: true`——
-个人页不应被搜索引擎索引。
-
-## 参考资料
-
-- [Better Auth 配置选项](https://www.better-auth.com/docs/reference/options)——账户相关字段与会话配置
-- [TanStack Start 认证指南](https://tanstack.com/start/latest/docs/framework/react/guide/authentication)——`beforeLoad` 守卫与整页跳转的取舍
-
-## 下一步
-
-- [身份认证](./auth)——登录、注册与邮件流程
-- [表单约定](./forms)——这些表单用的 TanStack Form 写法
-- [邮件订阅](./newsletter)——通知偏好背后的订阅接口
+登录后打开 `/{locale}/dashboard/profile`，应看到昵称与邮箱；未登录打开同一地址会跳到登录页。

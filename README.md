@@ -32,7 +32,7 @@ pnpm dev         # http://localhost:3000
 
 没有 Cloudflare 账号也能先跑：`pnpm run setup` 可以跳过资源创建，本地用 D1 模拟。
 
-当前默认启用 Resend 和注册邮箱验证。使用注册、登录前，在 `.env` 填写 `RESEND_API_KEY` 与已验证域名下的 `MAIL_FROM`，并确保 `BETTER_AUTH_URL` 与 `VITE_BASE_URL` 一致。缺少邮件配置时认证 API 返回 503；详见[邮件配置](content/docs/email.zh.md#resend-配置)。
+当前默认启用 Resend 和注册邮箱验证。使用注册、登录前，在 `.env` 填写 `RESEND_API_KEY` 与已验证域名下的 `MAIL_FROM`，并确保 `BETTER_AUTH_URL` 与 `VITE_BASE_URL` 一致。缺少邮件配置时认证 API 返回 503；详见[Resend 接入](content/docs/email-resend.zh.md)。
 
 ## 一键创建自己的项目
 
@@ -105,13 +105,15 @@ GitHub `production` Environment 的变量与 secrets 配置见 [文档站 · Clo
 | 快速开始（克隆到部署一条线） | [content/docs/getting-started.zh.md](content/docs/getting-started.zh.md) |
 | 网站配置 | [content/docs/configuration.zh.md](content/docs/configuration.zh.md) |
 | Cloudflare 与自动部署 | [content/docs/cloudflare.zh.md](content/docs/cloudflare.zh.md) |
+| 支付（Stripe / Creem 各自一页） | [content/docs/payment.zh.md](content/docs/payment.zh.md) |
 | 目录结构与「改哪里」 | [content/docs/project-structure.zh.md](content/docs/project-structure.zh.md) |
 | 设计系统 | [DESIGN.md](DESIGN.md) |
 | 架构决策 | [docs/adr/](docs/adr/) |
 | 贡献指南 | [docs/contributing.md](docs/contributing.md) |
 | 术语表与不变量 | [CONTEXT.md](CONTEXT.md) |
 
-完整文档在站点的 `/docs` 路径下。
+完整文档在站点的 `/docs` 路径下，按「开始 / 配置 / 部署 / 认证与账户 / 支付 / 邮件 / 通知 /
+分析 / 开发」分组，互斥的接入方式（如 Stripe 与 Creem）各占一页。
 
 ## 面向 AI 编程代理
 

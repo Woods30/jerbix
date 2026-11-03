@@ -1,31 +1,24 @@
 ---
 title: 导航与菜单
-description: 配置导航栏、页脚与社交链接
+description: 导航栏、页脚与社交链接怎么配
 locale: zh
 order: 3
 group: config
-updated: 2026-10-21
+updated: 2026-11-03
 ---
 
-所有菜单共用一套数据模型与渲染组件，因此过滤规则、外链行为与键盘操作在导航栏、
-页脚、文档侧栏中完全一致。
+导航栏、页脚与文档侧栏共用一套菜单数据模型：同一份结构、同一套过滤规则，改一处三处生效。
 
-| 文件 | 职责 |
+| 文件 | 负责什么 |
 |---|---|
 | `src/config/navigation.ts` | 菜单类型、链接目标、过滤规则 |
-| `src/config/navbar-config.ts` | 导航栏链接与右侧 actions |
+| `src/config/navbar-config.ts` | 导航栏链接与右侧按钮 |
 | `src/config/footer-config.ts` | 页脚分组 |
 | `src/config/social-config.ts` | 社交平台映射与安全过滤 |
 
-## 前提条件
+## 加一个导航栏链接
 
-先看[网站配置](./configuration)了解模块开关——菜单项会按开关自动显隐。
-
-## 设置
-
-### 加一个导航栏链接
-
-编辑 `src/config/navbar-config.ts`：
+编辑 `src/config/navbar-config.ts`，在 `getNavbarLinks()` 的数组里加一项：
 
 ```ts
 // src/config/navbar-config.ts
@@ -38,8 +31,8 @@ updated: 2026-10-21
 }
 ```
 
-`getPublicLinkOptions()` 返回类型安全的 `linkOptions()`。站内链接经 TanStack Router
-校验——**路由不存在、缺动态参数、或把内部链接写成外链，都会在 `tsc` 阶段被拒绝**。
+站内链接用 `getPublicLinkOptions(target, locale)`，它返回类型安全的 `linkOptions()`：路由
+不存在、缺动态参数，都会在 `tsc` 阶段被拒绝。
 
 | `target` | 解析结果 |
 |---|---|
@@ -47,42 +40,48 @@ updated: 2026-10-21
 | `docs` | `/{locale}/docs` |
 | `blog` | `/{locale}/marketing/blog` |
 | `changelog` | `/{locale}/marketing/changelog` |
-| `pricing` | `/{locale}/pricing` |
+| `pricing` | 首页（`getPublicLinkOptions('home', locale, 'pricing')` 才是带锚点的那种） |
 | `contact` | `/{locale}/marketing/contact` |
 | `roadmap` | `/{locale}/marketing/roadmap` |
 | `waitlist` | `/{locale}/marketing/waitlist` |
 | `login` | `/{locale}/auth/login` |
 | `terms` / `privacy` | `/{locale}/marketing/legal/{slug}` |
 
-### 可见性过滤
+路由里的语言段是可选的（`{-$locale}`），默认语言的 URL 不带前缀。
 
-`visibility` 的四个条件须全部满足才显示：
+## 可见性规则
+
+`visibility` 的条件全部满足才显示：
 
 | 字段 | 语义 |
 |---|---|
 | `module` | 模块开关，如 `{ module: 'payment' }` |
 | `feature` | 功能开关，如 `{ feature: 'enableApiKeys' }` |
-| `authenticated` | 是否要求登录 |
-| `roles` | 角色白名单 |
+| `page` | 静态页开关，如 `{ page: 'waitlist' }` |
+| `authenticated` | 是否要求已登录 |
+| `roles` | 角色白名单，如 `{ roles: ['admin'] }` |
 
-> 引用 `contact` 的菜单项**必须**带 `visibility: { module: 'contact' }`——该页默认关闭，
-> 不加就会给出一个点开即 404 的链接。`roadmap` / `waitlist` 是没有模块开关的静态页，
-> 不需要 `visibility`。
+指向 `contact` 的菜单项**必须**带 `visibility: { module: 'contact' }`——该页默认关闭，不加
+就会给出一个点开即 404 的链接。`roadmap` 是无条件提供的静态页；`waitlist` 没有模块开关，
+按 `pages.waitlist` 过滤。
 
-### 菜单项形状
+## 菜单项的两种形状
 
 | `kind` | 说明 |
 |---|---|
-| `link` | 站内（`internal` + `options`）或站外（`external` + `href` + `newTab`） |
+| `link` | 内部链接 `destination: { kind: 'internal', options }`，或外链 `destination: { kind: 'external', href, newTab }` |
 | `group` | 递归子项；子项全被过滤时该组一并消失 |
 | `separator` | 分隔线；首尾与连续重复的会被自动移除 |
 
-三者都带 `id`、可选 `title` / `description` / `icon`，以及 `visibility`。
+`social` 字段里的链接会校验为无凭据的 HTTPS；自定义菜单项的 `href` 不会自动校验，别把
+带 token 的地址写进去。
 
-### 页脚与社交
+## 页脚与社交链接
 
-页脚在 `src/config/footer-config.ts`，结构与导航栏相同。社交链接写在
-`src/config/website.ts` 的 `social` 字段：
+页脚在 `src/config/footer-config.ts`，结构与导航栏相同：`getFooterLinks()` 返回两个分组
+（产品、资源），同样走 `visibility` 过滤。
+
+社交链接写在 `src/config/website.ts` 的 `social` 字段：
 
 ```ts
 social: {
@@ -91,14 +90,5 @@ social: {
 }
 ```
 
-只渲染合法的 HTTPS 无凭据链接，非法的静默丢弃。
-
-## 参考资料
-
-- [TanStack Router · 类型安全的链接](https://tanstack.com/router/latest/docs/framework/react/guide/type-safety)
-
-## 下一步
-
-- [网站配置](./configuration)——模块开关与社交链接字段
-- [设计系统](./design-system)——菜单的视觉规范
-- [功能集成](./integrations)——开启模块后菜单如何变化
+`src/config/social-config.ts` 负责把平台名映射成图标与标签，只渲染无凭据的 HTTPS 地址，
+非法的静默丢弃。`mail.supportEmail` 有效时会额外渲染一个 `mailto:` 入口。
