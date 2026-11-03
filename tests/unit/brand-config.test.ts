@@ -5,14 +5,11 @@ import { parsePublicEnv } from '@/env/public'
 import { m } from '@/locale/paraglide/messages.js'
 
 describe('websiteConfig 品牌信息', () => {
-  it('站点名为 Jerbix', () => {
-    expect(websiteConfig.metadata.name).toBe('Jerbix')
-  })
-
-  it('site_name 消息在两种语言下都解析为 Jerbix', () => {
-    // `<title>` 取自 site_name，须与 Navbar / footer / manifest 一致。
-    expect(m.site_name({}, { locale: 'zh' })).toBe('Jerbix')
-    expect(m.site_name({}, { locale: 'en' })).toBe('Jerbix')
+  it('站点名与 site_name 消息一致', () => {
+    // 品牌名是配置项：`website.ts` 与 `messages/*.json` 各存一份，改一处不改另一处
+    // 这里就会红。断言取相对值 —— 品牌改名（`pnpm run init` 之后就是改名）不用改测试。
+    expect(websiteConfig.metadata.name).toBe(m.site_name({}, { locale: 'zh' }))
+    expect(m.site_name({}, { locale: 'en' })).toBe(websiteConfig.metadata.name)
   })
 
   it('messages 中不残留模板占位品牌名 "SaaS Template"', () => {
@@ -35,53 +32,42 @@ describe('websiteConfig 品牌信息', () => {
     }
   })
 
-  it('显式公开 env 决定 baseUrl，默认只开启已有内容模块', () => {
+  it('显式公开 env 决定 baseUrl', () => {
     expect(createWebsiteConfig).toBeTypeOf('function')
-    const config = createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: 'https://jerbix.dev' }))
-    expect(config.baseUrl).toBe('https://jerbix.dev')
-    expect(config.docs.enabled).toBe(true)
-    expect(config.blog.enabled).toBe(true)
-    expect(config.changelog.enabled).toBe(true)
-    expect(config.mail).toEqual({
-      enabled: true,
-      provider: 'resend',
-      supportEmail: 'support@example.com',
-    })
+    const config = createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: 'https://acme.dev' }))
+    expect(config.baseUrl).toBe('https://acme.dev')
+  })
+
+  it('配置里的固定项不随模块开关变化', () => {
+    // 模块与能力的开关是部署场景的决定（各仓不同，`pnpm run init` 之后全关），
+    // 这里只钉住与场景无关的固定项。
+    const config = createWebsiteConfig(parsePublicEnv({}))
+    expect(config.mail.provider).toBe('resend')
+    expect(config.newsletter.provider).toBe('resend')
+    expect(config.payment.provider).toBe('stripe')
+    expect(config.notification.provider).toBe('discord')
+    expect(config.analytics.providers).toEqual(['ga'])
     expect(config.auth.requireEmailVerification).toBe(true)
-    expect(config.contact.enabled).toBe(false)
-    expect(config.newsletter).toEqual({ enabled: false, provider: 'resend' })
-    // 服务模块开关是部署场景的决定，断言跟着当前默认值走。
-    // 价格锚点（lookup_key）在 `src/config/products.ts` 里，不在 website 配置里。
-    expect(config.payment).toEqual({
-      enabled: true,
-      provider: 'stripe',
-    })
-    expect(config.notification).toEqual({ enabled: false, provider: 'discord' })
-    expect(config.analytics).toEqual({ enabled: true, providers: ['ga'] })
     expect(config.social).toEqual({})
     expect(config.ui).toEqual({
       defaultTheme: 'system',
       enableThemeSwitch: true,
       themeColor: { light: '#FCFAFF', dark: '#0A0A0F' },
     })
-    expect(config.features).toEqual({
-      enableI18n: true,
-      enableFileUpload: false,
-      enableApiKeys: true,
-      enableAdmin: true,
-      enableAIGateway: false,
-    })
+    expect(config.landingOffer).toEqual({ productId: 'template', offerId: 'once' })
   })
 
   it('每次工厂调用使用传入 env 并返回独立配置', () => {
     expect(createWebsiteConfig).toBeTypeOf('function')
+    const declared = createWebsiteConfig(parsePublicEnv({}))
     const first = createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: 'https://first.example' }))
     first.payment.enabled = false
     first.docs.enabled = false
     const second = createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: 'https://second.example' }))
     expect(second.baseUrl).toBe('https://second.example')
-    expect(second.payment.enabled).toBe(true)
-    expect(second.docs.enabled).toBe(true)
+    // 改一份不影响下一份：两次调用拿到的出厂值一样。
+    expect(second.payment.enabled).toBe(declared.payment.enabled)
+    expect(second.docs.enabled).toBe(declared.docs.enabled)
   })
 })
 

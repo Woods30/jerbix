@@ -5,9 +5,16 @@ import { parsePublicEnv } from '@/env/public'
 import { parseServerEnv } from '@/env/server'
 import { formatServiceDiagnostics } from '../../scripts/lib/report-issues'
 
-/** 构造独立配置，避免用例之间互相污染。 */
+/**
+ * 构造独立配置，避免用例之间互相污染。
+ *
+ * auth 与 mail 的开关逐项写死：本文件测的是 `getServiceStatuses` 的分支逻辑，
+ * 各仓的默认开关不同（`pnpm run init` 之后服务全关），依赖默认值会让用例无谓变红。
+ */
 function makeConfig(mutate?: (config: WebsiteConfig) => void): WebsiteConfig {
   const config = createWebsiteConfig(parsePublicEnv({}))
+  config.mail.enabled = true
+  config.auth.enabled = true
   mutate?.(config)
   return config
 }
@@ -24,6 +31,7 @@ function makeAllDisabledConfig(mutate?: (config: WebsiteConfig) => void): Websit
   config.payment.enabled = false
   config.notification.enabled = false
   config.analytics.enabled = false
+  config.auth.enabled = true
   mutate?.(config)
   return config
 }

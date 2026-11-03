@@ -74,13 +74,27 @@ const emptyEnv: ServerEnv = parseServerEnv({})
 const SUPPORT_EMAIL = ['support', 'jerbix.dev'].join('@')
 
 /**
- * 完整默认配置（docs/blog/changelog 开，服务关）。
+ * 完整默认配置（docs/blog/changelog/auth 开，服务关）。
  *
- * docs 显式打开：各仓的默认开关不同（官网不提供文档站），
+ * 开关逐项写死：各仓的默认开关不同（官网不提供文档站，`pnpm run init` 之后全关），
  * 依赖默认值会让这里的断言随部署场景静默失效。
  */
 function makeConfig(overrides: Partial<WebsiteConfig> = {}): WebsiteConfig {
-  return { ...createWebsiteConfig(publicEnv), docs: { enabled: true }, ...overrides }
+  const base = createWebsiteConfig(publicEnv)
+  return {
+    ...base,
+    docs: { enabled: true },
+    blog: { enabled: true },
+    changelog: { enabled: true },
+    mail: { ...base.mail, enabled: true },
+    contact: { enabled: false },
+    newsletter: { ...base.newsletter, enabled: false },
+    payment: { ...base.payment, enabled: true },
+    notification: { ...base.notification, enabled: false },
+    analytics: { ...base.analytics, enabled: true },
+    auth: { ...base.auth, enabled: true },
+    ...overrides,
+  }
 }
 
 const creds: ServerEnv = parseServerEnv({

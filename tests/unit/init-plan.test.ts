@@ -66,7 +66,7 @@ function memoryRepo(files: Record<string, string>) {
   }
 }
 
-const REPO = {
+const REPO: Record<string, string> = {
   'package.json': PACKAGE_JSON,
   'wrangler.jsonc': WRANGLER,
   'src/config/website.ts': WEBSITE,
@@ -184,17 +184,22 @@ describe('buildPlan', () => {
 describe('applyPlan', () => {
   it('只写入内容真的变了的文件', () => {
     const repo = memoryRepo(REPO)
-    const result = applyPlan(buildPlan(CONFIG), repo)
+    const plan = buildPlan(CONFIG)
+    const result = applyPlan(plan, repo)
 
-    expect(result.written.sort()).toEqual([
-      'messages/en.json',
-      'messages/zh.json',
-      'package.json',
-      'public/manifest.json',
-      'src/config/products.ts',
-      'src/config/website.ts',
-      'wrangler.jsonc',
-    ])
+    // 期望值由计划本身算出，而不是写死一份清单：仓库可能已经被 `pnpm run init`
+    // 改写过（品牌换成使用者自己的、模块全关），那时所有变换都成了空操作，
+    // 写死的清单就与现实脱节了。这里断言的正是 applyPlan 的职责：
+    // 内容真的变了的文件才写，没变的一个都不写。
+    const changed = plan.files
+      .filter((file) => {
+        const current = REPO[file.path] ?? ''
+        return file.transform(current) !== current
+      })
+      .map((file) => file.path)
+      .sort()
+
+    expect(result.written.sort()).toEqual(changed)
     expect(repo.get('package.json')).toContain('"name": "acme"')
   })
 

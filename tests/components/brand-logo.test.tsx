@@ -26,24 +26,32 @@ describe('BrandLogo', () => {
   })
 
   it('字标末尾的强调段用品牌紫，其余用墨色', () => {
-    const { container } = render(<BrandLogo />)
-    const wordmark = wordmarkOf(container)
-
-    expect(wordmark.textContent).toBe('Jerbix')
-    expect(wordmark.querySelector('.text-\\(--jbx-accent\\)')?.textContent).toBe('x')
-  })
-
-  it('强调段为空时整串用墨色', () => {
-    const original = websiteConfig.metadata.logoAccent
-    websiteConfig.metadata.logoAccent = ''
+    const original = websiteConfig.metadata
+    // 强调段是站名的最后一段：各品牌的强调段不同（`pnpm run init` 之后就没了），
+    // 所以这里自己摆一个站名与强调段，而不是依赖出厂值。
+    websiteConfig.metadata = { ...original, name: 'Acme', logoAccent: 'e' }
     try {
       const { container } = render(<BrandLogo />)
       const wordmark = wordmarkOf(container)
 
-      expect(wordmark.textContent).toBe('Jerbix')
+      expect(wordmark.textContent).toBe('Acme')
+      expect(wordmark.querySelector('.text-\\(--jbx-accent\\)')?.textContent).toBe('e')
+    } finally {
+      websiteConfig.metadata = original
+    }
+  })
+
+  it('强调段为空时整串用墨色', () => {
+    const original = websiteConfig.metadata
+    websiteConfig.metadata = { ...original, logoAccent: '' }
+    try {
+      const { container } = render(<BrandLogo />)
+      const wordmark = wordmarkOf(container)
+
+      expect(wordmark.textContent).toBe(websiteConfig.metadata.name)
       expect(wordmark.querySelector('span')).toBeNull()
     } finally {
-      websiteConfig.metadata.logoAccent = original
+      websiteConfig.metadata = original
     }
   })
 

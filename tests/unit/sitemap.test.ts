@@ -13,10 +13,12 @@ import { getSitemapPaths, renderSitemapXml } from '@/routes/sitemap[.]xml'
 const base = 'https://example.com'
 
 /**
- * 显式打开 docs：各仓是否提供文档站不同，sitemap 的用例只关心文档路径本身。
+ * 显式打开 docs 与 blog：各仓是否提供文档站、是否开博客都随部署场景变化，
+ * sitemap 的用例只关心路径与 lastmod 本身。
  */
 const config = createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: base }))
 config.docs = { enabled: true }
+config.blog = { enabled: true }
 
 describe('sitemap lastmod', () => {
   it('文档按 frontmatter 的 updated 输出 lastmod', () => {

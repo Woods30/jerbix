@@ -47,7 +47,14 @@ async function importAuthRouteWithFeatures(features: {
     const base = actual.createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: 'https://jerbix.dev' }))
     return {
       ...actual,
-      websiteConfig: { ...base, features: { ...base.features, ...features } },
+      // auth 与 mail 显式打开：它们默认随部署场景变化，而这里只关心 api-key 端点的门禁
+      // （auth 要求邮箱验证，邮件没配齐会被判成 incomplete 而返回 503）。
+      websiteConfig: {
+        ...base,
+        auth: { ...base.auth, enabled: true },
+        mail: { ...base.mail, enabled: true },
+        features: { ...base.features, ...features },
+      },
     }
   })
   return import('@/routes/api/auth/$')

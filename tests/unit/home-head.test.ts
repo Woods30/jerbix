@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { websiteConfig } from '@/config/website'
+import { m } from '@/locale/paraglide/messages.js'
 import { overwriteServerAsyncLocalStorage } from '@/locale/paraglide/runtime.js'
 import { Route } from '@/routes/{-$locale}/index'
 
@@ -43,7 +44,9 @@ describe('首页 head 的 i18n', () => {
   it.each(['zh', 'en'] as const)('%s 首页与 OG 标题明确品牌和产品技术栈', (locale) => {
     withRequestLocale(locale)
     const { meta } = runHomeHead()
-    const title = 'Jerbix – TanStack Start SaaS Starter Kit'
+    // 标题取自消息：品牌由消息决定（改名后不用改测试），技术栈由文案本身保证。
+    const title = m.home_page_title({}, { locale })
+    expect(title).toContain('TanStack Start')
     expect(meta).toContainEqual({ title })
     expect(meta).toContainEqual({ property: 'og:title', content: title })
   })
@@ -52,16 +55,14 @@ describe('首页 head 的 i18n', () => {
     const en = runHomeHead()
     expect(en.meta).toContainEqual({
       name: 'description',
-      content:
-        'Jerbix is a SaaS starter built on best practices, with polished pages, auth, payments, email, languages, and Cloudflare deployment. Buy the complete source once, with lifetime support and free updates.',
+      content: m.home_page_description({}, { locale: 'en' }),
     })
 
     withRequestLocale('zh')
     const zh = runHomeHead()
     expect(zh.meta).toContainEqual({
       name: 'description',
-      content:
-        'Jerbix 是基于最佳实践的 SaaS 脚手架，集成精美页面、认证、支付、邮件、多语言与 Cloudflare 部署。一次购买全部源码，永久支持，免费升级。',
+      content: m.home_page_description({}, { locale: 'zh' }),
     })
   })
 

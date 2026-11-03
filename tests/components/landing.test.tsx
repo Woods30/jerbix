@@ -3,6 +3,7 @@ import type React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LandingPage } from '@/components/marketing/LandingPage'
 import { websiteConfig } from '@/config/website'
+import { m } from '@/locale/paraglide/messages.js'
 import { getLocale, setLocale } from '@/locale/paraglide/runtime.js'
 
 vi.mock('@tanstack/react-router', () => ({
@@ -70,6 +71,16 @@ function visibility(hidden: boolean) {
 }
 function demo() {
   return screen.getByRole('figure', { name: /源码与产品预览|Source and product preview/ })
+}
+
+/**
+ * 演示「改之后」那侧显示的是站点自己的品牌（文案里的 `home_demo_brand`）。
+ *
+ * 取相对值而不是写死占位串：品牌是配置项，改名（`pnpm run init` 之后就是改名）
+ * 不该让测试变红。演示「改之前」那侧固定是模板原品牌，那是模板自己的对照物。
+ */
+function customizedBrand(): string {
+  return `'${m.home_demo_brand({}, { locale: 'zh' })}'`
 }
 
 describe('LandingPage', () => {
@@ -257,7 +268,7 @@ describe('LandingPage', () => {
     render(<LandingPage priceCents={9900} />)
     expect(demo()).toHaveTextContent("'Jerbix'")
     advance(850)
-    expect(demo()).toHaveTextContent("'你的品牌'")
+    expect(demo()).toHaveTextContent(customizedBrand())
     advance(950)
     expect(demo()).toHaveTextContent('你的想法，现在开始。')
     advance(1200)
@@ -265,7 +276,7 @@ describe('LandingPage', () => {
     advance(3000)
     expect(demo()).toHaveTextContent("'Jerbix'")
     advance(850)
-    expect(demo()).toHaveTextContent("'你的品牌'")
+    expect(demo()).toHaveTextContent(customizedBrand())
   })
 
   it('暂停保持阶段，后台回来不解除暂停，恢复后可重播', () => {
@@ -276,7 +287,7 @@ describe('LandingPage', () => {
     visibility(true)
     advance(10000)
     visibility(false)
-    expect(demo()).toHaveTextContent("'你的品牌'")
+    expect(demo()).toHaveTextContent(customizedBrand())
     expect(demo()).not.toHaveTextContent('你的想法，现在开始。')
     expect(vi.getTimerCount()).toBe(0)
     fireEvent.click(screen.getByRole('button', { name: '恢复动效' }))
@@ -285,7 +296,7 @@ describe('LandingPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '重播演示' }))
     expect(demo()).toHaveTextContent("'Jerbix'")
     advance(850)
-    expect(demo()).toHaveTextContent("'你的品牌'")
+    expect(demo()).toHaveTextContent(customizedBrand())
   })
 
   it('后台停止计时，返回前台后继续，卸载清除任务', () => {
@@ -328,7 +339,7 @@ describe('LandingPage', () => {
     advance(849)
     expect(demo()).toHaveTextContent("'Jerbix'")
     advance(1)
-    expect(demo()).toHaveTextContent("'你的品牌'")
+    expect(demo()).toHaveTextContent(customizedBrand())
     advance(1550)
     fireEvent.click(screen.getByRole('button', { name: '重播演示' }))
     expect(demo()).toHaveTextContent("'Jerbix'")
