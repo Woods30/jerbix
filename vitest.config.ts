@@ -43,6 +43,9 @@ export default defineConfig({
           // 30s：全量 107 个文件并行时，仍见过「import 一份编译产物」这类本该毫秒级的用例超时。
           testTimeout: 30000,
           hookTimeout: 30000,
+          // 变换结果落盘缓存：paraglide 生成了 600 多个消息模块，每次重跑都重新变换
+          // 是全量测试最大的开销，也偶发导致首次 import 的用例超时。
+          fsModuleCache: true,
         },
       },
     ],

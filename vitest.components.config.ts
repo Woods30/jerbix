@@ -28,5 +28,7 @@ export default defineConfig({
     ],
     testTimeout: 30000,
     hookTimeout: 30000,
+    // 变换结果落盘缓存，见 vitest.config.ts 的同名选项。
+    fsModuleCache: true,
   },
 })
