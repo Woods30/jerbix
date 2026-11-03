@@ -42,6 +42,13 @@ describe('parseArgs', () => {
     expect(parsed.dryRun).toBe(true)
   })
 
+  it('忽略分隔符 `--`：包管理器会把它原样转发给脚本', () => {
+    const parsed = parseArgs(['--', '--name', 'Acme', '--dry-run'])
+
+    expect(parsed.name).toBe('Acme')
+    expect(parsed.dryRun).toBe(true)
+  })
+
   it('modules 留空即全关', () => {
     expect(parseArgs(['--modules', '']).modules).toEqual([])
   })
