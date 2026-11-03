@@ -1,93 +1,56 @@
 ---
 title: Database
-description: Creating, migrating, and wiring Cloudflare D1 with Drizzle
+description: Creating, migrating, and changing the schema on Cloudflare D1
 locale: en
 order: 6
 group: deploy
-updated: 2026-10-21
+updated: 2026-11-03
 ---
 
-Data lives in **Cloudflare D1** (SQLite), accessed through **Drizzle ORM**. The schema is
-in `src/db/schema.ts`; migrations are in `src/db/migrations/`.
+Data lives in **Cloudflare D1** (SQLite), accessed through **Drizzle ORM**. The schema is in `src/db/schema.ts`, the migrations in `src/db/migrations/`.
 
-## Prerequisites
+## Steps
 
-The token needs **Account → D1 → Edit**, see [Cloudflare](./cloudflare).
+1. **Create the D1 database.** The easiest route is `pnpm run setup`: it creates the D1 database and the KV namespace in your account, writes the resource IDs back into `wrangler.jsonc`, and fills in `.env`. To do it by hand:
 
-## Setup
+   ```bash
+   pnpm exec wrangler d1 create <your-db-name>
+   ```
 
-### 1. Create the database
+   Copy the `database_id` from the output into `wrangler.jsonc`:
 
-```bash
-pnpm exec wrangler d1 create saas-template-db
-```
+   ```jsonc title="wrangler.jsonc"
+   {
+     "d1_databases": [
+       {
+         "binding": "DB",
+         "database_name": "<your-db-name>",
+         "database_id": "<your-database-id>",
+         "migrations_dir": "./src/db/migrations"
+       }
+     ]
+   }
+   ```
 
-Copy the `database_id` into `wrangler.jsonc`:
+   When the command offers to write the config for you, **decline and edit by hand** — it writes through JSON serialization and wipes every comment in `wrangler.jsonc`. The `binding` is the name code reads (`env.DB`) and must match `src/types/cloudflare.d.ts`.
 
-```jsonc title="wrangler.jsonc"
-{
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "saas-template-db",
-      "database_id": "00000000-0000-0000-0000-000000000000",
-      "migrations_dir": "./src/db/migrations"
-    }
-  ]
-}
-```
+2. **Apply migrations.** Local and remote are separate:
 
-> `wrangler d1 create` offers to write the config for you. **Decline and edit by hand** —
-> it serializes through JSON and strips every comment from `wrangler.jsonc`.
+   ```bash
+   pnpm run db:migrate:local    # local development database
+   pnpm run db:migrate:remote   # remote production database
+   ```
 
-`binding` is the name code reads (`env.DB`) and must match `src/types/cloudflare.d.ts`.
-`database_name` is only a label.
+3. **Change the schema.** After editing `src/db/schema.ts`, generate a migration and apply it:
 
-### 2. Apply migrations
-
-Local and remote are separate:
-
-```bash
-pnpm run db:migrate:local    # local dev database
-pnpm run db:migrate:remote   # production database
-```
-
-Remote migrations ask for confirmation; non-interactive environments skip it.
-
-> **Check for data before running a migration with `DROP TABLE`.** `0002` replaces the old
-> `api_keys` table with `apikey` and drops the former. Verify it is empty first:
->
-> ```bash
-> pnpm exec wrangler d1 execute DB --remote --command "SELECT COUNT(*) FROM api_keys;"
-> ```
->
-> If it is non-zero, back up first
-> (`wrangler d1 export DB --remote --output backup.sql`) before deciding.
-
-Verify the schema:
-
-```bash
-pnpm exec wrangler d1 execute DB --remote \
-  --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
-```
-
-You should see ten tables: `users`, `sessions`, `accounts`, `verifications`, `apikey`,
-`files`, `payments`, `subscriptions`, `newsletter_subscriptions`, `webhook_events`.
-
-### 3. Change the schema
-
-Edit `src/db/schema.ts`, then generate a migration:
-
-```bash
-pnpm run db:generate
-```
-
-> **Review the generated SQL before committing.** `generate` reads a renamed column as
-> "drop old + add new", which loses data. Adding a column is safer than renaming one.
+   ```bash
+   pnpm run db:generate
+   pnpm run db:migrate:local
+   ```
 
 ## Usage
 
-The Drizzle instance is created per request, never as a global singleton:
+The Drizzle instance comes from `createDb(env.DB)` per D1 binding, not from a global singleton:
 
 ```ts
 // src/db/index.ts
@@ -96,33 +59,31 @@ export function createDb(d1: D1Database) {
 }
 ```
 
-`src/auth/auth.ts` calls `createDb(env.DB)` on each request so concurrent Workers requests
-never share state.
+`src/auth/auth.ts` calls `createDb(env.DB)` inside `createAuth(env)` and reuses the instance per binding, so concurrent requests on Workers never share state.
 
-`pnpm dev` uses a local SQLite file under `.wrangler/state`, fully isolated from remote.
+## Verify
 
-## Commands
+```bash
+pnpm exec wrangler d1 execute DB --remote \
+  --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
+```
 
-| Command | Purpose |
+You should see `users`, `sessions`, `accounts`, `verifications`, `subscriptions`, `payments`, `checkout_reservations`, `files`, `apikey`, `newsletter_subscriptions`, `webhook_events`.
+
+## Common commands
+
+| Command | What it does |
 |---|---|
-| `pnpm run db:generate` | Generate a migration from schema changes |
-| `pnpm run db:migrate:local` | Apply migrations locally |
-| `pnpm run db:migrate:remote` | Apply migrations remotely |
+| `pnpm run db:generate` | Generate a migration file from schema changes |
+| `pnpm run db:migrate:local` | Apply migrations to the local database |
+| `pnpm run db:migrate:remote` | Apply migrations to the remote database |
 | `pnpm run db:studio:local` | Local Drizzle Studio |
 | `pnpm run db:studio:remote` | Remote Drizzle Studio |
 | `pnpm exec wrangler d1 execute DB --remote --command "..."` | Run arbitrary SQL remotely |
 
-> Remote Studio requires `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, and
-> `CLOUDFLARE_API_TOKEN` in `.env`.
+## Notes
 
-## References
-
-- [Cloudflare D1](https://developers.cloudflare.com/d1/)
-- [D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/)
-- [Drizzle <> Cloudflare D1](https://orm.drizzle.team/docs/connect-cloudflare-d1)
-
-## Next steps
-
-- [Storage](./storage) — R2 object storage
-- [Cache](./cache) — KV cache
-- [Authentication](./auth) — consumers of the user and session tables
+- **Read the generated SQL before you commit it.** `db:generate` reads a renamed column as "drop the old column, add a new one" and loses data; adding a column is safer than renaming one.
+- Remote Studio reads `process.env` directly, so the environment needs `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, and `CLOUDFLARE_API_TOKEN`.
+- Automatic deployment applies the remote migrations before deploying — review the migration yourself before releasing.
+- `pnpm dev` uses the local SQLite file under `.wrangler/state`, completely separate from the remote database.

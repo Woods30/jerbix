@@ -1,37 +1,76 @@
 ---
-title: Documentation
-description: How to use the template — getting started, configuration, deployment, and each module
+title: Overview
+description: How to read these docs
 locale: en
 order: 0
-updated: 2026-11-02
+group: start
+updated: 2026-11-03
 ---
 
-This documentation describes a deployable SaaS starter: a TanStack Start application on the
-Cloudflare Workers runtime, plus auth, payments, email, and other modules that are switched on
-or off. The docs ship with the code, so they never drift from the implementation.
+Read these docs in order: get it running, change the configuration, deploy it, then turn on
+the modules you need. Every module has its own page, and each page covers exactly one job.
 
-## Where to start
+## Build flow
 
-- [Getting Started](./getting-started) — one line from clone to production, including
-  `pnpm run init`.
-- [Configuration](./configuration) — site name, logo, and module switches live in one file.
-- [Environment](./environment) — the two-layer env model and who owns each variable.
-- [Cloudflare](./cloudflare) — domains, secrets, variables, and automated deploys.
+1. **Get it running.** Install dependencies, initialize the project, create the Cloudflare
+   resources, then open `http://localhost:3000`. [Quick Start](./getting-started)
+2. **Change the configuration.** Site name, logo, theme, module switches, and social links
+   live in one file. [Site Configuration](./configuration)
+3. **Deploy.** Account, token, domain, secrets, and automated deploys.
+   [Deploy to Cloudflare](./cloudflare)
+4. **Turn on modules.** Payments, email, notifications, and analytics each have a page —
+   open only the ones you need. [Payments Overview](./payment)
 
 ## Map of the docs
 
-| Group | Covers |
-|---|---|
-| Start | From clone to a running site |
-| Config | Site configuration, navigation, and environment variables |
-| Deploy | Cloudflare, D1, storage, and cache |
-| Features | Integrations, auth, email, newsletter, payments, notifications, analytics, API keys, and user management |
-| Develop | Project structure, design system, forms, and testing |
+### Start
 
-## Conventions
+- [Quick Start](./getting-started)
 
-- Commands always start with `pnpm`; the scripts live in `package.json`.
-- Configuration files keep stable locations: `src/config/website.ts` (site config),
-  `src/config/products.ts` (pricing plans), `wrangler.jsonc` (deployment and bindings), and
-  `.env` (local environment variables).
-- Amounts live only in the provider's price catalog — the code never keeps a second copy.
+### Configuration
+
+- [Site Configuration](./configuration)
+- [Navigation](./navigation)
+- [Environment Variables](./environment)
+
+### Deployment
+
+- [Deploy to Cloudflare](./cloudflare)
+- [Database](./database)
+- [File Storage](./storage)
+- [Cache](./cache)
+
+### Authentication & Accounts
+
+- [Sign-in and Sign-up](./auth)
+- [Account Settings](./auth-account)
+- [API Keys](./api-keys)
+- [Users and Roles](./user-management)
+
+### Payments
+
+- [Payments Overview](./payment)
+- [Stripe](./payment-stripe)
+- [Creem](./payment-creem)
+
+### Email
+
+- [Email Overview](./email)
+- [Resend](./email-resend)
+- [Cloudflare Email](./email-cloudflare)
+- [Newsletter](./newsletter)
+
+### Notifications
+
+- [Notifications](./notifications)
+
+### Analytics
+
+- [Analytics](./analytics)
+
+### Development
+
+- [Project Structure](./project-structure)
+- [Form Conventions](./forms)
+- [Design System](./design-system)
+- [Testing](./testing)

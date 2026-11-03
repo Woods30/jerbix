@@ -1,17 +1,17 @@
 ---
-title: 支付
-description: 套餐配置、托管购买与账单管理
+title: 支付总览
+description: 套餐声明、买家流程与账单页
 locale: zh
-order: 14
-group: features
+order: 13
+group: payment
 updated: 2026-11-03
 ---
 
-站点通过 `websiteConfig.payment.provider` 选择一个支付服务商。当前内置 Stripe 与 Creem，用户无需在付款时选择服务商。切换渠道只改 `VITE_PAYMENT_PROVIDER`（或 `src/config/website.ts` 的默认值），页面、订阅与落库逻辑共用。
+套餐在 `src/config/products.ts` 声明一次，provider（Stripe 或 Creem）决定怎么收款。站内不存金额：展示价与扣款价都读 provider 的价格目录。
 
-## 配置套餐
+## 套餐配置
 
-只编辑 `src/config/products.ts` 的 `getProducts()`：
+只改 `src/config/products.ts` 的 `getProducts()`：
 
 ```ts
 {
@@ -20,108 +20,42 @@ updated: 2026-11-03
   description: m.pricing_pro_description(),
   features: [m.pricing_pro_feature_1()],
   recommended: true,
-  prices: {
-    monthly: 'pro_monthly',
-    yearly: 'pro_yearly',
-  },
+  prices: { monthly: 'pro_monthly', yearly: 'pro_yearly' },
 }
 ```
 
-- `id` 是本站套餐标识，`prices` 左侧是本站购买选项 ID。
-- Stripe 下右侧填写 Price 的 `lookup_key`。不同套餐创建不同 Product，同套餐不同周期使用多个 Price。
-- Creem 下右侧是本站引用，真实商品 ID 由 `CREEM_PRODUCTS` 映射（`pro_monthly=prod_xxx`）。Creem 没有 lookup key，商品本身就是价格：不同周期要建不同的 recurring 商品。
-- 金额、币种和实际计费周期从服务商读取并缓存；选项名称不会决定扣款周期。
-- 空 `prices` 表示免费套餐，按钮进入注册或工作台。
-- `recommended` 可省略，数组顺序就是展示顺序；无需设置 CTA、等级或互斥。
+- `id` 是本站套餐标识。
+- `prices` 的键是**本站购买选项 ID**（如 `monthly`），值是**销售引用**，由 provider 解释：
+
+| provider | 销售引用的含义 |
+|---|---|
+| Stripe | Price 的 `lookup_key` |
+| Creem | 本站自定义引用，用 `CREEM_PRODUCTS` 映射到 `prod_*` 商品 ID |
+
+- `prices` 为空表示免费套餐：卡片仍渲染按钮，但走注册或进控制台，不进结账。
+- `recommended` 可选；数组顺序就是展示顺序。
 - 文案在函数调用时求值，不在模块顶层调用 `m.*()`。
 
-重复产品 ID、重复或空销售引用由配置自检报告。无法取到价格时不允许购买，不会把用户误送到注册页。价格缓存按 provider 和引用集合隔离，默认 10 分钟；Stripe 改价可把原 lookup key 迁移到新 Price。
+provider 由 `websiteConfig.payment.provider` 选，可用环境变量 `VITE_PAYMENT_PROVIDER` 在部署时切换，不用改代码。
 
-## 购买与订阅规则
+## 买家流程
 
-客户端只提交 `productId` 和 `offerId`；服务端鉴权、限流、校验回跳同源并解析真实价格，再创建 Stripe 托管 Checkout。登录后回定价页恢复选项，用户再次点击购买。
+1. 买家在首页 `#pricing` 区块看到价格与购买按钮；该区块卖的是 `websiteConfig.landingOffer` 指向的那个商品与购买方式。想卖多套餐，改 `src/config/products.ts` 的套餐列表，并用 `src/components/sections/Pricing.tsx` 的 `Pricing` 组件渲染卡片（每个套餐内切换月付 / 年付 / 买断），把 `renderCta` 接到 `startCheckout` 上。
+2. 未登录会先跳登录页，登录后回到价格区再点一次购买。
+3. 客户端提交 `productId`、`offerId` 与回跳地址；服务端鉴权、限流、校验回跳地址同源，再按 provider 建托管结账会话。
+4. 浏览器跳到 provider 的付款页；付款完成回到 `/dashboard/billing?checkout=success`，取消回到发起购买的那一页。
+5. 权益由 provider 的 webhook 确认后写入——回跳页本身不发权益。
 
-一个账号全局最多一份尚未终止的订阅：`active`、`trialing`、`past_due`、`unpaid`、`paused`、`incomplete` 占用名额。取消续费但尚未到期仍占用；`canceled`、`incomplete_expired` 允许重新购买。已有订阅时引导到账单页管理。
+一个账号最多保留一份**未终止**的订阅（`active`、`trialing`、`past_due`、`unpaid`、`paused`、`incomplete` 都算）。已安排期末取消的订阅在到期前仍占名额。一次性商品可以重复买，也能与订阅并存，不会取消或接管已有订阅。
 
-订阅结账使用本地预留和稳定幂等键；重复请求复用尚未完成的 Checkout，避免多标签页创建两份订阅。有效 Checkout 存在时同一选项继续该会话；改选其他选项返回明确冲突提示，需返回原选项或等会话失效。历史订阅事件不会释放新预留。释放前先查询服务商会话状态：已完成会话同步真实订阅，确认终止后才允许重购；本地过期不能直接视为未付款。远端状态不可用时保留预留，避免重复购买。创建响应丢失时使用原请求、幂等键和固定过期时间恢复。
+## 账单页
 
-独立一次性商品可以另外购买、重复购买，不接管、不取消已有订阅。默认示例中的一次性商品没有“比订阅等级更高”的含义。
+`/dashboard/billing` 显示：
 
-## 账单与 Portal
+- 当前订阅：套餐名、状态、金额与周期、续费或结束日期；
+- 历史订阅；
+- 支付记录：日期、套餐、金额、状态，部分退款单独标出。
 
-`/dashboard/billing` 显示有效订阅、价格周期、状态、续费或结束日期、历史订阅与交易记录。部分退款独立显示退款金额。
+「管理订阅」按钮把用户送到 provider 的自助 Portal（取消续费、换支付方式、发票都在那边）。客户 ID 由服务端按登录用户查，客户端不能指定别人的。
 
-管理入口由服务端根据当前用户的订阅或支付记录确定客户 ID；客户端不能指定其他客户。仅购买过一次性商品也可进入 Portal。
-
-取消续费、支付方式和发票交给服务商 Portal。站内不实现套餐切换、补差价、降级调度或买断接管。Stripe Portal 可在后台开放套餐切换，具体能力以后台配置为准；Webhook 会按实际价格同步归属。接入其他服务商时，不应假设 Portal 能力完全一致。
-
-## Webhook
-
-Stripe 端点是 `/api/webhooks/stripe`。在 Stripe Dashboard → Developers → Webhooks 添加该地址，并勾选以下事件——**漏勾任何一个，对应的记录就永远写不进来**：
-
-| 事件 | 作用 |
-|---|---|
-| `checkout.session.completed` | 一次性付款的结账上下文 |
-| `checkout.session.async_payment_succeeded` | 延迟付款方式的实际到账 |
-| `customer.subscription.created` / `updated` / `deleted` | 订阅生命周期 |
-| `invoice.paid` | **支付成功的权威事件** |
-| `invoice.payment_failed` | 失败付款，不授予权益 |
-| `charge.refunded` | 退款 |
-
-`invoice.paid` 是支付成功的权威事件。Stripe 不保证事件到达顺序，端点也可能只投递 `invoice.*`，所以付款记录不能单点依赖 `checkout.session.completed`：一次性支付同样会开票，归属写在 `invoice.metadata` 上，发票事件单独到达时据此定位用户。两条路径用同一个 PaymentIntent 作外部 ID，同一笔钱被看到两次时写入同一条记录。
-
-保留原始 body 并异步验签，适配器转换为通用 `PaymentEvent`，`src/payment/events.ts` 负责落库。尚未支付的异步订单不会提前记为已付；订阅创建、更新或发票事件会读取最新订阅状态抵御乱序。支付回跳页不授予权益。
-
-事件按 provider + event ID 去重，交易按 provider + 业务交易 ID 幂等。处理失败返回 500 供服务商重投；退款事件若早于付款同步到达，也等待重投。部分退款保留原付款金额及累计退款金额。多笔发票付款按实际金额分别记录，退款关联到对应付款。订阅快照用版本比较写入；并发冲突重新读取服务商状态。启用通知后，首次付款成功保留运营通知。
-
-付款成功回跳只显示提示，不依据查询参数发送收入统计；需要分析收入时应使用已验证交易作为来源。
-
-## 扩展支付服务商
-
-新增服务商需要实现 `src/payment/types.ts` 的 `PaymentProvider`，注册 provider、补齐 env 校验并提供自己的 Webhook 路由。适配器解释 `prices` 引用，归一化价格、订阅快照和支付事件，共用页面与落库逻辑。
-
-## Creem
-
-Creem 是 Merchant of Record：它以自己名义收款、处理税费与退款，站点拿到的是净额结算。订阅与一次性付款都支持。
-
-### 配置
-
-1. 在 Creem 后台创建商品：订阅用 recurring 商品（按月/年各建一个），买断用 one-time 商品。
-2. 把商品 ID 映射写入环境变量，左侧是 `src/config/products.ts` 里的引用：
-
-   ```dotenv
-   VITE_PAYMENT_PROVIDER=creem
-   CREEM_API_KEY=creem_xxx
-   CREEM_WEBHOOK_SECRET=whsec_xxx
-   CREEM_PRODUCTS=pro_monthly=prod_xxx,pro_yearly=prod_yyy,lifetime=prod_zzz
-   ```
-
-3. 联调时设 `CREEM_DEBUG=true` 走沙箱（`test-api.creem.io`），用沙箱 key 与沙箱商品 ID；上线前改回 `false` 并换成生产 key。
-
-### Webhook
-
-端点是 `/api/webhooks/creem`。在 Creem 后台添加该地址，签名密钥即 `CREEM_WEBHOOK_SECRET`。请求头 `creem-signature` 是原文的 HMAC-SHA256 十六进制串，适配器按常量时间比较校验；不合法返回 400。
-
-关键事件：
-
-| 事件 | 作用 |
-|---|---|
-| `checkout.completed` | 结账完成；一次性付款的订单在此记录 |
-| `subscription.paid` | **订阅付款的权威事件**，首笔与每次续费都会发 |
-| `subscription.*` | 订阅生命周期；`scheduled_cancel` 归一化为「有效但期末取消」 |
-
-归属写在 checkout 的 `metadata.userId` / `productId` / `offerId` 上，订阅自带 metadata 时优先用它。两者都缺失时落库会抛错，让 Creem 重试，等带归属的事件到达——不会把付款记到猜出来的用户身上。
-
-### 与 Stripe 的差异
-
-- **商品即价格**：没有 lookup key，结账传 `product_id`；价格目录逐个 `GET /v1/products/{id}` 读取。
-- **没有 cancel_url**：取消只能回 Creem 自己的页面，站内不提供取消回跳。
-- **金额是税前价**：结账页会加税，展示价与实付可能不同。MoR 模式下税务由 Creem 承担。
-- **状态映射**：`expired` 记为 `past_due`（仍可恢复）；未知状态记为 `incomplete`，宁可暂不授予权益。
-- **不支持站内退款**：退款走 Creem 后台，退款事件会同步回来。
-
-已有订阅不随渠道切换迁移；换渠道等于换收款主体，需自行处理存量。
-
-## 数据库调整
-
-`0008_payment_simplification.sql` 移除站内切换专用字段并增加结账预留。先审查迁移；生产应用需要另行授权。本次不转换历史支付数据、不自动清库。新增模板实例应从空数据库完整应用迁移；历史生产数据库不在此次兼容范围。
+接着读：[Stripe](./payment-stripe) 或 [Creem](./payment-creem)。

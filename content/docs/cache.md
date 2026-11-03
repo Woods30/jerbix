@@ -1,125 +1,80 @@
 ---
 title: Cache
-description: Creating and binding Cloudflare KV, plus the cache API
+description: Creating, binding, and using the Cloudflare KV cache
 locale: en
 order: 8
 group: deploy
-updated: 2026-10-21
+updated: 2026-11-03
 ---
 
-Server-side caching uses **Cloudflare KV** through the `CACHE` binding. Code is in
-`src/cache/`.
+Server-side caching uses **Cloudflare KV** through the `CACHE` binding. The code is in `src/cache/`.
 
-It fits read-heavy, write-light data where brief staleness is acceptable: third-party
-status lookups, public lists, slow endpoints. It does not fit data that needs strong
-consistency or frequent writes — KV propagation is eventually consistent.
+It fits read-heavy, write-light data where brief staleness is acceptable: third-party status lookups, public lists, slow endpoints. It does not fit data that needs strong consistency or frequent writes — KV writes propagate with a delay.
 
-## Prerequisites
+## Steps
 
-The token needs **Account → Workers KV Storage → Edit**, see [Cloudflare](./cloudflare).
+1. **Create a namespace.**
 
-## Setup
+   ```bash
+   pnpm exec wrangler kv namespace create <your-namespace-name>
+   ```
 
-### 1. Create a namespace
+   Copy the `id` from the output into `wrangler.jsonc`:
 
-```bash
-pnpm exec wrangler kv namespace create saas-template-cache
-```
+   ```jsonc title="wrangler.jsonc"
+   {
+     "kv_namespaces": [{ "binding": "CACHE", "id": "<your-namespace-id>" }]
+   }
+   ```
 
-Copy the `id` into `wrangler.jsonc`:
+   The `binding` is the name code reads (`env.CACHE`) and must match `src/types/cloudflare.d.ts`. The namespace name and the binding name are separate on purpose: the former identifies the resource in Cloudflare, the latter is the variable name in code.
 
-```jsonc title="wrangler.jsonc"
-{
-  "kv_namespaces": [{ "binding": "CACHE", "id": "00000000000000000000000000000000" }]
-}
-```
-
-`binding` is the name code reads (`env.CACHE`) and must match `src/types/cloudflare.d.ts`.
-
-> The namespace name (`saas-template-cache`) and the binding name (`CACHE`) are separate on
-> purpose: the former identifies the resource in Cloudflare, the latter is the variable name
-> in code. Deploying the same code to several accounts only requires repointing the id.
-
-### 2. No extra switch
-
-Caching is always on; there is no `enabled` flag. Without an ALS context (as in tests) each
-function degrades to pass-through — it calls the fetcher directly, caching nothing and
-raising nothing.
+2. **No extra switch.** Caching is always on and there is no `enabled` option. Outside a request context (in tests, for example) every function degrades to pass-through: it calls the fetcher and neither caches nor throws.
 
 ## Usage
 
 ```ts
 import { CACHE_TTL, createCacheKey, deleteCache, deleteCacheByPrefix, getOrSetCache } from '@/cache'
-```
 
-### Read-through
-
-```ts
+// Read: a hit returns immediately, a miss calls the fetcher, writes KV, and returns
 const status = await getOrSetCache({
   key: createCacheKey('newsletter:status', email),
   ttlSeconds: CACHE_TTL.newsletterStatus,
   fetcher: async () => fetchStatusFromProvider(email),
 })
-```
 
-A hit returns the cached value; a miss calls `fetcher`, writes KV, and returns the result.
-
-### Invalidate
-
-```ts
+// Invalidate
 await deleteCache(createCacheKey('newsletter:status', email))   // single key
-await deleteCacheByPrefix(createCacheKey('products:list'))      // prefix
+await deleteCacheByPrefix(createCacheKey('products', 'list'))    // by prefix
 ```
 
-Invalidate after writes rather than waiting for the TTL.
+**Always build keys with `createCacheKey()`**: it replaces `:` inside each part with `_` and joins the parts with `:`, so a colon in an argument cannot pollute the key levels and cause a prefix invalidation to delete the wrong entries. Use the TTL constants from `src/cache/constants.ts` instead of writing numbers at the call site:
 
-### Building keys
-
-Always go through `createCacheKey()`, never concatenate by hand:
-
-```ts
-createCacheKey('newsletter:status', 'someone@example.com')
-// → 'newsletter:status:someone@example.com'
-```
-
-It replaces `:` inside segments with `_` so a colon in a parameter cannot pollute the key
-hierarchy and cause a prefix invalidation to delete the wrong entries.
-
-### TTL constants
-
-Centralized in `src/cache/constants.ts`; no magic numbers at call sites.
-
-| Constant | Seconds | Purpose |
+| Constant | Seconds | Used for |
 |---|---|---|
 | `CACHE_TTL.newsletterStatus` | 3600 | Subscription status |
+| `CACHE_TTL.priceCatalog` | 60 | Payment price catalog, so a price change shows up within a minute |
 | `CACHE_TTL.providerStatus` | 300 | Third-party provider status |
 | `CACHE_TTL.publicList` | 60 | Public lists |
 
-### Existing consumers
+Only `newsletterStatus` and `priceCatalog` have callers today; the other two are ready to use. Invalidate the affected key right after a write instead of waiting for the TTL to expire.
+
+## Current consumers
 
 | Location | Purpose |
 |---|---|
-| `src/newsletter/index.ts` | Caches subscription status, invalidates after writes |
-| `src/lib/rate-limit.ts` | Builds rate-limit keys |
+| `src/newsletter/index.ts` | Caches subscription status, invalidated after subscribe and unsubscribe |
+| `src/lib/rate-limit.ts` | Builds rate limit keys with `createCacheKey` |
+| `src/payment/price-catalog.server.ts` | Caches the payment price catalog |
 
-Rate limiting and caching share the `CACHE` binding.
+Rate limiting and caching share the same `CACHE` namespace.
 
-## Commands
+## Common commands
 
-| Command | Purpose |
+| Command | What it does |
 |---|---|
 | `pnpm exec wrangler kv namespace create <name>` | Create a namespace |
 | `pnpm exec wrangler kv namespace list` | List namespaces |
 | `pnpm exec wrangler kv key list --namespace-id <id>` | List keys |
 
-## References
-
-- [Cloudflare Workers KV](https://developers.cloudflare.com/kv/)
-- [KV quick start](https://developers.cloudflare.com/kv/get-started/)
-- [KV limits](https://developers.cloudflare.com/kv/platform/limits/)
-
-## Next steps
-
-- [Integrations](./integrations) — which modules use the cache
-- [Newsletter](./newsletter) — the consumer of `CACHE_TTL.newsletterStatus`
-- [Database](./database) — use D1 when you need strong consistency
+Once this is wired up you can move on to [File Storage](./storage).

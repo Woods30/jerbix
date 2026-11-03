@@ -1,127 +1,108 @@
 ---
 title: Environment Variables
-description: The two-layer env model, the VITE_ rule, and production config
+description: Public and server env vars
 locale: en
 order: 4
 group: config
 updated: 2026-11-03
 ---
 
-Environment variables come in two layers, validated by two Zod schemas. Business code must
-**not** read `process.env` or `import.meta.env` directly — always go through these modules.
+Environment variables come in two layers, each validated by its own Zod schema. Business code
+must **not** read `process.env` or `import.meta.env` directly — always go through these two
+modules.
 
 | File | Contents |
 |---|---|
 | `src/env/public.ts` | `VITE_` prefix, inlined into the client bundle at build time |
 | `src/env/server.ts` | Server secrets, read only at Workers runtime |
 
-## Prerequisites
+**A `VITE_` variable ends up in the browser.** It is baked into the client JS at build time and
+anyone who opens the page can read it. A secret must never carry the `VITE_` prefix:
+`pnpm check:client-bundle` scans the text assets in `dist/client` and fails on a server field
+(it requires `pnpm build` first).
 
-None. This page stands alone, though [Cloudflare](./cloudflare) is worth reading before
-configuring a deploy.
+## Public variables
 
-## Setup
-
-### The `VITE_` rule
-
-`VITE_` variables are inlined into the client bundle at build time — **anyone who opens the
-page can read them**.
-
-| Prefix | Meaning | Examples |
+| Variable | Default | Purpose |
 |---|---|---|
-| `VITE_` | Public | `VITE_BASE_URL`, `VITE_GA_ID` |
-| No prefix | Server secret | `BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY` |
+| `VITE_BASE_URL` | `http://localhost:3000` | Site root URL for canonical tags, OG, and the sitemap |
+| `VITE_PAYMENT_PROVIDER` | — | Payment channel: `stripe` or `creem`; empty keeps the configured default |
+| `VITE_MODULES` | — | Comma-separated module allowlist, overriding the module switches in config |
+| `VITE_FEATURES` | — | Comma-separated feature allowlist, overriding `features` in config |
+| `VITE_DOCS_AS_HOME` | — | `true` makes the root path open the docs home directly |
+| `VITE_GA_ID` | — | Google Analytics `G-…` ID |
+| `VITE_PLAUSIBLE_DOMAIN` | — | Plausible site domain |
+| `VITE_UMAMI_WEBSITE_ID` / `VITE_UMAMI_ID` | — | Umami site ID; set either one |
+| `VITE_UMAMI_SCRIPT_URL` | — | Umami script URL; must be a credential-free HTTPS URL |
+| `VITE_CLARITY_PROJECT_ID` / `VITE_CLARITY_ID` | — | Microsoft Clarity project ID; set either one |
+| `VITE_TURNSTILE_SITE_KEY` | — | Turnstile site key (the public half) |
 
-> **Never put a secret behind `VITE_`.** `pnpm check:client-bundle` scans the build output
-> and fails on a leak. It requires `pnpm build` first.
+`VITE_MODULES` / `VITE_FEATURES` are allowlists: once you set one, only the listed modules or
+features stay on and everything else is off; leave both unset and the defaults in
+`src/config/website.ts` apply.
 
-### Public variables
+## Server variables
 
-| Variable | Default | Notes |
-|---|---|---|
-| `VITE_BASE_URL` | `http://localhost:3000` | Site base URL for canonical, OG, sitemap |
-| `VITE_PAYMENT_PROVIDER` | `stripe` | Payment provider: `stripe` or `creem` |
-| `VITE_GA_ID` | — | Google Analytics |
-| `VITE_PLAUSIBLE_DOMAIN` | — | Plausible |
-| `VITE_UMAMI_WEBSITE_ID` | — | Umami |
-| `VITE_UMAMI_SCRIPT_URL` | — | Umami script URL (credential-free HTTPS) |
-| `VITE_CLARITY_PROJECT_ID` | — | Microsoft Clarity |
-| `VITE_TURNSTILE_SITE_KEY` | — | Turnstile site key |
-
-### Server variables
-
-All optional. A missing variable means the provider is not registered rather than falling
-back to a placeholder — **an unconfigured feature stays off instead of pretending to work**.
+All optional. A missing variable means the provider is not registered rather than falling back
+to a placeholder — **an unconfigured feature stays off instead of pretending to work**.
 
 | Variable | Constraint | Used by |
 |---|---|---|
 | `BETTER_AUTH_SECRET` | ≥ 32 chars | Auth, **required in production** |
-| `BETTER_AUTH_URL` | URL | Absolute callback URL; inferred from request origin when empty |
+| `BETTER_AUTH_URL` | URL | Absolute callback URL; inferred from the request origin when empty |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Must be paired | Google sign-in |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | — | Payment (Stripe) |
 | `CREEM_API_KEY` / `CREEM_WEBHOOK_SECRET` | — | Payment (Creem) |
 | `CREEM_PRODUCTS` | Comma-separated `reference=prod_xxx` | Creem product ID mapping |
 | `CREEM_DEBUG` | `true` / `false` | `true` targets the Creem sandbox API |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Must be paired | Google sign-in |
-| `RESEND_API_KEY` / `MAIL_FROM` | `MAIL_FROM` must be a valid address | Email |
+| `RESEND_API_KEY` | — | Email (Resend) |
+| `MAIL_FROM` | Valid address, no display name | Sender address |
 | `RESEND_AUDIENCE_ID` | — | Newsletter (Resend) |
 | `BEEHIIV_API_KEY` / `BEEHIIV_PUBLICATION_ID` | — | Newsletter (Beehiiv) |
-| `DISCORD_WEBHOOK_URL` | Must start with `https://discord.com/api/webhooks/` | Notifications |
-| `FEISHU_WEBHOOK_URL` | Must start with `https://open.feishu.cn/open-apis/bot/v2/hook/` | Notifications |
-| `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` | — | Deploy and API |
-| `ADMIN_EMAILS` | — | `/api/email` recipient allowlist |
+| `BEEHIIV_SEND_WELCOME_EMAIL` | `true` / `false` | Whether new subscribers get a welcome email |
+| `DISCORD_WEBHOOK_URL` | Must start with `https://discord.com/api/webhooks/` | Notifications (Discord) |
+| `FEISHU_WEBHOOK_URL` | Must start with `https://open.feishu.cn/open-apis/bot/v2/hook/` | Notifications (Feishu) |
+| `TURNSTILE_SECRET_KEY` | — | Turnstile server-side verification |
+| `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` | — | Deploy and resource API |
+| `ADMIN_EMAILS` | Comma-separated | Recipient allowlist for `/api/email` |
 | `NODE_ENV` | `development` / `production` / `test` | Defaults to `development` |
 
 Empty strings normalize to unset, so a blank line in `.env` is the same as omitting it.
 
-### Workers bindings
+Workers resource bindings (`DB` / `CACHE` / `BUCKET` / `EMAIL`) do not go through the env
+schema; they are declared in `wrangler.jsonc`.
 
-Resource bindings do not go through the env schema; they are declared in `wrangler.jsonc`:
+## Local file and production file
 
-| Binding | Type | Purpose |
-|---|---|---|
-| `DB` | D1 | Drizzle database |
-| `CACHE` | KV | Cache and rate limiting |
-| `BUCKET` | R2 | Object storage |
-| `EMAIL` | SendEmail | Cloudflare Email |
-
-### Production config
-
-Local `.env` holds development values; production lives in `.env.production`:
+Local development values go in `.env` (copied from `.env.example`), production values go in
+`.env.production`:
 
 ```bash
 cp .env.example .env.production
 ```
 
-Change at least two things: set `VITE_BASE_URL` to a real HTTPS domain and
-`BETTER_AUTH_SECRET` to a production secret. The file is git-ignored and **must not be
-committed**.
+When `.env.production` **exists**, `pnpm check:env:prod` uses it and does not fall back to `.env`
+— otherwise a wrong production value would be masked by a valid local one. `vite build` loads
+both files and prefers `.env.production` for the same key. Both files are git-ignored and must
+not be committed. Priority (high → low): process env → `.env.production` → `.env`, so CI needs
+no such file — put the values in the workflow `env:` block instead.
 
-Priority (high → low): **process env → `.env.production` → `.env`**. CI therefore needs no
-such file — put the values in the workflow `env:` block instead.
+## Configuring production
 
-> When `.env.production` **exists**, `check-env-prod.ts` uses it and does not fall back to
-> `.env` — otherwise a wrong production value would be masked by a valid local one.
-> Fallback only happens when the file is absent.
+Two routes, neither of which goes through a file in the repo:
 
-## Commands
+- **GitHub Environment.** Put Secrets and Variables in the repository's Settings → Environments →
+  `production`. `deploy.yml` reads them on a published Release or a manual trigger, and uploads
+  only the whitelisted runtime fields to the Worker. When you enable a new service, add its
+  fields to the workflow's `env:` block and to the upload allowlist — otherwise configuring them
+  has no effect.
+- **Manual deploys.** Set the runtime secrets on the Worker first:
 
-| Command | Behavior |
-|---|---|
-| `pnpm check:env` | Validate local `.env`; invalid fields fail |
-| `pnpm check:env:prod` | Production check: `VITE_BASE_URL` must be a real HTTPS domain |
-| `pnpm check:client-bundle` | Requires `pnpm build`; confirms no secrets in the bundle |
+  ```bash
+  printf '%s' "<your-secret>" | pnpm exec wrangler secret put BETTER_AUTH_SECRET
+  ```
 
-The production URL check rejects `localhost`, `127.*`, `0.0.0.0`, URLs with embedded
-credentials, and placeholder domains like `example.com` or `*.test`.
+  A build-time variable (`VITE_*`) only takes effect after a **rebuild and redeploy**; a runtime
+  secret takes effect immediately.
 
-## References
-
-- [Cloudflare Workers Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)
-- [Wrangler configuration](https://developers.cloudflare.com/workers/wrangler/configuration/)
-- [Better Auth options](https://www.better-auth.com/docs/reference/options)
-
-## Next steps
-
-- [Cloudflare](./cloudflare) — configure variables in production
-- [Integrations](./integrations) — which variables each module needs
-- [Website Config](./configuration) — module switches
+Once it is configured, continue with [Deploy to Cloudflare](./cloudflare).

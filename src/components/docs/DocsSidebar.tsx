@@ -19,7 +19,11 @@ const GROUP_TITLE: Record<string, () => string> = {
   start: m.docs_group_start,
   config: m.docs_group_config,
   deploy: m.docs_group_deploy,
-  features: m.docs_group_features,
+  auth: m.docs_group_auth,
+  payment: m.docs_group_payment,
+  email: m.docs_group_email,
+  notification: m.docs_group_notification,
+  analytics: m.docs_group_analytics,
   develop: m.docs_group_develop,
 }
 

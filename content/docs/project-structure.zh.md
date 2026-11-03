@@ -2,104 +2,70 @@
 title: 目录结构
 description: 每个目录负责什么，改东西该去哪里
 locale: zh
-order: 19
+order: 22
 group: develop
-updated: 2026-10-21
+updated: 2026-11-03
 ---
 
-这页是一张地图。找不到东西时先看这里，再去读具体代码。
+这是一张地图。找不到东西时先看这里，再去读对应文件。
 
-## 目录地图
+## 目录表
 
-```text
-src/
-├── routes/              文件路由。`{-$locale}` 是可选的 locale 前缀
-├── config/              站点配置
-│   ├── website.ts       总开关：名称、Logo、模块开关、功能开关
-│   ├── navigation.ts    菜单类型与过滤规则
-│   ├── navbar-config.ts 导航栏
-│   ├── footer-config.ts 页脚
-│   └── settings.ts      工作台分区
-├── components/
-│   ├── sections/        可复用内容区块（Hero / Features / Pricing…）
-│   ├── marketing/       页面级装配（LandingPage / MarketingLayout / Navbar）
-│   ├── docs/            文档站布局、侧栏、搜索
-│   ├── dashboard/       工作台骨架
-│   ├── layout/          跨页面布局件（Logo / 语言切换 / 用户菜单）
-│   ├── blog/  auth/  contact/  mdx/  theme/  icons/
-│   └── ui/              shadcn 上游原件，不本地修改
-├── auth/                认证（Better Auth）
-├── cache/               KV 缓存与限流
-├── contact/             联系表单投递
-├── db/                  Drizzle schema 与迁移
-├── env/                 两层 env 校验
-├── lib/                 纯逻辑：locale、seo、module-access、rate-limit…
-├── locale/              Paraglide 生成物与 middleware
-├── mail/  newsletter/  notification/  payment/  storage/
-│                        服务模块：provider 注册表 + 抽象接口
-├── styles/              globals.css（设计 token）、mdx.css
-├── server.ts            自定义 server entry（CSP nonce、env 注入）
-└── router.tsx           路由实例
+| 目录 | 负责什么 |
+|---|---|
+| `src/routes/` | 文件路由；`{-$locale}` 前缀可选，`_layout/` 下按布局分组 |
+| `src/routes/api/` | API 端点：`contact/`、`auth/`、`payment/`、`newsletter/`、`email/`、`webhooks/` |
+| `src/config/` | 站点配置：`website.ts`（总开关）、`products.ts`（套餐）、`navbar-config.ts`、`footer-config.ts`、`navigation.ts`、`settings.ts`、`social-config.ts` |
+| `src/components/ui/` | shadcn（Base UI）上游原件，**不本地修改** |
+| `src/components/layout/` | Logo、语言切换、菜单项、用户菜单 |
+| `src/components/marketing/` | 营销页装配：LandingPage / Navbar / Footer / MarketingLayout |
+| `src/components/sections/` | 可复用内容区块：Hero / Features / Pricing / FAQ… |
+| `src/components/docs/` | 文档站布局、侧栏、搜索、目录 |
+| `src/components/dashboard/` | 工作台骨架与用户卡片 |
+| `src/components/auth/` | 表单件：字段适配层、提交按钮、水合检测 |
+| `src/auth/` | Better Auth 配置、会话、邮箱验证 |
+| `src/db/` | Drizzle schema 与迁移文件 |
+| `src/env/` | 两层 env 校验：`public.ts` 与 `server.ts` |
+| `src/lib/` | 纯逻辑：locale、SEO、模块门禁、限流、主题解析 |
+| `src/locale/` | Paraglide 产物与 locale 中间件 |
+| `src/cache/` `src/storage/` `src/mail/` `src/newsletter/` `src/notification/` `src/payment/` | 各服务模块：provider 注册表 + 抽象接口 |
+| `src/styles/` | `globals.css`（设计 token）、`mdx.css` |
+| `src/hooks/` | 跨页面复用的 hook |
+| `src/server.ts` / `src/router.tsx` | 服务入口（CSP nonce、env 注入）/ 路由实例 |
 
-content/                 文档 / 博客 / 更新日志 / 法务（Markdown）
-messages/                zh.json / en.json 界面文案
-public/docs/screenshots/ 文档正文引用的界面截图
-scripts/                 构建与校验脚本
-tests/                   unit / components / workers
-e2e/                     Playwright
-```
+仓库根目录：
 
-## 改哪里
+| 目录 | 负责什么 |
+|---|---|
+| `content/` | 文档 / 博客 / 更新日志 / 法务，中文稿加 `.zh` 后缀 |
+| `messages/` | 界面文案 `zh.json` / `en.json` |
+| `public/` | 静态资源，含 `public/docs/screenshots/` |
+| `scripts/` | 构建与校验脚本，`scripts/init/` 是初始化向导 |
+| `tests/` | 单元 / 组件 / Workers 测试 |
+| `e2e/` | Playwright 用例 |
+
+## 改 X 去哪个文件
 
 | 想改什么 | 去哪里 |
 |---|---|
-| 站点名、Logo、模块开关 | `src/config/website.ts` |
-| 首页 / 关于 / 定价页的文案 | 对应的路由组件，如 `src/routes/{-$locale}/index.tsx` |
-| 界面上的按钮、提示文案 | `messages/zh.json`、`messages/en.json` |
-| 导航栏、页脚链接 | `src/config/navbar-config.ts`、`footer-config.ts` |
-| 文档内容 | `content/docs/*.md`（中文加 `.zh`） |
-| 颜色、字体、圆角 | `src/styles/globals.css`，规则见 [设计系统](./design-system) |
-| 新增页面 | `src/routes/` 下建文件，框架自动生成路由 |
-| 新增 API | `src/routes/api/<name>/$` 或 `src/routes/api/<name>.ts` |
+| 站点名、Logo、模块与功能开关 | `src/config/website.ts` |
+| 套餐与购买选项 | `src/config/products.ts` |
+| 导航栏、页脚链接 | `src/config/navbar-config.ts`、`src/config/footer-config.ts` |
+| 菜单项形状与显隐规则 | `src/config/navigation.ts` |
+| 工作台分区 | `src/config/settings.ts` |
+| 社交链接 | `src/config/social-config.ts` |
+| 按钮、标题、提示等界面文案 | `messages/zh.json`、`messages/en.json` |
+| 首页 / 关于 / 定价页的段落 | 对应路由组件，如 `src/routes/{-$locale}/index.tsx` |
+| 颜色、字体、圆角、阴影 | `src/styles/globals.css` |
+| 文档内容 | `content/docs/*.md` |
 | 数据库表 | `src/db/schema.ts`，然后 `pnpm db:generate` |
-| 新增服务模块 | 参考 `src/mail/` 的结构：`types.ts` + provider + `index.ts` |
-| 给文档加界面截图 | 图片放 `public/docs/screenshots/`，正文用 `![说明](/docs/screenshots/x.png "标题")` |
+| 新增页面 | 在 `src/routes/` 下建文件，路由自动生成 |
+| 新增 API | `src/routes/api/<name>/$.ts` |
+| 新增 UI 控件 | `pnpm dlx shadcn@latest add <component> -y`，装到 `src/components/ui/` |
+| 新增服务模块 | 照 `src/mail/` 的结构：`types.ts` + `provider/` + `index.ts` |
 
-## 两条容易混淆的边界
+## 生成物
 
-**`components/sections/` 与 `components/marketing/`**
+`src/routeTree.gen.ts`（路由插件）、`src/locale/paraglide/**`（`pnpm locale:compile`）、`.content-collections/generated/**`（`pnpm content:build`）都在构建时重写，手改会被覆盖。
 
-- `sections/` 是**可复用内容区块**：一个 Hero、一组 Features。给什么 props 渲染什么，
-  不关心在哪个页面。
-- `marketing/` 是**页面级装配**：`LandingPage` 把多个 section 按顺序拼起来，
-  `MarketingLayout` 管导航与页脚。
-
-**路由组件内的文案 与 `config/website.ts`**
-
-- `website.ts` 是**全局开关与身份**：站点叫什么、哪些模块开着。
-- 页面文案写在路由组件里，紧挨着它渲染的那个区块；改文案不必跳到另一个文件。
-
-页面文案一律在**渲染期**调用 `m.*()`，不要提到模块顶层常量：Paraglide 在调用时才读
-当前语言，模块加载期求值会把首次请求的语言固化给之后所有请求（SSR 下表现为整页语言
-不对，客户端再按 URL 算出另一种语言，于是 hydration 不匹配）。
-
-## 不手改的生成物
-
-| 路径 | 由谁生成 |
-|---|---|
-| `src/routeTree.gen.ts` | TanStack Router 插件 |
-| `src/locale/paraglide/**` | `pnpm locale:compile` |
-| `.content-collections/generated/**` | `pnpm content:build` |
-
-这三个目录在构建时重写，手改会在下次构建被覆盖。
-
-## 参考资料
-
-- [TanStack Router · 文件路由](https://tanstack.com/router/latest/docs/framework/react/routing/file-based-routing)
-- [TanStack Start](https://tanstack.com/start/latest)
-
-## 下一步
-
-- [设计系统](./design-system)——视觉规范
-- [表单约定](./forms)——新增表单怎么写
-- [测试](./testing)——改完怎么验证
+配色与字体见 [设计系统](./design-system)，新增表单见 [表单约定](./forms)。

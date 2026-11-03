@@ -1,117 +1,91 @@
 ---
-title: 存储
-description: Cloudflare R2 的创建、绑定与文件 API
+title: 文件存储
+description: Cloudflare R2 的开通、绑定与文件 API
 locale: zh
 order: 7
 group: deploy
-updated: 2026-10-21
+updated: 2026-11-03
 ---
 
-文件存 **Cloudflare R2**，经 Workers 的 `BUCKET` binding 访问，零 egress 费用。代码在
-`src/storage/`。
+用户上传的文件存在 **Cloudflare R2**，经 Workers 的 `BUCKET` binding 访问，零 egress 费用。
+代码在 `src/storage/`。
 
-> **存储模块已实现但未接线**：`features.enableFileUpload` 默认 `false`，仓库内没有路由
-> 使用它。本页讲的是「要用时怎么接」——未开通 R2 不影响模板正常运行。
+> 存储层已经实现，但仓库里**没有上传路由**：`features.enableFileUpload` 默认 `false`，
+> `src/routes/api/` 下也没有 `/api/files`。这页讲的是「要用时怎么接」。不接 R2 不影响模板运行。
 
-## 前提条件
+## 步骤
 
-Token 需含 **Account → Workers R2 Storage → Edit**，见 [Cloudflare](./cloudflare)。
+1. **在 Dashboard 开通 R2。** 这一步无法经 API 完成，必须先在 Dashboard 激活一次（需绑支付
+   方法，免费额度内不产生费用）。没开通时 API 会拒绝：
 
-## 设置
+   ```text
+   [code: 10042] Please enable R2 through the Cloudflare Dashboard.
+   ```
 
-### 1. 在 Dashboard 开通 R2
+2. **创建 bucket。**
 
-**这一步无法跳过，也无法经 API 完成。** 首次使用必须先在 Dashboard 激活：
+   ```bash
+   pnpm exec wrangler r2 bucket create <your-bucket-name>
+   ```
 
-> Dashboard → **R2** → 按引导开通
+3. **配置绑定。** 把 `wrangler.jsonc` 里注释掉的 `r2_buckets` 取消注释并填上：
 
-需绑支付方式（免费额度内不产生费用：10 GB 存储 / 月、100 万次 A 类操作 / 月）。
+   ```jsonc title="wrangler.jsonc"
+   "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "<your-bucket-name>" }]
+   ```
 
-未开通时 API 会拒绝：
+   `binding` 是代码里读的名字（`env.BUCKET`），须与 `src/types/cloudflare.d.ts` 一致。没绑定
+   时 `env.BUCKET` 是 `undefined`，`getStorageProvider()` 会抛错——这是预期的降级。
 
-```
-[code: 10042] Please enable R2 through the Cloudflare Dashboard.
-```
+4. **打开文件上传开关。**
 
-### 2. 创建 bucket
+   ```ts
+   // src/config/website.ts
+   features: {
+     enableFileUpload: true,
+   }
+   ```
 
-```bash
-pnpm exec wrangler r2 bucket create saas-template-uploads
-```
+   改完重新构建并部署。
 
-### 3. 配置绑定
+5. **自己加一个上传路由。** 仓库没实现上传 API，在 `src/routes/api/` 下新建路由，在里面调
+   `uploadFile`（用法见下）。
 
-```jsonc title="wrangler.jsonc"
-{
-  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "saas-template-uploads" }]
-}
-```
-
-`binding` 是代码里读的名字（`env.BUCKET`），须与 `src/types/cloudflare.d.ts` 一致。
-
-> 模板默认**注释掉**了该块——R2 需先 Dashboard 开通。开通后取消注释、重新部署即可。
-> 未绑定时 `env.BUCKET` 为 `undefined`，`getStorageProvider()` 会抛错，这是预期的降级。
-
-### 4. 启用文件上传
-
-```ts
-// src/config/website.ts
-features: {
-  enableFileUpload: true,
-}
-```
-
-改完重新构建并部署。
-
-## 使用方法
+## 用法
 
 所有函数从 `@/storage` 导入，内部经 AsyncLocalStorage 取当前请求的 provider：
 
 ```ts
 import { uploadFile, deleteFile, downloadFile, getFileInfo, listUserFiles } from '@/storage'
-```
 
-### 上传
-
-```ts
-const result = await uploadFile(fileArrayBuffer, 'photo.png', 'image/png', {
-  folder: 'uploads',        // 白名单：uploads / avatars / documents
-  userId: 'user_abc',       // 可选，会进 key 路径
-  visibility: 'private',    // 'private'（默认）| 'public'
+// 上传：folder 仅允许 uploads / avatars / documents
+const result = await uploadFile(arrayBuffer, 'photo.png', 'image/png', {
+  folder: 'uploads',
+  userId: 'user_abc',
+  visibility: 'private',
 })
 // → { key, url, metadata }
-```
 
-`key` 形如 `uploads/user_abc/1729000000000-photo.png`。
+// 删除：第二参数 true 表示调用方已确认归属
+await deleteFile(key, true)
 
-### 删除与下载
+// 下载：private 文件必须显式传 true
+const stream = await downloadFile(key, true)
 
-这两个方法**不检查文件所有权**，调用方必须先确认 key 属于当前用户：
-
-```ts
-await deleteFile(key, true)      // 第二参数 true = 已确认授权
-await downloadFile(key, true)    // private 文件必须传 true
-```
-
-不传 `authorized` 会直接抛错——这是刻意的，防止忘记鉴权。
-
-### 查询
-
-```ts
-const info = await getFileInfo(key)          // { key, size, contentType, uploadedAt } | null
-const { files, cursor } = await listUserFiles(userId)
+// 查询
+const info = await getFileInfo(key)                 // { key, size, contentType, uploadedAt } | null
+const { objects, nextCursor } = await listUserFiles('user_abc')
 ```
 
 ## 安全约定
 
-`buildKey` 对用户输入做净化：去除 `/`、`\`、`..` 与前导 `.`，其余非法字符替换为 `_`；
-`folder` 仅接受白名单值；组装后再断言 key 以白名单前缀开头。
+- **bucket 不公开。** 不配公开域名，也不走 `r2.dev` 子域，所有读写都经过 Worker 服务端。
+- **鉴权不在存储层。** `deleteFile` / `downloadFile` 只认 `authorized` 布尔值，不做所有权查询，
+  调用方必须先校验会话与归属，否则任何登录用户都能删改他人文件。
+- key 由服务端拼装，形如 `uploads/<userId>/<时间戳>-<文件名>`：`folder` 取白名单值，filename
+  与 userId 里的 `/`、`\`、`..` 与前导 `.` 会被净化，其余非法字符换成 `_`。
 
-> **鉴权不在存储层。** `deleteFile` / `downloadFile` 只认 `authorized` 布尔值，不做任何
-> 所有权查询。接上传接口时必须在调用前自行校验会话与归属，否则任何登录用户都能删改
-> 他人文件。
-
-## 命令
+## 常用命令
 
 | 命令 | 作用 |
 |---|---|
@@ -119,14 +93,4 @@ const { files, cursor } = await listUserFiles(userId)
 | `pnpm exec wrangler r2 bucket list` | 列出 bucket |
 | `pnpm exec wrangler r2 object put <bucket>/<key> --file <path>` | 上传对象 |
 
-## 参考资料
-
-- [Cloudflare R2](https://developers.cloudflare.com/r2/)
-- [R2 Workers API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/)
-- [R2 定价与免费额度](https://developers.cloudflare.com/r2/pricing/)
-
-## 下一步
-
-- [缓存](./cache)——KV 缓存
-- [网站配置](./configuration)——`features.enableFileUpload` 开关
-- [数据库](./database)——文件的元数据表
+配好后可以接着做[缓存](./cache)。

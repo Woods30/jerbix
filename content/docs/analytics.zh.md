@@ -1,75 +1,83 @@
 ---
 title: 分析
-description: GA / Plausible / Umami / Clarity 的启用、CSP 与业务事件
+description: 统计脚本的启用、CSP 放行与业务事件
 locale: zh
-order: 16
-group: features
-updated: 2026-10-19
+order: 21
+group: analytics
+updated: 2026-11-03
 ---
 
-| provider | 必要配置 |
+分析模块在生产构建里注入统计脚本并上报页面浏览与业务事件。可以同时开多个 provider，
+每个 provider 各自上报，互不影响。
+
+## 步骤
+
+1. **选 provider。** 在 `src/config/website.ts`：
+
+   ```ts
+   analytics: { enabled: true, providers: ['ga', 'plausible'] },
+   ```
+
+   `providers` 是数组，可以同时列多个。
+
+2. **填环境变量。** 这些都是 `VITE_` 公开变量，会进客户端 bundle：
+
+   | provider | 环境变量 | 说明 |
+   |---|---|---|
+   | `ga` | `VITE_GA_ID` | Google Analytics 的 Measurement ID（`G-…`） |
+   | `plausible` | `VITE_PLAUSIBLE_DOMAIN` | 站点域名 |
+   | `umami` | `VITE_UMAMI_WEBSITE_ID` + `VITE_UMAMI_SCRIPT_URL` | 脚本地址必须是无凭据的 HTTPS URL；`VITE_UMAMI_ID` 是旧写法的兼容字段 |
+   | `clarity` | `VITE_CLARITY_PROJECT_ID` | `VITE_CLARITY_ID` 是旧写法的兼容字段 |
+
+   选中但缺 ID 的 provider 不会注册，也不会注入脚本。
+
+3. **部署。** `VITE_` 变量在 `vite build` 时内联进 bundle，改了必须**重新构建并部署**才生效。
+   用 Release 自动部署时在 GitHub **Settings → Environments → production** 配同名 Variable。
+
+## CSP 放行
+
+统计脚本是运行时插入的外部 `<script>`，CSP 的 nonce 覆盖不到它们，所以 `script-src` 必须显式
+放行对应域名（`src/lib/security.ts`）：
+
+| provider | 放行的 `script-src` |
 |---|---|
-| `ga` | `VITE_GA_ID` |
-| `plausible` | `VITE_PLAUSIBLE_DOMAIN` |
-| `umami` | `VITE_UMAMI_WEBSITE_ID`（或兼容字段 `VITE_UMAMI_ID`）+ `VITE_UMAMI_SCRIPT_URL` |
-| `clarity` | `VITE_CLARITY_PROJECT_ID`（或兼容字段 `VITE_CLARITY_ID`） |
+| `ga` | `https://www.googletagmanager.com` |
+| `plausible` | `https://plausible.io` |
+| `clarity` | `https://www.clarity.ms` |
+| `umami` | `VITE_UMAMI_SCRIPT_URL` 的 origin（自托管，逐请求推导） |
 
-```ts
-analytics: { enabled: true, providers: ['ga', 'plausible'] },
-```
-
-## 启用条件
-
-`initAnalytics()` 只在**浏览器 + 生产构建 + `analytics.enabled`** 三者同时成立时
-注册 provider 并注入脚本。开发环境一律不上报——本地调试会污染真实账号的数据。
-
-要在本地验证注入链路，用 `pnpm build && pnpm preview` 跑生产产物。
-
-选中但缺少 ID / domain 的 provider 不注册也不注入；Umami 额外要求脚本地址为无凭据
-的 HTTPS URL。
-
-## CSP（重要）
-
-分析脚本是**外部脚本**（`<script src>`），由 `injectScript()` 在运行时创建。CSP 的
-nonce 只覆盖服务端序列化进 HTML 的内联脚本，覆盖不到这些运行时插入的标签，因此
-`src/lib/security.ts` 的 `script-src` 必须显式放行脚本 origin：
-
-- GA / Plausible / Clarity 的 origin 是固定的，始终在 `script-src` 里；
-- Umami 是自托管的，origin 从 `VITE_UMAMI_SCRIPT_URL` 逐请求推导
-  （`getAnalyticsScriptOrigins()`）。
-
-未启用任何 provider 时 `connect-src` 仍保留常见分析域名（用于数据上报），但
-`script-src` 不会因此放宽到 `unsafe-inline`。
-
-> 早期实现只把分析 origin 放进 `connect-src`，生产环境下所有分析脚本都被浏览器
-> 拦截，而测试只断言了 `connect-src`，因此全绿但功能不可用。
+数据上报走 `connect-src`，其中已包含 GA4 的 `*.google-analytics.com` 与
+`*.analytics.google.com`——少了这两条，脚本能加载但事件收不到。
 
 ## 业务事件
 
-页面浏览由 `AnalyticsProvider` 在首屏与路由切换时显式上报一次。业务事件在
-`src/lib/analytics/events.ts` 集中声明：
+事件名集中声明在 `src/lib/analytics/events.ts`，是分析平台的数据结构契约，调用处不写字面量。
 
-| 事件 | 触发点 |
-|---|---|
-| `sign_up` | 注册成功（含「等待邮箱验证」分支） |
-| `login` | 邮箱密码登录成功 |
-| `begin_checkout` | 定价页发起结账、跳转 Stripe 之前 |
-| `purchase` | 从 Stripe Checkout 返回账单页时 |
+| 事件 | 含义 | 状态 |
+|---|---|---|
+| `sign_up` | 注册成功 | 已在注册流程上报 |
+| `login` | 登录成功 | 已在登录流程上报 |
+| `begin_checkout` | 用户点了购买、开始结账 | 有上报函数 `trackBeginCheckout()`，尚未接入调用点 |
+| `purchase` | 托管结账完成、访客回到本站 | 有上报函数 `trackPurchase()`，尚未接入调用点 |
 
-事件参数只放非 PII 值（plan id、金额、币种、模式）。邮箱 / 姓名不进参数：分析平台
-的原始数据落在第三方，传 PII 会同时触碰 GDPR 与平台服务条款。
+`begin_checkout` 与 `purchase` 需要你在自己的结账入口与支付成功回调处调用对应的上报函数。
+事件参数只放非 PII 值（商品 ID、金额、币种、模式）；邮箱与姓名不进参数——分析数据落在第三方，
+带 PII 会同时违反 GDPR 与平台服务条款。
 
-新增事件时改 `ANALYTICS_EVENTS`，不要在调用处写字符串——事件名是对外契约，散落成
-字面量后 `sign_up` / `signup` 两套写法会让报表对不上。
+## 验证
 
-## 参考资料
+统计只在**浏览器 + 生产构建 + `analytics.enabled`** 三者同时成立时初始化，开发环境一律不上报
+（避免污染真实数据）。要本地验证注入链路，跑生产产物：
 
-- [Google Analytics Measurement ID](https://support.google.com/analytics/answer/12270356?hl=en)——`VITE_GA_ID` 的获取位置
-- [Plausible tracking script](https://plausible.io/docs/plausible-script)——`VITE_PLAUSIBLE_DOMAIN` 与脚本注入
-- [Umami Collect data](https://docs.umami.is/docs/collect-data)——`VITE_UMAMI_WEBSITE_ID` 与 `VITE_UMAMI_SCRIPT_URL`
-- [Microsoft Clarity Setup](https://learn.microsoft.com/en-us/clarity/setup-and-installation/)——`VITE_CLARITY_PROJECT_ID` 的获取位置
+```bash
+pnpm build && pnpm preview
+```
 
-## 下一步
+打开页面后在浏览器 Network 面板确认对应统计域名的请求发出即可。
 
-- [邮件](./email)——事务邮件与联系表单的投递
-- [功能集成概览](./integrations)——六个服务模块的门禁语义与端点
+## 注意事项
+
+- 页面浏览由 `AnalyticsProvider` 在首屏与路由切换时各上报一次。
+- CSP 里没有 `unsafe-inline` / `unsafe-eval`，nonce 是内联脚本的唯一放行路径。
+
+配好后可以接着看 [支付总览](./payment)——`begin_checkout` 与 `purchase` 的参数来自结账链路。

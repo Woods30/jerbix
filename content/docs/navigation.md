@@ -1,33 +1,25 @@
 ---
-title: Navigation & Menus
-description: Configure the navbar, footer, and social links
+title: Navigation
+description: Navbar, footer, and socials
 locale: en
 order: 3
 group: config
-updated: 2026-10-21
+updated: 2026-11-03
 ---
 
-Every menu shares one data model and one set of render components, so filtering rules,
-external-link behavior, and keyboard handling are identical across the navbar, footer, and
-docs sidebar.
+The navbar, the footer, and the docs sidebar share one menu data model: the same structure and
+the same filtering rules, so a change lands in all three.
 
 | File | Responsibility |
 |---|---|
 | `src/config/navigation.ts` | Menu types, link targets, filtering rules |
-| `src/config/navbar-config.ts` | Navbar links and right-side actions |
+| `src/config/navbar-config.ts` | Navbar links and right-side buttons |
 | `src/config/footer-config.ts` | Footer groups |
-| `src/config/social-config.ts` | Social platform mapping and filtering |
+| `src/config/social-config.ts` | Social platform mapping and safety filter |
 
-## Prerequisites
+## Add a navbar link
 
-Read [Website Config](./configuration) first — menu entries show and hide based on module
-switches.
-
-## Setup
-
-### Add a navbar link
-
-Edit `src/config/navbar-config.ts`:
+Edit `src/config/navbar-config.ts` and add an entry to the array in `getNavbarLinks()`:
 
 ```ts
 // src/config/navbar-config.ts
@@ -40,9 +32,8 @@ Edit `src/config/navbar-config.ts`:
 }
 ```
 
-`getPublicLinkOptions()` returns type-safe `linkOptions()`. Internal links are validated by
-TanStack Router — **a missing route, missing dynamic params, or an internal link written as
-external is rejected at `tsc` time**.
+Internal links go through `getPublicLinkOptions(target, locale)`, which returns type-safe
+`linkOptions()`: a missing route or a missing dynamic parameter is rejected at `tsc` time.
 
 | `target` | Resolves to |
 |---|---|
@@ -50,42 +41,48 @@ external is rejected at `tsc` time**.
 | `docs` | `/{locale}/docs` |
 | `blog` | `/{locale}/marketing/blog` |
 | `changelog` | `/{locale}/marketing/changelog` |
-| `pricing` | `/{locale}/pricing` |
+| `pricing` | The homepage (`getPublicLinkOptions('home', locale, 'pricing')` is the variant that adds the anchor) |
 | `contact` | `/{locale}/marketing/contact` |
 | `roadmap` | `/{locale}/marketing/roadmap` |
 | `waitlist` | `/{locale}/marketing/waitlist` |
 | `login` | `/{locale}/auth/login` |
 | `terms` / `privacy` | `/{locale}/marketing/legal/{slug}` |
 
-### Visibility filtering
+The locale segment in these routes is optional (`{-$locale}`), so URLs in the default language carry no prefix.
 
-All four conditions in `visibility` must hold for an entry to render:
+## Visibility rules
+
+Every condition in `visibility` must hold for an entry to render:
 
 | Field | Meaning |
 |---|---|
 | `module` | Module switch, e.g. `{ module: 'payment' }` |
 | `feature` | Feature switch, e.g. `{ feature: 'enableApiKeys' }` |
+| `page` | Static page switch, e.g. `{ page: 'waitlist' }` |
 | `authenticated` | Whether sign-in is required |
-| `roles` | Role allowlist |
+| `roles` | Role allowlist, e.g. `{ roles: ['admin'] }` |
 
-> Entries pointing at `contact` **must** carry `visibility: { module: 'contact' }` — that
-> page is off by default and the link would 404. `roadmap` / `waitlist` are static pages
-> with no module switch and need no `visibility`.
+Entries pointing at `contact` **must** carry `visibility: { module: 'contact' }` — that page is
+off by default and the link would 404. `roadmap` is an unconditional static page; `waitlist` has
+no module switch and is filtered by `pages.waitlist`.
 
-### Entry shapes
+## The two shapes of a menu entry
 
 | `kind` | Notes |
 |---|---|
-| `link` | Internal (`internal` + `options`) or external (`external` + `href` + `newTab`) |
+| `link` | Internal (`destination: { kind: 'internal', options }`) or external (`destination: { kind: 'external', href, newTab }`) |
 | `group` | Recursive children; the group disappears when every child is filtered out |
 | `separator` | Removed automatically at the start, end, or when duplicated |
 
-All three carry `id`, optional `title` / `description` / `icon`, and `visibility`.
+Links in the `social` field are validated as credential-free HTTPS URLs; the `href` of a custom
+menu entry is not validated, so do not put an address carrying a token there.
 
-### Footer and social
+## Footer and social links
 
-The footer lives in `src/config/footer-config.ts` and uses the same structure. Social links
-go in `social` on `src/config/website.ts`:
+The footer lives in `src/config/footer-config.ts` and uses the same structure: `getFooterLinks()`
+returns two groups (product, resources), filtered by `visibility` just like the navbar.
+
+Social links go in the `social` field of `src/config/website.ts`:
 
 ```ts
 social: {
@@ -94,14 +91,6 @@ social: {
 }
 ```
 
-Only valid HTTPS URLs without credentials render; anything else is dropped silently.
-
-## References
-
-- [TanStack Router · type-safe links](https://tanstack.com/router/latest/docs/framework/react/guide/type-safety)
-
-## Next steps
-
-- [Website Config](./configuration) — module switches and the `social` field
-- [Design System](./design-system) — visual rules for menus
-- [Integrations](./integrations) — how menus change when modules turn on
+`src/config/social-config.ts` maps each platform to an icon and label and renders only
+credential-free HTTPS URLs; anything else is dropped silently. A valid `mail.supportEmail` adds
+a `mailto:` entry.

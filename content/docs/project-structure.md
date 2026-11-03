@@ -2,106 +2,70 @@
 title: Project Structure
 description: What each directory owns, and where to make changes
 locale: en
-order: 19
+order: 22
 group: develop
-updated: 2026-10-21
+updated: 2026-11-03
 ---
 
 This page is a map. When you cannot find something, look here first, then read the code.
 
 ## Directory map
 
-```text
-src/
-├── routes/              File routes. `{-$locale}` is the optional locale prefix
-├── config/              Site configuration
-│   ├── website.ts       Global switches: name, logo, module and feature flags
-│   ├── navigation.ts    Menu types and filtering rules
-│   ├── navbar-config.ts Navbar
-│   ├── footer-config.ts Footer
-│   └── settings.ts      Dashboard sections
-├── components/
-│   ├── sections/        Reusable content blocks (Hero / Features / Pricing…)
-│   ├── marketing/       Page-level assembly (LandingPage / MarketingLayout / Navbar)
-│   ├── docs/            Docs layout, sidebar, search
-│   ├── dashboard/       Dashboard shell
-│   ├── layout/          Cross-page pieces (Logo / locale switcher / user menu)
-│   ├── blog/  auth/  contact/  mdx/  theme/  icons/
-│   └── ui/              shadcn upstream originals, never edited locally
-├── auth/                Authentication (Better Auth)
-├── cache/               KV cache and rate limiting
-├── contact/             Contact form delivery
-├── db/                  Drizzle schema and migrations
-├── env/                 Two-layer env validation
-├── lib/                 Pure logic: locale, seo, module-access, rate-limit…
-├── locale/              Paraglide output and middleware
-├── mail/  newsletter/  notification/  payment/  storage/
-│                        Service modules: provider registry + interface
-├── styles/              globals.css (design tokens), mdx.css
-├── server.ts            Custom server entry (CSP nonce, env injection)
-└── router.tsx           Router instance
+| Path | What it owns |
+|---|---|
+| `src/routes/` | File routes; `{-$locale}` prefix is optional, `_layout/` groups by layout |
+| `src/routes/api/` | API endpoints: `contact/`, `auth/`, `payment/`, `newsletter/`, `email/`, `webhooks/` |
+| `src/config/` | Site config: `website.ts` (switches), `products.ts` (plans), `navbar-config.ts`, `footer-config.ts`, `navigation.ts`, `settings.ts`, `social-config.ts` |
+| `src/components/ui/` | shadcn (Base UI) upstream originals, **never edited locally** |
+| `src/components/layout/` | Logo, locale switcher, menu items, user menu |
+| `src/components/marketing/` | Marketing page assembly: LandingPage / Navbar / Footer / MarketingLayout |
+| `src/components/sections/` | Reusable content blocks: Hero / Features / Pricing / FAQ… |
+| `src/components/docs/` | Docs layout, sidebar, search, table of contents |
+| `src/components/dashboard/` | Dashboard shell and user card |
+| `src/components/auth/` | Form pieces: field adapter, submit button, hydration hook |
+| `src/auth/` | Auth config, sessions, email verification |
+| `src/db/` | Drizzle schema and migrations |
+| `src/env/` | Two-layer env validation: `public.ts` and `server.ts` |
+| `src/lib/` | Pure logic: locale, SEO, module gates, rate limiting, theme parsing |
+| `src/locale/` | Paraglide output and locale middleware |
+| `src/cache/` `src/storage/` `src/mail/` `src/newsletter/` `src/notification/` `src/payment/` | Service modules: provider registry plus an abstract interface |
+| `src/styles/` | `globals.css` (design tokens), `mdx.css` |
+| `src/hooks/` | Hooks reused across pages |
+| `src/server.ts` / `src/router.tsx` | Server entry (CSP nonce, env injection) / router instance |
 
-content/                 Docs / blog / changelog / legal (Markdown)
-messages/                zh.json / en.json UI copy
-public/docs/screenshots/ UI screenshots referenced from docs
-scripts/                 Build and validation scripts
-tests/                   unit / components / workers
-e2e/                     Playwright
-```
+Repository root:
+
+| Path | What it owns |
+|---|---|
+| `content/` | Docs / blog / changelog / legal; Chinese copies get a `.zh` suffix |
+| `messages/` | UI copy in `zh.json` / `en.json` |
+| `public/` | Static assets, including `public/docs/screenshots/` |
+| `scripts/` | Build and validation scripts; `scripts/init/` is the setup wizard |
+| `tests/` | Unit / component / workers tests |
+| `e2e/` | Playwright specs |
 
 ## Where to change things
 
 | Want to change | Go to |
 |---|---|
-| Site name, logo, module switches | `src/config/website.ts` |
+| Site name, logo, module and feature switches | `src/config/website.ts` |
+| Plans and purchase options | `src/config/products.ts` |
+| Navbar and footer links | `src/config/navbar-config.ts`, `src/config/footer-config.ts` |
+| Menu item shapes and visibility rules | `src/config/navigation.ts` |
+| Dashboard sections | `src/config/settings.ts` |
+| Social links | `src/config/social-config.ts` |
+| Button labels, headings, hints | `messages/zh.json`, `messages/en.json` |
 | Home / about / pricing copy | The route component, e.g. `src/routes/{-$locale}/index.tsx` |
-| Button labels and UI copy | `messages/zh.json`, `messages/en.json` |
-| Navbar and footer links | `src/config/navbar-config.ts`, `footer-config.ts` |
-| Docs content | `content/docs/*.md` (Chinese uses `.zh`) |
-| Colors, fonts, radii | `src/styles/globals.css`, rules in [Design System](./design-system) |
+| Colors, fonts, radii, shadows | `src/styles/globals.css` |
+| Docs content | `content/docs/*.md` |
+| Database table | `src/db/schema.ts`, then `pnpm db:generate` |
 | Add a page | Create a file under `src/routes/`; the router picks it up |
-| Add an API route | `src/routes/api/<name>/$` or `src/routes/api/<name>.ts` |
-| Change a table | `src/db/schema.ts`, then `pnpm db:generate` |
-| Add a service module | Mirror `src/mail/`: `types.ts` + provider + `index.ts` |
-| Add a UI screenshot to docs | Put the image in `public/docs/screenshots/`, reference it as `![alt](/docs/screenshots/x.png "caption")` |
+| Add an API route | `src/routes/api/<name>/$.ts` |
+| Add a UI control | `pnpm dlx shadcn@latest add <component> -y`, which lands in `src/components/ui/` |
+| Add a service module | Mirror `src/mail/`: `types.ts` + `provider/` + `index.ts` |
 
-## Two boundaries that are easy to confuse
+## Generated files
 
-**`components/sections/` vs `components/marketing/`**
+`src/routeTree.gen.ts` (router plugin), `src/locale/paraglide/**` (`pnpm locale:compile`), and `.content-collections/generated/**` (`pnpm content:build`) are rewritten at build time, so manual edits are overwritten.
 
-- `sections/` holds **reusable content blocks**: a Hero, a set of Features. Given props,
-  they render; they do not care which page they are on.
-- `marketing/` holds **page-level assembly**: `LandingPage` composes sections in order,
-  `MarketingLayout` owns the navbar and footer.
-
-**Route components vs `config/website.ts`**
-
-- `website.ts` is **global switches and identity**: what the site is called, which modules
-  are on.
-- Page copy lives in the route component, right next to the block that renders it.
-
-Always call `m.*()` during render, never at module top level: Paraglide reads the current
-locale at call time, so a top-level constant freezes the language of the first request for
-every later one (SSR renders the whole page in the wrong language, the client then derives
-another language from the URL, and hydration mismatches).
-
-## Generated files — do not edit
-
-| Path | Generated by |
-|---|---|
-| `src/routeTree.gen.ts` | TanStack Router plugin |
-| `src/locale/paraglide/**` | `pnpm locale:compile` |
-| `.content-collections/generated/**` | `pnpm content:build` |
-
-All three are rewritten at build time; manual edits are overwritten.
-
-## References
-
-- [TanStack Router · file-based routing](https://tanstack.com/router/latest/docs/framework/react/routing/file-based-routing)
-- [TanStack Start](https://tanstack.com/start/latest)
-
-## Next steps
-
-- [Design System](./design-system) — visual rules
-- [Forms](./forms) — how to write a new form
-- [Testing](./testing) — how to verify changes
+See [Design System](./design-system) for colors and fonts, and [Form Conventions](./forms) for new forms.

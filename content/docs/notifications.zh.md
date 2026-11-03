@@ -1,59 +1,73 @@
 ---
 title: 通知
-description: Discord / 飞书 Webhook 的接线与触发点
+description: Discord / 飞书 webhook 的接线与触发点
 locale: zh
-order: 15
-group: features
-updated: 2026-10-19
+order: 20
+group: notification
+updated: 2026-11-03
 ---
 
-| provider | 必要配置 |
-|---|---|
-| `discord` | `DISCORD_WEBHOOK_URL`，须以 `https://discord.com/api/webhooks/` 开头 |
-| `feishu` | `FEISHU_WEBHOOK_URL`，须以 `https://open.feishu.cn/open-apis/bot/v2/hook/` 开头 |
+通知模块把站点里的关键事件推到聊天工具的 webhook。Discord 与飞书的接入步骤几乎一样，
+所以写在同一页：建机器人 → 复制 webhook 地址 → 填环境变量 → 切换 provider。
 
-URL 前缀由 Zod schema 强制校验。`provider` 必须与已配置的 webhook 一致——选了 `feishu` 却只配 `DISCORD_WEBHOOK_URL` 时，服务状态判定为 `incomplete`。
+## 步骤
 
-```ts
-notification: { enabled: true, provider: 'discord' },
-```
+1. **建 webhook。**
+
+   - **Discord**：服务器设置 → Integrations → Webhooks → New Webhook，选频道，复制 webhook URL。
+   - **飞书**：群设置 → 群机器人 → 添加「自定义机器人」，复制 webhook 地址。
+
+2. **填环境变量。** 两个地址的前缀由 schema 强制校验，写错会在启动时直接失败：
+
+   | provider | 环境变量 | 前缀要求 |
+   |---|---|---|
+   | `discord` | `DISCORD_WEBHOOK_URL` | `https://discord.com/api/webhooks/` |
+   | `feishu` | `FEISHU_WEBHOOK_URL` | `https://open.feishu.cn/open-apis/bot/v2/hook/` |
+
+   变量**不加 `VITE_` 前缀**。
+
+3. **切换 provider。** 在 `src/config/website.ts`：
+
+   ```ts
+   notification: { enabled: true, provider: 'discord' },
+   ```
+
+   provider 二选一，且**必须与已配置的 webhook 对应**：选了 `feishu` 却只填了
+   `DISCORD_WEBHOOK_URL`，诊断结果是 `incomplete`。
+
+4. **部署。** 生产环境把 webhook 地址交给 Worker：
+
+   ```bash
+   pnpm exec wrangler secret put DISCORD_WEBHOOK_URL
+   ```
+
+   用 Release 自动部署时在 GitHub **Settings → Environments → production** 配同名 Secret。
+   `DISCORD_WEBHOOK_URL` 已在部署工作流的运行时上传白名单里，**`FEISHU_WEBHOOK_URL` 没有**——
+   用飞书的话要自己往 `.github/workflows/deploy.yml` 的 `env` 与上传白名单里补上。
 
 ## 触发点
 
-| 事件 | 位置 |
-|---|---|
-| 联系表单提交 | `src/contact/notifications.ts` |
-| 支付成功（订阅续费 / 一次性付款） | `src/routes/api/webhooks/stripe.ts` |
+| 事件 | 内容 | 位置 |
+|---|---|---|
+| 付款成功 | 套餐名、金额、用户 ID、购买类型 | `src/payment/events.ts` |
+| 联系表单提交 | 访客姓名、邮箱、主题、正文 | `src/contact/notifications.ts` |
 
-`notify()` 拿不到事件名到渠道的映射——调用方自己知道该走哪个 provider。这是有意的：
-事件语义（「有人付款」）与投递渠道（Discord 还是飞书）是两个独立的关注点，
-用一张事件→渠道表把它们绑死反而会让新增渠道时改一堆无关代码。
+联系表单的邮件通道与 webhook 通道**互为备份**：任一条成功就算送达，两条都失败才返回失败。
 
-## 错误处理
+## 验证
 
-`notify()` 在 provider 未注册、投递失败或抛错时都只写 `console.warn` 并返回
-`false`——通知失败**不**阻塞业务流程。
+```bash
+pnpm run check:env
+```
 
-两处 provider 细节值得注意：
+`notification` 一项不再报缺配置即可。然后发一次付款或提交一次联系表单，确认 webhook 收到消息。
 
-- **飞书可能返回 HTTP 200 但业务失败**。签名 / 关键词 / IP 白名单校验不通过时，
-  响应体是 `{ code: 19021, msg: … }`，HTTP 状态仍是 200。只看 `res.ok` 会把失败
-  当成功、`notify()` 也不会告警。因此飞书 provider 会解析 `code`，非 0 即失败。
-- **请求带 5 秒超时**（`AbortSignal.timeout`）。挂住的 webhook 会拖住整个请求，
-  而通知对业务并不关键，不应让一条通知把一次查询搞超时。
+## 注意事项
 
-Discord 的错误体现在 HTTP 状态上（429 限流、401 失效、400 格式错误），因此不需要
-解析响应体。
+- 通知失败**不阻塞**业务：provider 未注册、投递失败或抛异常时只记一条 `console.warn` 并返回
+  `false`。
+- 飞书可能在 HTTP 200 的响应体里带业务错误码（`code` 非 0），provider 会解析它并判为失败。
+- 单次 webhook 请求有 5 秒超时；Discord embed 的标题截断到 200 字符、正文 1000 字符，截断在
+  调用方做。
 
-Discord embed 有长度上限：标题截断至 200 字符、正文 1000 字符。截断在**调用方**
-做（contact 模块），provider 层只负责投递。
-
-## 参考资料
-
-- [Discord Webhooks](https://docs.discord.com/developers/resources/webhook)——incoming webhook 的创建与调用
-- [飞书自定义机器人](https://open.feishu.cn/document/ukTMukTMukTM/ucTM5YjL3ETO24yNxkjN)——自定义机器人的 webhook 与安全设置
-
-## 下一步
-
-- [分析](./analytics)——GA / Plausible / Umami / Clarity 的启用
-- [功能集成概览](./integrations)——六个服务模块的门禁语义与端点
+配好后可以接着做 [分析](./analytics)——通知与转化的对照是常见运营需求。

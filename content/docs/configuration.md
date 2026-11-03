@@ -1,171 +1,98 @@
 ---
-title: Website Config
-description: Every websiteConfig field and what its switches mean
+title: Site Configuration
+description: websiteConfig fields explained
 locale: en
 order: 2
 group: config
-updated: 2026-10-29
+updated: 2026-11-03
 ---
 
-`src/config/website.ts` is the single entry point for site configuration and exports the
-`websiteConfig` object. Name, logo, switches, and social links all live here.
+`src/config/website.ts` is the single entry point for site configuration: name, logo, theme, module switches, and social links all live there. Change that file and navigation, pages, and the API all follow.
 
-```ts
-// src/config/website.ts
-export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
-  return {
-    baseUrl: env.VITE_BASE_URL,
-    metadata: { name: '<your-site-name>', images: { /* … */ } },
-    ui: { defaultTheme: 'system', enableThemeSwitch: true, themeColor: { /* … */ } },
-    docs: { enabled: true },
-    // …
-  }
-}
-```
+## Site identity
 
-## Prerequisites
-
-A working local setup, see [Getting Started](./getting-started).
-
-## Setup
-
-### Site identity
-
-```ts
-metadata: {
-  name: '<your-site-name>',                              // site name, used in titles and OG tags
-  images: {
-    ogImage: '/logo.png',                          // social share image (1200×630)
-    logoLight: '/logo-horizontal-transparent.svg', // light-theme wordmark
-    logoDark: '/logo-horizontal-dark.svg',         // dark-theme wordmark
-    icon: '/icon-jerboa.svg',                      // favicon
-  },
-}
-```
-
-See [Design System](./design-system#brand-logo) for how the logo is rendered.
-
-### What the homepage sells
-
-```ts
-landingOffer: {
-  productId: 'template',
-  offerId: 'once',
-}
-```
-
-Pricing is shown in the homepage `#pricing` section. The old `/pricing` URL redirects to that section in the current language and no longer shows the demo plan page.
-
-`productId` is the id declared in `src/config/products.ts`. `template` is only a historical name — rename it to whatever your product is called, in the config and in `landingOffer` alike.
-
-The homepage uses the existing Checkout flow. `productId` / `offerId` select the one-time
-product's `prices.once` in `src/config/products.ts`; no external sales URL is needed. Set that
-value to the Stripe `lookup_key` of a **one-time** price you created — the amount lives only in
-Stripe, never in the code.
-
-No amount is stored in config: the Stripe price catalog is the single source of truth, read
-by both the homepage display and checkout. The server only verifies the price is
-`mode: 'payment'` and denominated in USD — if the `lookup_key` points at a subscription
-price, checkout is rejected rather than silently selling the wrong thing.
-
-Enable `auth.enabled` and `payment.enabled`. Guests sign in or register first, with the
-return path preserved through email verification. They return to the homepage pricing
-section to continue purchasing. Cancelling Checkout returns there too; successful payments
-return to billing, with payment records confirmed by the existing webhook. “See how to start”
-links to the current language’s docs, falling back to features when docs are disabled.
-
-### Theme
-
-```ts
-ui: {
-  defaultTheme: 'system',      // 'light' | 'dark' | 'system'
-  enableThemeSwitch: true,     // show the toggle in the navbar
-  themeColor: {                // browser chrome and PWA background
-    light: '#FCFAFF',
-    dark: '#0A0A0F',
-  },
-}
-```
-
-> `themeColor` must match `--background` in `styles/globals.css`. These values render
-> outside the page and cannot read CSS variables, so they must be declared here.
-> `tests/unit/theme-colors.test.ts` asserts equivalence — change both together.
-
-### Module switches
-
-Every optional module has `enabled`. When off, its pages 404, its API returns
-`404 MODULE_DISABLED`, and navigation entries hide themselves.
-
-```ts
-docs: { enabled: true },
-blog: { enabled: true },
-changelog: { enabled: true },
-mail: { enabled: true, provider: 'resend', supportEmail: '<your-support-email>' },
-contact: { enabled: false },
-newsletter: { enabled: false, provider: 'resend' },
-payment: { enabled: true, provider: 'stripe', /* … */ },
-notification: { enabled: false, provider: 'discord' },
-analytics: { enabled: true, providers: ['ga'] },
-auth: { enabled: true, requireEmailVerification: true },
-```
-
-| Field | Default | Notes |
+| Field | Default | Purpose |
 |---|---|---|
-| `docs` / `blog` / `changelog` | `true` | Content modules, pages already exist |
-| `mail` | `true` | Transactional email. `supportEmail` feeds a `mailto:` entry |
-| `contact` | `false` | Contact form |
-| `newsletter` | `false` | Email subscriptions |
-| `payment` | `true` | Stripe checkout and billing page |
-| `notification` | `false` | Discord / Feishu webhooks |
-| `analytics` | `true` | Analytics scripts; requires `VITE_GA_ID` when enabled |
-| `auth` | `true` | Sign-in and registration; off means the whole auth path 404s |
+| `metadata.name` | Template's default brand | Site name in page titles, OG tags, and the manifest; `pnpm run init` replaces it with yours |
+| `metadata.logoAccent` | Last letter of the brand | Trailing part of the wordmark rendered in the accent color; leave empty for a single-color wordmark |
+| `metadata.images.ogImage` | `/logo.png` | Social share image, 1200×630 recommended |
+| `metadata.images.logoLight` / `logoDark` | `/logo-horizontal-transparent.svg` / `/logo-horizontal-dark.svg` | Horizontal logo for the light / dark theme |
+| `metadata.images.icon` | Mascot icon | Site icon; it points at the mascot SVG in `public/` by default — swap in your own |
+| `baseUrl` | `VITE_BASE_URL` | Site root URL, used for canonical tags, OG, and the sitemap |
 
-> `auth.requireEmailVerification` is a **security control**, not an email switch, and
-> currently defaults to `true`. Resend mail is also enabled: configure `RESEND_API_KEY`
-> and a plain `MAIL_FROM` address on a verified domain. Required verification with incomplete
-> mail makes `auth` report `incomplete`, the auth API return 503, and `pnpm check:env:prod`
-> fail. Verification is never implicitly disabled. `supportEmail` is `<your-support-email>` and is
-> independent of `MAIL_FROM`; see [Authentication](./auth) and [Email](./email).
+## What the homepage sells
 
-### Static page switches
+| Field | Default | Purpose |
+|---|---|---|
+| `landingOffer.productId` | `template` | Which product the homepage CTA points at; products are declared in `src/config/products.ts` |
+| `landingOffer.offerId` | `once` | Which purchase option it uses (one-time / subscription interval) |
 
-Static marketing pages without a service module are controlled by `pages`:
+Config **never stores an amount**: prices live only in the payment provider's catalog, and the homepage display and checkout both read that one copy; `productId` / `offerId` must resolve to a price reference in `src/config/products.ts`.
 
-```ts
-pages: { waitlist: true },
-```
+## Theme and colors
 
-Disabling `pages.waitlist` removes the navbar/footer entry, makes the page 404, and
-drops it from the sitemap.
+| Field | Default | Purpose |
+|---|---|---|
+| `ui.defaultTheme` | `system` | Theme on first visit: `light` / `dark` / `system` |
+| `ui.enableThemeSwitch` | `true` | Whether the navbar shows a theme toggle |
+| `ui.themeColor.light` / `ui.themeColor.dark` | `#FCFAFF` / `#0A0A0F` | Browser chrome and PWA background in light / dark mode |
 
-### Standalone docs site
+`themeColor` must match the light/dark values of `--background` in `styles/globals.css`: these values render outside the page, cannot read CSS variables, and must be declared explicitly. Change both together.
 
-`docs` has three optional fields for deploying the docs site to its own domain:
+## Module switches
+
+| Field | Default | Purpose |
+|---|---|---|
+| `docs.enabled` / `blog.enabled` / `changelog.enabled` | `true` | Docs site / blog / changelog; the matching pages 404 when off |
+| `mail.enabled` / `mail.provider` | `true` / `resend` | Transactional email; sending channel `resend` or `cloudflare` |
+| `mail.supportEmail` | Placeholder address | Support inbox behind a `mailto:` entry; independent of the `MAIL_FROM` sender address |
+| `contact.enabled` | `false` | Contact form; needs the mail module configured |
+| `newsletter.enabled` / `newsletter.provider` | `false` / `resend` | Email subscriptions; channel `resend` or `beehiiv` |
+| `payment.enabled` / `payment.provider` | `true` / `stripe` | Checkout and the billing page; channel `stripe` or `creem` |
+| `notification.enabled` / `notification.provider` | `false` / `discord` | Notifications for successful payments and contact form submissions; channel `discord` or `feishu` |
+| `analytics.enabled` / `analytics.providers` | `true` / `['ga']` | Analytics scripts; `ga` / `plausible` / `umami` / `clarity` can all be on at once |
+| `auth.enabled` | `true` | Sign-in and registration; off means the whole auth path 404s |
+| `auth.requireEmailVerification` | `true` | New accounts must verify their email before signing in |
+
+**Gating semantics**: with a module off, its pages and its API return 404 together (the API answers `404 MODULE_DISABLED`); with a module on but its required configuration missing, the API returns `503 SERVICE_UNAVAILABLE` while the page and the navigation entry stay visible. `getServiceStatuses()` labels each module `disabled` / `incomplete` / `configured`, `pnpm check` prints the services missing configuration, and `pnpm check:env:prod` fails outright on `incomplete`.
+
+`auth.requireEmailVerification` is a **security control**, not an email switch: downstream code treats the email as an identity claim (the payment provider's `customerEmail`, `ADMIN_EMAILS`). Requiring verification while email is not configured makes `auth` report `incomplete` and the auth API return 503 — it never silently degrades to unverified sign-in.
+
+## Static page switches
+
+| Field | Default | Purpose |
+|---|---|---|
+| `pages.waitlist` | `true` | Waitlist page; turning it off removes the navbar and footer entries, 404s the page, and drops it from the sitemap |
+
+## Standalone docs site
+
+Besides `enabled`, `docs` has three optional fields for deploying the docs site to its own domain:
 
 | Field | Purpose |
 |---|---|
-| `siteUrl` | When this repo does not serve docs, the "Docs" entry points here |
-| `homeUrl` | The "Back to site" entry inside the docs site; hidden when empty |
+| `siteUrl` | External docs URL; when set, the "Docs" entry in the navbar and footer points there instead of the in-site `/docs` |
+| `homeUrl` | Main site URL; the docs site's "Back to site" entry points here, and it is hidden when empty |
 | `asHome` | This build is the docs site: the root goes to the docs home and public URLs drop the `/docs` segment |
 
-`asHome` is normally turned on by the build environment (`VITE_DOCS_AS_HOME=true`), so the
-same codebase can ship both the marketing site and the docs site. In docs mode
-`/zh/getting-started` is the public address and legacy `/zh/docs/...` URLs 301 to it;
-canonical, sitemap and the llms index all emit the URL without `/docs`.
+`asHome` is normally turned on by the build environment (`VITE_DOCS_AS_HOME=true`), so the same codebase can ship both the marketing site and the docs site.
 
-### Feature switches
+## Feature switches
 
-```ts
-features: {
-  enableI18n: true,        // zh / en
-  enableFileUpload: false, // uploads (needs R2)
-  enableApiKeys: true,     // self-service API keys
-  enableAdmin: true,       // admin dashboard
-  enableAIGateway: false,  // AI gateway
-}
-```
+`features` holds flat booleans for capabilities that are switched on by flag:
 
-### Social links
+| Field | Default | Purpose |
+|---|---|---|
+| `enableI18n` | `true` | Multiple languages (zh / en) |
+| `enableFileUpload` | `false` | File uploads, needs an R2 bucket |
+| `enableApiKeys` | `true` | Self-service API keys |
+| `enableAdmin` | `true` | Admin dashboard and user management |
+| `enableAIGateway` | `false` | AI gateway |
+
+Feature switches and service modules are two different things: the latter has `.enabled` plus provider fields, the former is a plain boolean, and pages and APIs are gated by `assertFeatureEnabled()` (off means 404).
+
+## Social links
+
+`social` maps a platform to a URL and supports `github`, `x`, `bluesky`, `mastodon`, `discord`, `youtube`, `linkedin`, `facebook`, `instagram`, `tiktok`, and `telegram`:
 
 ```ts
 social: {
@@ -174,19 +101,4 @@ social: {
 }
 ```
 
-Only valid HTTPS URLs without credentials are rendered. Supported platforms are listed in
-the `WebsiteConfig['social']` type.
-
-## References
-
-- [Navigation & Menus](./navigation) — navbar, footer, docs sidebar
-- [Environment](./environment) — where `baseUrl` comes from
-
-## Next steps
-
-- [Navigation & Menus](./navigation) — configure menu entries
-- [Environment](./environment) — the `VITE_` rule
-- [Design System](./design-system) — change colors and the logo
-
-
-Configure plans in `src/config/products.ts` with `prices: { monthly: 'pro_monthly', yearly: 'pro_yearly' }`. References are interpreted by the selected provider; amount and billing interval come from its catalog. Empty prices means free. See [Payment](./payment).
+Only credential-free HTTPS URLs render; anything else is dropped silently. Module and feature switches can also be overridden with `VITE_MODULES` / `VITE_FEATURES` — see [Environment Variables](./environment).
