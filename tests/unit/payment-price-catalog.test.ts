@@ -22,6 +22,7 @@ vi.mock('@/lib/server-context', () => ({
   als: { run: (_ctx: unknown, fn: () => unknown) => fn() },
 }))
 
+import { collectPriceReferences } from '@/config/products'
 import {
   findCatalogAmount,
   formatUsdAmount,
@@ -87,14 +88,17 @@ describe('服务端读取目录', () => {
   })
 
   it('已配置渠道时按引用聚合，跳过没有金额的条目', async () => {
+    // 引用来自实例的商品配置（官网与模板不同），不写死具体 key。
+    const [priced, ...unpriced] = collectPriceReferences()
+    if (!priced) throw new Error('商品配置里至少要有一个价格引用')
     mockServerContext.paymentProviderRegistry = {
       stripe: () => ({
         listPrices: async (references) =>
           references.map((reference) => ({
             id: `price_${reference}`,
             reference,
-            // one_time 有金额，其余模拟 Stripe 里查不到价格的情况。
-            amount: reference === 'one_time' ? 9900 : null,
+            // 只给第一个引用金额，其余模拟渠道里查不到价格的情况。
+            amount: reference === priced ? 9900 : null,
             currency: 'usd',
             mode: 'payment',
             interval: null,
@@ -105,8 +109,9 @@ describe('服务端读取目录', () => {
 
     const catalog = await getPriceCatalog()
 
-    expect(Object.keys(catalog)).toEqual(['one_time'])
-    expect(catalog.one_time).toMatchObject({ priceId: 'price_one_time', amount: 9900 })
+    expect(Object.keys(catalog)).toEqual([priced])
+    expect(catalog[priced]).toMatchObject({ priceId: `price_${priced}`, amount: 9900 })
+    expect(unpriced.length).toBeGreaterThan(0)
   })
 })
 

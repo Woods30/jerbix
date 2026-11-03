@@ -97,7 +97,8 @@ describe('init 端到端', () => {
     const website = read(dir, 'src/config/website.ts')
     expect(website).toContain("name: 'Acme',")
     expect(website).toContain("logoAccent: '',")
-    expect(website).toMatch(/docs: \{ enabled: true \}/)
+    // 实例工程可能把 docs 写成多行对象（带 siteUrl / homeUrl），只断言开关被打开。
+    expect(website).toMatch(/docs: \{\s*enabled: true/)
     expect(website).toMatch(/blog: \{ enabled: false \}/)
     expect(website).toMatch(/mail: \{ enabled: true/)
     expect(website).toMatch(/payment: \{[^}]*enabled: false/)

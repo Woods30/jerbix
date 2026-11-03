@@ -10,7 +10,7 @@ import {
   type PublicTarget,
 } from '@/config/navigation'
 import { getSocialLinks, isSafeSocialUrl } from '@/config/social-config'
-import { createWebsiteConfig } from '@/config/website'
+import { createWebsiteConfig, type WebsiteConfig } from '@/config/website'
 import { parsePublicEnv } from '@/env/public'
 import type { Locale } from '@/lib/locale'
 import { getLocale, overwriteGetLocale } from '@/locale/paraglide/runtime.js'
@@ -27,11 +27,13 @@ afterEach(() => {
  * 开关逐项写死：各仓的默认开关不同（官网不提供文档站，`pnpm run init` 之后全关），
  * 依赖默认值会让这里的断言随部署场景静默失效。
  */
-function createConfig() {
+function createConfig(): WebsiteConfig {
   const base = createWebsiteConfig(parsePublicEnv({}))
   return {
     ...base,
-    docs: { ...base.docs, enabled: true },
+    pages: { waitlist: true },
+    // 清掉实例工程可能配的外部文档站地址：这里测的是站内路由。
+    docs: { ...base.docs, enabled: true, siteUrl: undefined, homeUrl: undefined },
     blog: { enabled: true },
     changelog: { enabled: true },
     contact: { enabled: false },

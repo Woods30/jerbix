@@ -83,6 +83,9 @@ function makeConfig(overrides: Partial<WebsiteConfig> = {}): WebsiteConfig {
   const base = createWebsiteConfig(publicEnv)
   return {
     ...base,
+    // 静态页与模块开关逐项写死：各仓的默认值不同（官网不卖等候名单），
+    // 依赖默认值会让门禁用例随部署场景静默失效。
+    pages: { waitlist: true },
     docs: { enabled: true },
     blog: { enabled: true },
     changelog: { enabled: true },
