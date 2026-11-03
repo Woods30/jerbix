@@ -4,7 +4,7 @@ description: Account, API token, resources, first deploy, and CI deployment
 locale: en
 order: 5
 group: deploy
-updated: 2026-10-29
+updated: 2026-11-03
 ---
 
 The site runs on **Cloudflare Workers**. This page sets up your account and API token,
@@ -210,6 +210,9 @@ Create the `production` Environment in **Settings → Environments**. If deploym
 | Variable | `MAIL_FROM` | Plain email address on the Resend-verified domain, without display name or angle brackets; a same-name Secret also works, with the Variable taking precedence |
 | Secret | `STRIPE_SECRET_KEY` | Production Stripe API secret key; use a test key only for an intentionally test-mode demo |
 | Secret | `STRIPE_WEBHOOK_SECRET` | Signing secret (`whsec_…`) for the same-mode endpoint at `<VITE_BASE_URL>/api/webhooks/stripe` |
+| Secret | `CREEM_API_KEY` | Required when collecting through Creem; use a sandbox key with `CREEM_DEBUG=true` |
+| Secret | `CREEM_WEBHOOK_SECRET` | Signing secret for the Creem endpoint at `<VITE_BASE_URL>/api/webhooks/creem` |
+| Variable | `CREEM_PRODUCTS` | Comma-separated `reference=prod_xxx` product ID mapping |
 | Secret | `DISCORD_WEBHOOK_URL` | Channel webhook URL; required when notifications are enabled (currently disabled) |
 | Variable | `VITE_GA_ID` | GA4 Measurement ID (`G-…`); required when analytics is enabled (currently disabled) |
 

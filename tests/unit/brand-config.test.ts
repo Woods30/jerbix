@@ -119,6 +119,13 @@ describe('环境变量覆盖模块与能力开关', () => {
     expect(createWebsiteConfig(parsePublicEnv({})).docs.asHome).toBeUndefined()
   })
 
+  it('VITE_PAYMENT_PROVIDER 覆盖支付渠道，不影响其他支付字段', () => {
+    const base = createWebsiteConfig(parsePublicEnv({}))
+    const config = createWebsiteConfig(parsePublicEnv({ VITE_PAYMENT_PROVIDER: 'creem' }))
+    expect(config.payment.provider).toBe('creem')
+    expect(config.payment.enabled).toBe(base.payment.enabled)
+  })
+
   it('空值按「没给」处理，仍走代码里的默认值', () => {
     const base = createWebsiteConfig(parsePublicEnv({}))
     const config = createWebsiteConfig(parsePublicEnv({ VITE_MODULES: '' }))

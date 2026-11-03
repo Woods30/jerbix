@@ -4,7 +4,7 @@ description: The two-layer env model, the VITE_ rule, and production config
 locale: en
 order: 4
 group: config
-updated: 2026-10-22
+updated: 2026-11-03
 ---
 
 Environment variables come in two layers, validated by two Zod schemas. Business code must
@@ -40,7 +40,7 @@ page can read them**.
 | Variable | Default | Notes |
 |---|---|---|
 | `VITE_BASE_URL` | `http://localhost:3000` | Site base URL for canonical, OG, sitemap |
-| `VITE_PAYMENT_PROVIDER` | — | Payment provider (only `stripe`) |
+| `VITE_PAYMENT_PROVIDER` | `stripe` | Payment provider: `stripe` or `creem` |
 | `VITE_GA_ID` | — | Google Analytics |
 | `VITE_PLAUSIBLE_DOMAIN` | — | Plausible |
 | `VITE_UMAMI_WEBSITE_ID` | — | Umami |
@@ -57,7 +57,10 @@ back to a placeholder — **an unconfigured feature stays off instead of pretend
 |---|---|---|
 | `BETTER_AUTH_SECRET` | ≥ 32 chars | Auth, **required in production** |
 | `BETTER_AUTH_URL` | URL | Absolute callback URL; inferred from request origin when empty |
-| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | — | Payment |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | — | Payment (Stripe) |
+| `CREEM_API_KEY` / `CREEM_WEBHOOK_SECRET` | — | Payment (Creem) |
+| `CREEM_PRODUCTS` | Comma-separated `reference=prod_xxx` | Creem product ID mapping |
+| `CREEM_DEBUG` | `true` / `false` | `true` targets the Creem sandbox API |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Must be paired | Google sign-in |
 | `RESEND_API_KEY` / `MAIL_FROM` | `MAIL_FROM` must be a valid address | Email |
 | `RESEND_AUDIENCE_ID` | — | Newsletter (Resend) |

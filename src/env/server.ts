@@ -14,6 +14,17 @@ const schema = z.object({
   BETTER_AUTH_URL: z.url().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  /** Creem（Merchant of Record）API Key：测试模式以 `creem_test_` 开头。 */
+  CREEM_API_KEY: z.string().optional(),
+  CREEM_WEBHOOK_SECRET: z.string().optional(),
+  /**
+   * 商品引用 → Creem 商品 ID（`prod_*`），逗号分隔：`pro_monthly=prod_a,lifetime=prod_b`。
+   *
+   * 引用仍写在 `src/config/products.ts`；商品 ID 随店铺变化，放环境变量里。
+   */
+  CREEM_PRODUCTS: z.string().optional(),
+  /** 为 `true` 时请求 Creem 沙盒（`test-api.creem.io`）。 */
+  CREEM_DEBUG: z.enum(['true', 'false']).optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   CLOUDFLARE_ACCOUNT_ID: z.string().optional(),

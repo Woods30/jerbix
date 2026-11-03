@@ -82,7 +82,7 @@ GitHub `production` Environment 的变量与 secrets 配置见 [文档站 · Clo
 - **营销站**：落地页、定价、功能、关于、联系、路线图、候补名单
 - **文档站**：Markdown 内容 + 侧边栏 + ⌘K 搜索 + 中英双语
 - **认证**：Better Auth（邮箱密码 + Google OAuth）、个人中心、会话管理
-- **付费**：Stripe 结账、订阅、账单页、webhook
+- **付费**：Stripe / Creem 结账、订阅、账单页、webhook
 - **服务模块**：邮件、订阅、通知、分析、文件存储——各自有 provider 抽象与开关
 - **工程**：两层 env 校验、模块门禁、CSP、SEO、单元 / 组件 / E2E 三层测试、CI
 

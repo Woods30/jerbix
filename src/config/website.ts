@@ -1,6 +1,6 @@
 import { type PublicEnv, publicEnv } from '@/env/public'
 
-export type PaymentProviderName = 'stripe'
+export type PaymentProviderName = 'stripe' | 'creem'
 export type AnalyticsName = 'ga' | 'plausible' | 'umami' | 'clarity'
 export type SocialPlatform =
   | 'github'
@@ -105,9 +105,9 @@ export interface WebsiteConfig {
    * 支付链路以 provider 为边界，新增供应商只需扩 `PaymentProviderName` 并实现接口；
    * `subscriptions` / `payments` 表用供应商中立的列名也是同一目的。
    *
-   * 「卖什么、怎么卖」不在这里，而在 `src/config/products.ts`：产品、付费方式与
-   * Stripe Price 的 `lookup_key` 都在那儿定义。真正的 Price id 与金额由 Stripe 在
-   * 运行时给出（见 `src/payment/price-catalog.ts`）。
+   * 「卖什么、怎么卖」不在这里，而在 `src/config/products.ts`：产品与销售引用都在
+   * 那儿定义。真正的价格 ID 与金额由所选渠道在运行时给出（见
+   * `src/payment/price-catalog.ts`）。
    */
   payment: {
     enabled: boolean
@@ -164,7 +164,13 @@ function parseNameList(value: string | undefined): Set<string> | undefined {
 export function applyEnvOverrides(config: WebsiteConfig, env: PublicEnv): WebsiteConfig {
   const modules = parseNameList(env.VITE_MODULES)
   const features = parseNameList(env.VITE_FEATURES)
-  if (!modules && !features && env.VITE_DOCS_AS_HOME === undefined) return config
+  if (
+    !modules &&
+    !features &&
+    env.VITE_DOCS_AS_HOME === undefined &&
+    env.VITE_PAYMENT_PROVIDER === undefined
+  )
+    return config
 
   const next: WebsiteConfig = { ...config, features: { ...config.features } }
   if (modules) {
@@ -181,6 +187,10 @@ export function applyEnvOverrides(config: WebsiteConfig, env: PublicEnv): Websit
   }
   if (env.VITE_DOCS_AS_HOME !== undefined) {
     next.docs = { ...next.docs, asHome: env.VITE_DOCS_AS_HOME === 'true' }
+  }
+  // 同一份代码发不同支付渠道：provider 由构建环境决定，不写死在配置里。
+  if (env.VITE_PAYMENT_PROVIDER !== undefined) {
+    next.payment = { ...next.payment, provider: env.VITE_PAYMENT_PROVIDER }
   }
   if (features) {
     next.features = {

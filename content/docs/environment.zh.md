@@ -4,7 +4,7 @@ description: 两层 env 模型、VITE_ 规则与生产配置
 locale: zh
 order: 4
 group: config
-updated: 2026-10-22
+updated: 2026-11-03
 ---
 
 环境变量分两层，由两个 Zod schema 分别校验。业务代码**不得**直接读 `process.env` /
@@ -38,7 +38,7 @@ updated: 2026-10-22
 | 变量 | 默认值 | 说明 |
 |---|---|---|
 | `VITE_BASE_URL` | `http://localhost:3000` | 站点基址，用于 canonical、OG、sitemap |
-| `VITE_PAYMENT_PROVIDER` | — | 支付 provider（目前只有 `stripe`） |
+| `VITE_PAYMENT_PROVIDER` | `stripe` | 支付 provider：`stripe` 或 `creem` |
 | `VITE_GA_ID` | — | Google Analytics（`G-…`）。`analytics.enabled: true` 时必需 |
 | `VITE_PLAUSIBLE_DOMAIN` | — | Plausible |
 | `VITE_UMAMI_WEBSITE_ID` | — | Umami |
@@ -55,7 +55,10 @@ updated: 2026-10-22
 |---|---|---|
 | `BETTER_AUTH_SECRET` | ≥ 32 字符 | 认证，**生产必填** |
 | `BETTER_AUTH_URL` | URL | 认证回调的绝对地址；留空时从请求 origin 推断 |
-| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | — | 支付 |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | — | 支付（Stripe） |
+| `CREEM_API_KEY` / `CREEM_WEBHOOK_SECRET` | — | 支付（Creem） |
+| `CREEM_PRODUCTS` | `reference=prod_xxx` 逗号分隔 | Creem 商品 ID 映射 |
+| `CREEM_DEBUG` | `true` / `false` | `true` 时用 Creem 沙箱 API |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | 必须成对 | Google 登录 |
 | `RESEND_API_KEY` / `MAIL_FROM` | `MAIL_FROM` 须为合法邮箱 | 邮件 |
 | `RESEND_AUDIENCE_ID` | — | 订阅（Resend） |

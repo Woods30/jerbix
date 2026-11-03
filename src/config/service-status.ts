@@ -137,20 +137,37 @@ export function getServiceStatuses(input: {
         ],
   )
 
+  // 只校验当前选中渠道的密钥：配了 Stripe 却选 creem 仍是 incomplete。
+  const paymentEnvChecks: Array<[string, boolean, ConfigIssue['location'], string?]> =
+    config.payment.provider === 'creem'
+      ? [
+          ['CREEM_API_KEY', !!env.CREEM_API_KEY, 'env'],
+          ['CREEM_WEBHOOK_SECRET', !!env.CREEM_WEBHOOK_SECRET, 'env'],
+          [
+            'CREEM_PRODUCTS',
+            !!env.CREEM_PRODUCTS,
+            'env',
+            'Creem 的商品 ID 映射（reference=prod_xxx）',
+          ],
+        ]
+      : [
+          ['STRIPE_SECRET_KEY', !!env.STRIPE_SECRET_KEY, 'env'],
+          ['STRIPE_WEBHOOK_SECRET', !!env.STRIPE_WEBHOOK_SECRET, 'env'],
+        ]
+
   check(
     'payment',
     [
-      ['STRIPE_SECRET_KEY', !!env.STRIPE_SECRET_KEY, 'env'],
-      ['STRIPE_WEBHOOK_SECRET', !!env.STRIPE_WEBHOOK_SECRET, 'env'],
+      ...paymentEnvChecks,
       // 首页 CTA 指向的那个商品与购买方式必须有价格引用，否则首页取不到价格、
-      // 结账也无从下手。查「所有已声明的引用」没有意义：声明过的 lookup key
-      // 未必在 Stripe 上真的建过 Price，那种情况在配置层看不出来。
+      // 结账也无从下手。查「所有已声明的引用」没有意义：声明过的引用未必在
+      // 支付渠道上真的建过价格，那种情况在配置层看不出来。
       [
         'payment.products',
         resolvePriceReference(config.landingOffer.productId, config.landingOffer.offerId) !==
           undefined,
         'src/config/products.ts',
-        '首页要卖的商品在 Stripe 上没有对应的 Price（lookup key 未创建或已迁移）',
+        '首页要卖的商品没有对应的价格引用（价格未创建或引用已迁移）',
       ],
     ],
     [],

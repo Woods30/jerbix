@@ -4,7 +4,7 @@ description: Gate semantics, endpoints, and wiring for the service modules
 locale: en
 order: 9
 group: features
-updated: 2026-10-14
+updated: 2026-11-03
 ---
 
 The six service modules (`mail` / `contact` / `newsletter` / `payment` / `notification` / `analytics`) are all off by default. Wiring a module has three parts:
@@ -35,7 +35,7 @@ The response carries only a stable error code — never the missing field or a c
 | `/api/email/*` | `POST` | `mail` |
 | `/api/auth/*` | `GET` / `POST` | `auth` |
 
-> **Note**: The Stripe webhook (`/api/webhooks/stripe`) is **not** gated by `payment.enabled`, so existing subscriptions keep processing valid events after the module is turned off.
+> **Note**: The payment webhooks (`/api/webhooks/stripe`, `/api/webhooks/creem`) are **not** gated by `payment.enabled`, so existing subscriptions keep processing valid events after the module is turned off. The Creem endpoint only accepts deliveries while the selected provider is `creem`; otherwise it returns 404.
 
 Two prefixes under `/api/auth/*` are additionally bound by a **feature flag**; when it is off they
 return 404 before ever reaching Better Auth (not merely a disappearing UI):

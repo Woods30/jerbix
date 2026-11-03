@@ -4,7 +4,7 @@ description: 账号、Token、资源、首次部署与自动部署
 locale: zh
 order: 5
 group: deploy
-updated: 2026-10-29
+updated: 2026-11-03
 ---
 
 站点跑在 **Cloudflare Workers** 上。这页带你配好账号与 Token，完成首次部署，并接上
@@ -207,6 +207,9 @@ curl -s "https://api.cloudflare.com/client/v4/zones?name=your-domain.com" \
 | Variable | `MAIL_FROM` | Resend 已验证域名下的纯邮箱地址，不带显示名或尖括号；也兼容同名 Secret，Variable 优先 |
 | Secret | `STRIPE_SECRET_KEY` | Stripe 正式环境 API secret key；仅明确使用测试支付的演示站点使用测试 key |
 | Secret | `STRIPE_WEBHOOK_SECRET` | 同一 Stripe 环境、指向 `<VITE_BASE_URL>/api/webhooks/stripe` 的端点签名密钥（`whsec_…`） |
+| Secret | `CREEM_API_KEY` | 改用 Creem 收款时必填；`CREEM_DEBUG=true` 时填沙箱 key |
+| Secret | `CREEM_WEBHOOK_SECRET` | Creem 端点 `<VITE_BASE_URL>/api/webhooks/creem` 的签名密钥 |
+| Variable | `CREEM_PRODUCTS` | `reference=prod_xxx` 逗号分隔的商品 ID 映射 |
 | Secret | `DISCORD_WEBHOOK_URL` | Discord 频道 Webhook URL；开启通知模块时必填，当前已关闭 |
 | Variable | `VITE_GA_ID` | GA4 Measurement ID（`G-…`）；开启分析模块时必填，当前已关闭 |
 

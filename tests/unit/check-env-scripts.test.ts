@@ -194,7 +194,7 @@ describe('check-env.ts（开发校验）', () => {
 
   it('非法 enum（VITE_PAYMENT_PROVIDER）失败', () => {
     const dir = makeWorkspace()
-    writeDotEnv(dir, 'VITE_PAYMENT_PROVIDER=creem\n')
+    writeDotEnv(dir, 'VITE_PAYMENT_PROVIDER=paypal\n')
     const result = runScript(dir, checkEnv)
     expect(result.code).toBe(1)
     expect(result.stderr).toContain('VITE_PAYMENT_PROVIDER')
