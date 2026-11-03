@@ -30,14 +30,14 @@ git fetch template && git merge template/main
 | 位置 | 保留官网的值 |
 |---|---|
 | `src/config/products.ts` | 真实 Stripe `lookup_key`（`jerbix_template`），否则首页购买链接失效 |
-| `src/config/website.ts` | `mail.supportEmail` 的真实邮箱；`docs.enabled = false` 与 `docs.siteUrl` |
+| `src/config/website.ts` | `mail.supportEmail` 的真实邮箱；`pages.waitlist = false`；`docs.enabled = false`、`docs.siteUrl` 与 `docs.homeUrl` |
 | `wrangler.jsonc` | Worker 名 `jerbix`、`www.jerbix.site`、真实 D1 / KV ID |
 | `content/legal/**` | 填充版条款与购买常见问题（模板那边是骨架条款） |
 | `package.json` 的 `version` | 官网版本：Release tag 必须与它一致 |
 | `CHANGELOG.md` | 官网的发布记录 |
 | `docs/superpowers/**` | 官网的开发史（模板仓不留本项目的历史） |
 
-**版本号两仓各自独立，互不跟随**：模板仓的 `version` 是模板的发布版本（当前 0.9.0），
+**版本号两仓各自独立，互不跟随**：模板仓的 `version` 是模板的发布版本（当前 0.10.0），
 本仓的是官网站点的发布版本（当前 0.8.1）。合并模板仓时模板的版本号与发布记录不带
 过来，本仓的也不带过去。发 Release 的三个硬性条件：tag 与本仓 `package.json` 的
 `version` 一致、tag 指向的提交在 `main` 上、该提交的 CI 已成功。
@@ -47,10 +47,12 @@ git fetch template && git merge template/main
 | Worker | 域名 | 工作流 | 构建 |
 |---|---|---|---|
 | `jerbix` | `www.jerbix.site` | `deploy.yml` | 全模块 |
-| `jerbix-docs` | `docs.jerbix.site` | `deploy-docs.yml` | `VITE_MODULES=docs`，根路径跳文档首页 |
+| `jerbix-docs` | `docs.jerbix.site` | `deploy-docs.yml` | `VITE_MODULES=docs`，根路径跳文档首页，正文在根级路径 |
 
 官网不提供 `/docs`（`docs.enabled = false`，整棵 docs 子树 404），导航与页脚的
-「文档」入口指向外部文档站。
+「文档」入口指向外部文档站。文档站正文直接挂在根级路径（`/zh/getting-started`），
+旧 `/docs/*` 地址 301 到新地址；侧边栏第一项「返回官网」读 `docs.homeUrl`。
+官网不卖等候名单，`pages.waitlist = false`。
 
 ## 版本与发布
 
