@@ -127,6 +127,32 @@ auth: { enabled: true, requireEmailVerification: true },
 > fail. Verification is never implicitly disabled. `supportEmail` is `<your-support-email>` and is
 > independent of `MAIL_FROM`; see [Authentication](./auth) and [Email](./email).
 
+### Static page switches
+
+Static marketing pages without a service module are controlled by `pages`:
+
+```ts
+pages: { waitlist: true },
+```
+
+Disabling `pages.waitlist` removes the navbar/footer entry, makes the page 404, and
+drops it from the sitemap.
+
+### Standalone docs site
+
+`docs` has three optional fields for deploying the docs site to its own domain:
+
+| Field | Purpose |
+|---|---|
+| `siteUrl` | When this repo does not serve docs, the "Docs" entry points here |
+| `homeUrl` | The "Back to site" entry inside the docs site; hidden when empty |
+| `asHome` | This build is the docs site: the root goes to the docs home and public URLs drop the `/docs` segment |
+
+`asHome` is normally turned on by the build environment (`VITE_DOCS_AS_HOME=true`), so the
+same codebase can ship both the marketing site and the docs site. In docs mode
+`/zh/getting-started` is the public address and legacy `/zh/docs/...` URLs 301 to it;
+canonical, sitemap and the llms index all emit the URL without `/docs`.
+
 ### Feature switches
 
 ```ts

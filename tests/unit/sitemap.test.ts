@@ -46,6 +46,15 @@ describe('sitemap lastmod', () => {
     expect(entry?.lastmod).toBe('2026-10-12')
   })
 
+  it('关闭 waitlist 静态页后不再收录该地址', () => {
+    const off = createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: base }))
+    off.pages = { waitlist: false }
+    const paths = getSitemapPaths(off, 'en', { blogs: [], docs: [] })
+    expect(paths.some((p) => p.loc.endsWith('/marketing/waitlist'))).toBe(false)
+    // 其余静态页不受影响，避免开关写成「整个静态页列表都关」。
+    expect(paths.some((p) => p.loc.endsWith('/marketing/roadmap'))).toBe(true)
+  })
+
   it('静态页没有日期来源时不输出 lastmod', () => {
     const paths = getSitemapPaths(config, 'en', { blogs: [], docs: [] })
     const entry = paths.find((p) => p.loc === `${base}/en/marketing/about`)

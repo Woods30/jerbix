@@ -63,7 +63,7 @@ import { createWebsiteConfig, type WebsiteConfig } from '@/config/website'
 import { type PublicEnv, parsePublicEnv } from '@/env/public'
 import type { ServerEnv } from '@/env/server'
 import { parseServerEnv } from '@/env/server'
-import { assertPageEnabled } from '@/lib/module-access'
+import { assertPageEnabled, assertStaticPageEnabled } from '@/lib/module-access'
 import { getModuleUnavailableResponse } from '@/lib/module-access.server'
 import { getSitemapPaths, renderSitemapXml } from '@/routes/sitemap[.]xml'
 
@@ -187,6 +187,13 @@ describe('assertPageEnabled', () => {
   it('抛出的错误是 notFound 标记', () => {
     // 确认标记来源，避免误判普通 Error。
     expect((notFound() as { isNotFound?: boolean }).isNotFound).toBe(true)
+  })
+
+  it('静态营销页关闭时抛 notFound，开启时不抛', () => {
+    expectNotFound(() =>
+      assertStaticPageEnabled('waitlist', makeConfig({ pages: { waitlist: false } })),
+    )
+    expect(() => assertStaticPageEnabled('waitlist', makeConfig())).not.toThrow()
   })
 })
 

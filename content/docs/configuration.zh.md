@@ -122,6 +122,30 @@ auth: { enabled: true, requireEmailVerification: true },
 > `pnpm check:env:prod` 失败，不会隐式关闭验证。`supportEmail` 为 `<your-support-email>`，与 `MAIL_FROM` 独立；
 > 详见[身份认证](./auth)与[邮件](./email)。
 
+### 静态页开关
+
+没有服务模块的静态营销页由 `pages` 控制：
+
+```ts
+pages: { waitlist: true },
+```
+
+关闭 `pages.waitlist` 后，导航与页脚的入口消失、页面 404、sitemap 不再收录。
+
+### 文档站独立部署
+
+`docs` 还有三个可选字段，用于把文档站发到独立域名：
+
+| 字段 | 作用 |
+|---|---|
+| `siteUrl` | 本仓不提供文档时，导航里的「文档」指向这个外部地址 |
+| `homeUrl` | 文档站里的「返回官网」入口指向主站；留空则不显示 |
+| `asHome` | 本仓就是文档站：根路径进文档首页，对外地址不带 `/docs` 这一层 |
+
+`asHome` 通常由构建环境变量打开（`VITE_DOCS_AS_HOME=true`），同一份代码可以同时发
+官网站与文档站。文档站模式下 `/zh/getting-started` 就是文档地址，历史 `/zh/docs/...`
+会 301 过去；canonical、sitemap 与 llms 索引也都输出不带 `/docs` 的地址。
+
 ### 功能开关
 
 ```ts

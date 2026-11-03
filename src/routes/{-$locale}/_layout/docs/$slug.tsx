@@ -1,5 +1,6 @@
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router'
 import { DocArticle } from '@/components/docs/DocArticle'
+import { websiteConfig } from '@/config/website'
 import {
   DOCS_INDEX_SLUG,
   docNeighbors,
@@ -9,6 +10,7 @@ import {
   formatUpdatedDate,
   splitNextSteps,
 } from '@/lib/docs'
+import { docsPublicPath } from '@/lib/docs-path'
 import { getRequestLocale } from '@/lib/locale'
 import { seo } from '@/lib/seo'
 
@@ -50,7 +52,7 @@ export const Route = createFileRoute('/{-$locale}/_layout/docs/$slug')({
   },
   head: ({ loaderData }) => {
     if (!loaderData) return { meta: [], links: [] }
-    return seo(`/docs/${loaderData.slug}`, {
+    return seo(docsPublicPath(loaderData.slug, websiteConfig.docs.asHome === true), {
       title: loaderData.title,
       description: loaderData.description,
       type: 'article',

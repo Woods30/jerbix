@@ -58,6 +58,15 @@ export interface WebsiteConfig {
    * 读同一份目录。配置里再存一份金额只会让两者漂移。
    */
   landingOffer: { productId: string; offerId: string }
+  /**
+   * 静态营销页开关。
+   *
+   * 这些页面没有对应的服务模块（不需要后端），但「提不提供」仍随站点定位变化：
+   * 不卖等候名单的站点，链接与页面都该消失，而不是留一个空壳。
+   */
+  pages: {
+    waitlist: boolean
+  }
   docs: {
     /**
      * 本仓是否提供文档站：关闭时整棵 docs 子树以 404 呈现。
@@ -71,6 +80,12 @@ export interface WebsiteConfig {
      * 留空表示文档就在本仓的 `/docs`。
      */
     siteUrl?: string
+    /**
+     * 主站地址（可选）：文档站独立部署时，文档中心里的「返回官网」指向这里。
+     *
+     * 留空则不显示该入口——文档就在本仓时没有「另一个站」可返回。
+     */
+    homeUrl?: string
     /**
      * 本仓就是文档站：根路径跳到文档首页，而不是营销首页。
      *
@@ -205,6 +220,7 @@ export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
         themeColor: { light: '#FCFAFF', dark: '#0A0A0F' },
       },
       landingOffer: { productId: 'template', offerId: 'once' },
+      pages: { waitlist: true },
       docs: { enabled: true },
       blog: { enabled: true },
       changelog: { enabled: true },

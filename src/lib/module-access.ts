@@ -11,6 +11,16 @@ export function assertPageEnabled(module: SiteModule, config: WebsiteConfig = we
 }
 
 /**
+ * 静态营销页（`pages.*`）门禁，用于没有服务模块但需要按站点定位开关的页面。
+ */
+export function assertStaticPageEnabled(
+  page: keyof WebsiteConfig['pages'],
+  config: WebsiteConfig = websiteConfig,
+) {
+  if (!config.pages[page]) throw notFound()
+}
+
+/**
  * 功能开关（`features.*`）门禁，用于 API key 管理页等「按 flag 开关的能力」。
  */
 export function assertFeatureEnabled(

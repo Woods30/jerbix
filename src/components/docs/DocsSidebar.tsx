@@ -1,8 +1,9 @@
-import { IconChevronRight } from '@tabler/icons-react'
+import { IconArrowLeft, IconChevronRight } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { DOC_FALLBACK_ICON, DOC_ICON } from '@/components/docs/doc-icons'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { websiteConfig } from '@/config/website'
 import { DOCS_INDEX_SLUG, type DocEntry, type DocGroup, groupDocs } from '@/lib/docs'
 import type { Locale } from '@/lib/locale'
 import { m } from '@/locale/paraglide/messages.js'
@@ -67,6 +68,21 @@ export function DocsSidebar({
 
   return (
     <nav className="text-sm" aria-label="文档导航">
+      {/* 文档站独立部署时的返回入口：放在所有文档分组之前，位置固定、不参与折叠。 */}
+      {websiteConfig.docs.homeUrl && (
+        <ul className="mb-3 border-b border-border pb-3">
+          <li>
+            <a
+              href={websiteConfig.docs.homeUrl}
+              onClick={onNavigate}
+              className="group flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <IconArrowLeft className="size-4 shrink-0" aria-hidden />
+              <span className="truncate">{m.docs_back_to_site()}</span>
+            </a>
+          </li>
+        </ul>
+      )}
       {groups.map((group) =>
         group.title === '' ? (
           <ul key="__root__" className="mb-4 space-y-0.5">

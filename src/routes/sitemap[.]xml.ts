@@ -4,6 +4,7 @@ import type { WebsiteConfig } from '@/config/website'
 import { websiteConfig } from '@/config/website'
 import { contentSlug } from '@/lib/content-locale'
 import { DOCS_INDEX_SLUG } from '@/lib/docs'
+import { docsPublicPath } from '@/lib/docs-path'
 import { LOCALES, type Locale, parseLocale } from '@/lib/locale'
 
 /** 单条 sitemap 记录：绝对 loc、同页其他语言的 alternate 链接、内容更新时间。 */
@@ -72,23 +73,26 @@ export function getSitemapPaths(
     entries.push({ loc: buildUrl(baseUrl, locale, path), alternates: staticAlternates(path) })
   }
 
+  // 文档站独立部署时对外没有 `/docs` 这一层，canonical 与 sitemap 必须跟着换。
+  const docsPath = (slug?: string) => docsPublicPath(slug, config.docs.asHome === true)
+
   pushStatic()
   pushStatic('/marketing/features')
   pushStatic('/marketing/about')
-  // roadmap / waitlist 是静态营销页，没有对应模块开关，因此无条件收录。
+  // roadmap 无条件收录；waitlist 按站点定位开关，关闭时页面 404，不能写进 sitemap。
   pushStatic('/marketing/roadmap')
-  pushStatic('/marketing/waitlist')
+  if (config.pages.waitlist) pushStatic('/marketing/waitlist')
   pushStatic('/marketing/legal/terms')
   pushStatic('/marketing/legal/privacy')
 
   if (config.docs.enabled) {
-    // 文档首页的正式地址是 `/docs`；它的更新时间取首页文档的 `updated`。
+    // 文档首页的正式地址是 `docsPath()`；它的更新时间取首页文档的 `updated`。
     const landingUpdated = source.docs.find(
       (d) => d.locale === locale && contentSlug(d._meta.fileName) === DOCS_INDEX_SLUG,
     )?.updated
     entries.push({
-      loc: buildUrl(baseUrl, locale, '/docs'),
-      alternates: staticAlternates('/docs'),
+      loc: buildUrl(baseUrl, locale, docsPath()),
+      alternates: staticAlternates(docsPath()),
       ...(landingUpdated ? { lastmod: landingUpdated } : {}),
     })
   }
@@ -126,16 +130,16 @@ export function getSitemapPaths(
     for (const doc of source.docs) {
       if (doc.locale !== locale) continue
       const slug = slugOf(doc)
-      // 首页文档已按 `/docs` 收录；这里跳过，否则同一篇内容会有两个 URL。
+      // 首页文档已按 `docsPath()` 收录；这里跳过，否则同一篇内容会有两个 URL。
       if (slug === DOCS_INDEX_SLUG) continue
       const alternates = source.docs
         .filter((d) => d.locale !== locale && slugOf(d) === slug)
         .flatMap((d) => {
           const alt = parseLocale(d.locale)
-          return alt ? [{ hreflang: alt, href: buildUrl(baseUrl, alt, `/docs/${slug}`) }] : []
+          return alt ? [{ hreflang: alt, href: buildUrl(baseUrl, alt, docsPath(slug)) }] : []
         })
       entries.push({
-        loc: buildUrl(baseUrl, locale, `/docs/${slug}`),
+        loc: buildUrl(baseUrl, locale, docsPath(slug)),
         alternates,
         lastmod: doc.updated,
       })

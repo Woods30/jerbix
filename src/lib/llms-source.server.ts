@@ -2,6 +2,7 @@ import { allBlogs, allChangelogs, allDocs, allLegals } from 'content-collections
 import { type WebsiteConfig, websiteConfig } from '@/config/website'
 import { contentSlug } from '@/lib/content-locale'
 import { DOCS_INDEX_SLUG } from '@/lib/docs'
+import { docsPublicPath } from '@/lib/docs-path'
 import type { LlmsContentSource, LlmsEntry } from '@/lib/llms'
 
 /**
@@ -19,11 +20,13 @@ function toDate(value: string): string {
 /** 文档：slug 与语言无关，URL 不泄漏语言后缀。 */
 function toDocEntries(): LlmsEntry[] {
   return allDocs.map((doc) => ({
-    // 文档首页渲染在 `/docs` 本身，不在 `/docs/index`。
-    path:
+    // 文档首页渲染在文档根路径本身，不在 `/docs/index`。
+    path: docsPublicPath(
       doc._meta.fileName && contentSlug(doc._meta.fileName) === DOCS_INDEX_SLUG
-        ? '/docs'
-        : `/docs/${contentSlug(doc._meta.fileName)}`,
+        ? undefined
+        : contentSlug(doc._meta.fileName),
+      websiteConfig.docs.asHome === true,
+    ),
     locale: doc.locale,
     title: doc.title,
     description: doc.description,

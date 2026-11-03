@@ -252,6 +252,21 @@ describe('导航配置工厂', () => {
     })
   })
 
+  it('关闭 waitlist 静态页后 Footer 不再给出该入口', () => {
+    const config = createConfig()
+    config.pages = { waitlist: false }
+    const resources = getFooterLinks('en', { config, authenticated: false }).find(
+      (item) => item.id === 'resources',
+    )
+    expect(resources?.kind === 'group' && resources.items.map((item) => item.id)).toEqual([
+      'docs',
+      'blog',
+      'terms',
+      'privacy',
+      'roadmap',
+    ])
+  })
+
   it('Footer 分别按 blog / changelog 开关过滤', () => {
     const config = createConfig()
     config.docs = { enabled: true }
