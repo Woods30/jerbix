@@ -16,6 +16,11 @@ export function buildPaymentProviderRegistry(
     : {}
 }
 
+/** 支付渠道是否已配置：缺 key 时 `buildPaymentProviderRegistry` 不注册该渠道。 */
+export function isPaymentProviderConfigured(name: PaymentProviderName): boolean {
+  return Boolean(getServerContext().paymentProviderRegistry?.[name])
+}
+
 export function getPaymentProvider(name: PaymentProviderName): PaymentProvider {
   const factory = getServerContext().paymentProviderRegistry?.[name]
   if (!factory) throw new Error(`Payment provider 未注册：${name}`)
