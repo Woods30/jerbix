@@ -2,6 +2,24 @@
 
 本文件记录**模板工程**的版本变化。销售站点（官网工程）有独立的发布记录，不在本文件里。
 
+## 0.10.0（2026-11-03）
+
+### 新增
+
+- **Creem 支付**：内置 `CreemPaymentProvider`，支持订阅与一次性付款。Creem 没有 lookup key，商品本身就是价格，因此 `src/config/products.ts` 里的引用通过 `CREEM_PRODUCTS`（`reference=prod_xxx`）映射到真实商品 ID；同一份代码换店铺不用改代码。
+- Webhook 端点 `/api/webhooks/creem`：`creem-signature` 为原文的 HMAC-SHA256 十六进制串，常量时间校验。与 Stripe 端点一致，不受 `payment.enabled` 门禁，模块关闭后存量订阅仍能同步。
+- `pnpm run setup` 增加支付渠道选择（stripe / creem / skip），选 Creem 时写入 `CREEM_API_KEY`、`CREEM_WEBHOOK_SECRET`、`CREEM_PRODUCTS`。
+- `CREEM_DEBUG=true` 切到 Creem 沙箱（`test-api.creem.io`）联调。
+
+### 调整
+
+- 支付渠道由 `VITE_PAYMENT_PROVIDER` 选择（`stripe` / `creem`）。服务诊断只校验当前渠道的变量：选了 creem 时 Stripe 的 key 留空不影响状态。
+- `pages.waitlist` 开关：不提供等候名单的站点可以整页关闭，导航、页脚与 sitemap 中的入口一并消失。
+
+### 修复
+
+- 文档站独立部署时根路径的自我重定向（`/zh` → `/zh`）循环。
+
 ## 0.9.2（2026-11-03）
 
 ### 修复
