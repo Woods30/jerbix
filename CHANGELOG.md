@@ -26,3 +26,5 @@
 - `pnpm run setup` 不再抹掉 `.env` 的注释与手填值，也不再抹掉 `wrangler.jsonc` 的注释；R2 不再默认启用（它必须先在 Dashboard 开通）。
 - `.env` 的写入加固：校验变量名与值（阻断通过 key 注入配置）、临时文件 + 原子改名、权限收紧到 0600、目标是符号链接时拒绝写入。
 - payment 健康检查不再把「没配 Stripe key」报成故障。
+- `pnpm run init` 忽略参数里的 `--` 分隔符：pnpm / npm 会把它原样转发给脚本，此前按文档里的写法执行直接报错。
+- 初始化之后 `pnpm test` 仍然全绿：测试不再依赖仓库的出厂配置与品牌字面量（模块开关与品牌都是配置项，`init` 会把它们改写成使用者自己的值），组件测试的场景改由 `vitest.config.ts` 的 `testScenarioEnv` 固定。

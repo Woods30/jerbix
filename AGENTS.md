@@ -112,6 +112,12 @@ scripts/             构建与校验脚本
 - **先找现成组件**，没有才手写。新增 shadcn 组件用
   `pnpm dlx shadcn@latest add <component> -y`。
 - **行为修改先写失败测试**；结构整理与行为修改分开提交。
+- **测试不依赖出厂配置**：模块开关、能力开关与品牌名都是配置项，`pnpm run init` 会把它们
+  改写成使用者自己的值。断言要么显式摆出自己要的配置（`makeConfig({ blog: { enabled: true } })`），
+  要么取相对值（`websiteConfig.metadata.name`、`m.site_name(...)`），不写死出厂值与品牌字面量 ——
+  写死的话，初始化之后的项目跑 `pnpm test` 会集体变红。组件测试读的是全局 `websiteConfig`，
+  它的场景由 `vitest.config.ts` 的 `testScenarioEnv` 固定（`VITE_MODULES` / `VITE_FEATURES` 覆盖），
+  与 `website.ts` 的出厂值无关。
 - 提交前 `pnpm check` 与 `pnpm test` 必须全绿。提交消息写清改了什么、为什么。
 - **文档语言为中文**；技术名词、命令、代码标识符保留英文；中文与半角英数之间加空格。
 
