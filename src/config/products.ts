@@ -1,7 +1,12 @@
 import { m } from '@/locale/paraglide/messages.js'
 import type { PricingInterval, ProductDefinition } from '@/types/pricing'
 
-/** 套餐只定义一次；prices 的值是当前服务商的销售引用（Stripe lookup_key）。 */
+/**
+ * 套餐只定义一次；prices 的值是当前服务商的销售引用。
+ *
+ * Stripe 把它当 Price 的 `lookup_key`；Creem 把它当本站引用，由 `CREEM_PRODUCTS`
+ * 映射到 `prod_*` 商品 ID。代码里不出现任何渠道的 ID 或金额。
+ */
 export function getProducts(): ProductDefinition[] {
   return [
     {
@@ -31,6 +36,7 @@ export function getProducts(): ProductDefinition[] {
       name: 'Jerbix',
       description: m.home_pricing_description(),
       features: [m.home_pricing_source(), m.home_pricing_support(), m.home_pricing_updates()],
+      // 价格引用（Stripe lookup_key）：金额只存在于 Stripe 价格目录，代码里不存第二份。
       prices: { once: 'jerbix_template' },
     },
   ]

@@ -41,6 +41,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
     const arg = argv[index]
     if (arg === undefined) continue
 
+    // `--` 是 pnpm/npm 转发参数时的分隔符，会原样出现在 argv 里，直接忽略。
+    if (arg === '--') continue
+
     if (arg === '--non-interactive' || arg === '--dry-run') {
       flags.add(arg)
       continue

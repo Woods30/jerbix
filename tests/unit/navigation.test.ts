@@ -10,7 +10,7 @@ import {
   type PublicTarget,
 } from '@/config/navigation'
 import { getSocialLinks, isSafeSocialUrl } from '@/config/social-config'
-import { createWebsiteConfig } from '@/config/website'
+import { createWebsiteConfig, type WebsiteConfig } from '@/config/website'
 import { parsePublicEnv } from '@/env/public'
 import type { Locale } from '@/lib/locale'
 import { getLocale, overwriteGetLocale } from '@/locale/paraglide/runtime.js'
@@ -21,8 +21,23 @@ afterEach(() => {
   overwriteGetLocale(originalGetLocale)
 })
 
-function createConfig() {
-  return createWebsiteConfig(parsePublicEnv({}))
+/**
+ * 模板场景的完整配置（docs/blog/changelog 开，contact 关）。
+ *
+ * 开关逐项写死：各仓的默认开关不同（官网不提供文档站，`pnpm run init` 之后全关），
+ * 依赖默认值会让这里的断言随部署场景静默失效。
+ */
+function createConfig(): WebsiteConfig {
+  const base = createWebsiteConfig(parsePublicEnv({}))
+  return {
+    ...base,
+    pages: { waitlist: true },
+    // 清掉实例工程可能配的外部文档站地址：这里测的是站内路由。
+    docs: { ...base.docs, enabled: true, siteUrl: undefined, homeUrl: undefined },
+    blog: { enabled: true },
+    changelog: { enabled: true },
+    contact: { enabled: false },
+  }
 }
 
 function homeLink(id: string, visibility?: MenuLinkItem['visibility']): MenuLinkItem {
@@ -237,6 +252,21 @@ describe('导航配置工厂', () => {
       kind: 'internal',
       options: getPublicLinkOptions('docs', 'en'),
     })
+  })
+
+  it('关闭 waitlist 静态页后 Footer 不再给出该入口', () => {
+    const config = createConfig()
+    config.pages = { waitlist: false }
+    const resources = getFooterLinks('en', { config, authenticated: false }).find(
+      (item) => item.id === 'resources',
+    )
+    expect(resources?.kind === 'group' && resources.items.map((item) => item.id)).toEqual([
+      'docs',
+      'blog',
+      'terms',
+      'privacy',
+      'roadmap',
+    ])
   })
 
   it('Footer 分别按 blog / changelog 开关过滤', () => {

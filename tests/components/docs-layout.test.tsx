@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import type React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DocsLayout } from '@/components/docs/DocsLayout'
+import { websiteConfig } from '@/config/website'
 import { setLocale } from '@/locale/paraglide/runtime.js'
 
 /**
@@ -223,6 +224,36 @@ describe('DocsLayout 侧栏分组折叠', () => {
       .getAllByRole('button')
       .find((el) => el.getAttribute('aria-expanded') === 'true')
     expect(configGroup).toBeDefined()
+  })
+})
+
+describe('返回官网入口', () => {
+  function navLinks() {
+    return within(screen.getByRole('navigation', { name: '文档导航' })).getAllByRole('link')
+  }
+
+  it('配置了 homeUrl 时，侧栏第一项是指向主站的外链', () => {
+    const original = websiteConfig.docs
+    websiteConfig.docs = { ...original, homeUrl: 'https://www.example.com' }
+    try {
+      render(<DocsLayout locale="zh">正文</DocsLayout>)
+      const first = navLinks()[0]
+      expect(first).toHaveTextContent('返回官网')
+      expect(first).toHaveAttribute('href', 'https://www.example.com')
+    } finally {
+      websiteConfig.docs = original
+    }
+  })
+
+  it('没有 homeUrl 时不显示返回入口', () => {
+    const original = websiteConfig.docs
+    websiteConfig.docs = { ...original, homeUrl: undefined }
+    try {
+      render(<DocsLayout locale="zh">正文</DocsLayout>)
+      expect(navLinks().some((link) => link.textContent?.includes('返回官网'))).toBe(false)
+    } finally {
+      websiteConfig.docs = original
+    }
   })
 })
 

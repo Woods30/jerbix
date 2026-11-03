@@ -4,7 +4,7 @@ description: 各服务模块的门禁语义、端点与接线方式
 locale: zh
 order: 9
 group: features
-updated: 2026-10-14
+updated: 2026-11-03
 ---
 
 六个服务模块（`mail` / `contact` / `newsletter` / `payment` / `notification` / `analytics`）默认全部关闭。每个模块的接线由三部分组成：
@@ -35,7 +35,7 @@ updated: 2026-10-14
 | `/api/email/*` | `POST` | `mail` |
 | `/api/auth/*` | `GET` / `POST` | `auth` |
 
-> **注意事项**：Stripe webhook（`/api/webhooks/stripe`）**不受** `payment.enabled` 门禁，以便模块关闭后仍能处理存量订阅的合法事件。
+> **注意事项**：支付 webhook（`/api/webhooks/stripe`、`/api/webhooks/creem`）**不受** `payment.enabled` 门禁，以便模块关闭后仍能处理存量订阅的合法事件。Creem 端点只接受当前 provider 为 `creem` 时的投递，其余返回 404。
 
 `/api/auth/*` 下有两组前缀在 `auth` 之外还受**功能开关**约束，关闭时在进入 Better Auth
 之前即返回 404（不只是 UI 消失）：

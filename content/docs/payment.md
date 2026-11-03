@@ -4,10 +4,10 @@ description: Flat product configuration, hosted checkout, and billing management
 locale: en
 order: 14
 group: features
-updated: 2026-10-28
+updated: 2026-11-03
 ---
 
-Select one provider for the site through `websiteConfig.payment.provider`. Stripe is implemented; customers do not choose a provider during checkout.
+Select one provider for the site through `websiteConfig.payment.provider`. Stripe and Creem are implemented; customers do not choose a provider during checkout. Switching providers only changes `VITE_PAYMENT_PROVIDER` (or the default in `src/config/website.ts`); pages, subscriptions, and persistence stay shared.
 
 ## Products and prices
 
@@ -24,7 +24,7 @@ Define each product once in `src/config/products.ts`, inside `getProducts()`:
 }
 ```
 
-Keys in `prices` are application offer IDs. Values are sales references interpreted by the selected provider: Stripe uses Price lookup keys. Create separate Stripe Products for different plans, with multiple Prices for billing variants. Amounts, currency, and actual billing intervals come from the provider and are cached for 10 minutes. An offer ID does not determine its billing interval.
+Keys in `prices` are application offer IDs. Values are sales references interpreted by the selected provider: Stripe uses Price lookup keys; Creem uses the same reference and resolves it to a `prod_*` ID through `CREEM_PRODUCTS`. Create separate Stripe Products for different plans, with multiple Prices for billing variants. Creem has no lookup key — the product is the price — so each billing variant needs its own recurring product. Amounts, currency, and actual billing intervals come from the provider and are cached for 10 minutes. An offer ID does not determine its billing interval.
 
 Empty `prices` means free; its button opens registration or the dashboard. `recommended` is optional. Array order controls display order. No CTA, tier, or exclusivity configuration is required. Evaluate translated copy inside the function, never at module initialization.
 
@@ -73,7 +73,47 @@ The return page displays a notice without emitting revenue analytics from its qu
 
 Implement `PaymentProvider` in `src/payment/types.ts`, register the adapter, add environment validation, and expose its webhook route. The adapter interprets sales references and normalizes catalog prices, subscription snapshots, and events; pages and persistence stay shared.
 
-Creem could interpret references as Product IDs. It is not implemented in this template. Moving existing subscriptions between providers is outside scope.
+## Creem
+
+Creem is a Merchant of Record: it collects in its own name and handles tax and refunds, so the site receives net settlements. Both subscriptions and one-time payments are supported.
+
+### Configuration
+
+1. Create products in the Creem dashboard: recurring products for subscriptions (one per interval) and one-time products for lifetime purchases.
+2. Map product IDs through environment variables, with the reference from `src/config/products.ts` on the left:
+
+   ```dotenv
+   VITE_PAYMENT_PROVIDER=creem
+   CREEM_API_KEY=creem_xxx
+   CREEM_WEBHOOK_SECRET=whsec_xxx
+   CREEM_PRODUCTS=pro_monthly=prod_xxx,pro_yearly=prod_yyy,lifetime=prod_zzz
+   ```
+
+3. Set `CREEM_DEBUG=true` to target the sandbox (`test-api.creem.io`) while developing; use sandbox keys and products there. Switch back to `false` with production keys before launch.
+
+### Webhooks
+
+The endpoint is `/api/webhooks/creem`. Add it in the Creem dashboard; the signing secret is `CREEM_WEBHOOK_SECRET`. The `creem-signature` header is the HMAC-SHA256 hex digest of the raw body, compared in constant time. An invalid signature returns 400.
+
+Key events:
+
+| Event | Purpose |
+|---|---|
+| `checkout.completed` | Checkout finished; one-time orders are recorded here |
+| `subscription.paid` | **The authoritative subscription payment event**, sent for the first payment and every renewal |
+| `subscription.*` | Subscription lifecycle; `scheduled_cancel` normalizes to active with `cancelAtPeriodEnd` |
+
+Ownership travels in checkout `metadata.userId` / `productId` / `offerId`; subscription metadata wins when present. If both are missing, persistence throws so Creem retries until an event carrying ownership arrives — a payment is never attributed to a guessed user.
+
+### Differences from Stripe
+
+- **The product is the price**: there is no lookup key; checkout takes `product_id`, and the catalog fetches each product with `GET /v1/products/{id}`.
+- **No cancel_url**: cancellation returns to Creem's own page; the site has no cancellation redirect.
+- **Amounts are pre-tax**: the checkout page adds tax, so the displayed price can differ from the charged total. Tax is Creem's responsibility under MoR.
+- **Status mapping**: `expired` becomes `past_due` (still recoverable); unknown statuses become `incomplete` so access is withheld rather than assumed.
+- **No in-app refunds**: refunds happen in the Creem dashboard and sync back through events.
+
+Existing subscriptions do not migrate when you switch providers; changing providers changes the merchant of record, so handle the backlog yourself.
 
 ## Schema changes
 

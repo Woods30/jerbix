@@ -63,7 +63,7 @@ import { createWebsiteConfig, type WebsiteConfig } from '@/config/website'
 import { type PublicEnv, parsePublicEnv } from '@/env/public'
 import type { ServerEnv } from '@/env/server'
 import { parseServerEnv } from '@/env/server'
-import { assertPageEnabled } from '@/lib/module-access'
+import { assertPageEnabled, assertStaticPageEnabled } from '@/lib/module-access'
 import { getModuleUnavailableResponse } from '@/lib/module-access.server'
 import { getSitemapPaths, renderSitemapXml } from '@/routes/sitemap[.]xml'
 
@@ -74,13 +74,30 @@ const emptyEnv: ServerEnv = parseServerEnv({})
 const SUPPORT_EMAIL = ['support', 'jerbix.dev'].join('@')
 
 /**
- * 完整默认配置（docs/blog/changelog 开，服务关）。
+ * 完整默认配置（docs/blog/changelog/auth 开，服务关）。
  *
- * docs 显式打开：各仓的默认开关不同（官网不提供文档站），
+ * 开关逐项写死：各仓的默认开关不同（官网不提供文档站，`pnpm run init` 之后全关），
  * 依赖默认值会让这里的断言随部署场景静默失效。
  */
 function makeConfig(overrides: Partial<WebsiteConfig> = {}): WebsiteConfig {
-  return { ...createWebsiteConfig(publicEnv), docs: { enabled: true }, ...overrides }
+  const base = createWebsiteConfig(publicEnv)
+  return {
+    ...base,
+    // 静态页与模块开关逐项写死：各仓的默认值不同（官网不卖等候名单），
+    // 依赖默认值会让门禁用例随部署场景静默失效。
+    pages: { waitlist: true },
+    docs: { enabled: true },
+    blog: { enabled: true },
+    changelog: { enabled: true },
+    mail: { ...base.mail, enabled: true },
+    contact: { enabled: false },
+    newsletter: { ...base.newsletter, enabled: false },
+    payment: { ...base.payment, enabled: true },
+    notification: { ...base.notification, enabled: false },
+    analytics: { ...base.analytics, enabled: true },
+    auth: { ...base.auth, enabled: true },
+    ...overrides,
+  }
 }
 
 const creds: ServerEnv = parseServerEnv({
@@ -173,6 +190,13 @@ describe('assertPageEnabled', () => {
   it('抛出的错误是 notFound 标记', () => {
     // 确认标记来源，避免误判普通 Error。
     expect((notFound() as { isNotFound?: boolean }).isNotFound).toBe(true)
+  })
+
+  it('静态营销页关闭时抛 notFound，开启时不抛', () => {
+    expectNotFound(() =>
+      assertStaticPageEnabled('waitlist', makeConfig({ pages: { waitlist: false } })),
+    )
+    expect(() => assertStaticPageEnabled('waitlist', makeConfig())).not.toThrow()
   })
 })
 

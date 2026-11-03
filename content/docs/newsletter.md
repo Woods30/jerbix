@@ -4,7 +4,7 @@ description: Wiring Resend / Beehiiv subscriptions and rate limits
 locale: en
 order: 13
 group: features
-updated: 2026-10-15
+updated: 2026-11-03
 ---
 
 | Provider | Required config |
@@ -29,5 +29,5 @@ newsletter: { enabled: true, provider: 'resend' },
 
 ## Next steps
 
-- [Payment](./payment) — Stripe checkout and the Price allowlist
+- [Payment](./payment) — hosted checkout and the price catalog
 - [Analytics](./analytics) — enabling GA / Plausible / Umami / Clarity

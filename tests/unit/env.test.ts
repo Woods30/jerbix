@@ -12,8 +12,9 @@ describe('parsePublicEnv', () => {
     expect(() => parsePublicEnv({ VITE_BASE_URL: 'not-a-url' })).toThrow(/url/i)
   })
 
-  it('仅接受 stripe 作为支付 provider', () => {
-    expect(() => parsePublicEnv({ VITE_PAYMENT_PROVIDER: 'creem' })).toThrow()
+  it('支付 provider 只接受 stripe 或 creem', () => {
+    expect(parsePublicEnv({ VITE_PAYMENT_PROVIDER: 'creem' }).VITE_PAYMENT_PROVIDER).toBe('creem')
+    expect(() => parsePublicEnv({ VITE_PAYMENT_PROVIDER: 'paypal' })).toThrow()
   })
 
   it('空串视为未设置：VITE_BASE_URL 回退默认值', () => {

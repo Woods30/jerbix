@@ -89,7 +89,7 @@ export function getFooterLinks(locale: Locale, ctx: MenuContext) {
             visibility: { module: 'contact' },
             destination: { kind: 'internal', options: getPublicLinkOptions('contact', locale) },
           },
-          // roadmap / waitlist 是静态营销页，没有对应模块开关。
+          // roadmap 是无条件提供的静态页；waitlist 按站点定位开关。
           {
             kind: 'link',
             id: 'roadmap',
@@ -100,6 +100,7 @@ export function getFooterLinks(locale: Locale, ctx: MenuContext) {
             kind: 'link',
             id: 'waitlist',
             title: m.nav_waitlist(),
+            visibility: { page: 'waitlist' },
             destination: { kind: 'internal', options: getPublicLinkOptions('waitlist', locale) },
           },
         ],

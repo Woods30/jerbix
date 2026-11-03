@@ -10,6 +10,9 @@
 - 文档站独立成第二个 Worker（`jerbix-docs` → `docs.jerbix.site`），与官网 Worker 各发各的，互不影响。
 - 新增购买常见问题页（交付流程、授权与再销售边界、第三方费用、部署与文档入口、更新与支持范围、退款例外情形），服务条款与它互相链接；条款性内容仍以服务条款为准。
 - 模块与能力开关可用环境变量覆盖（`VITE_MODULES` / `VITE_FEATURES` / `VITE_DOCS_AS_HOME`），同一份代码能发到不同场景。
+- 官网移除候补名单页（`pages.waitlist: false`）：页面、导航、页脚与 sitemap 中的入口一并消失。
+- 文档站改为根路径：`docs.jerbix.site/zh/getting-started`，不再嵌套 `/docs`；旧 `/docs/*` 地址 301 到新地址。文档中心侧边栏第一项是「返回官网」，logo 仍回文档首页。
+- 同步模板仓 0.10.0：代码内置 Creem 支付渠道（官网仍用 Stripe），服务诊断按当前渠道校验。
 
 ### 修复
 

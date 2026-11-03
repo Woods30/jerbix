@@ -19,6 +19,7 @@ import { websiteConfig } from './config/website'
 import { publicEnv } from './env/public'
 import { parseServerEnv, type ServerEnv } from './env/server'
 import { DOCS_SIDEBAR_COOKIE_NAME, parseSidebarCollapsed, setServerSidebarGetter } from './lib/docs'
+import { docsLegacyRedirect } from './lib/docs-path'
 import { LOCALE_COOKIE_NAME, readCookieValue, readLocaleCookie } from './lib/locale'
 import {
   addNonceToInlineScripts,
@@ -69,6 +70,16 @@ const LOCALE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    // 文档站的对外地址没有 `/docs` 这一层：历史地址 301 过去，
+    // 否则同一篇文档会同时存在两个可索引的 URL。
+    if (websiteConfig.docs.asHome === true) {
+      const url = new URL(request.url)
+      const target = docsLegacyRedirect(url.pathname, true)
+      if (target !== undefined) {
+        url.pathname = target
+        return Response.redirect(url.toString(), 301)
+      }
+    }
     // 每个请求生成新的 nonce，与 CSP header 同步。
     const nonce = generateNonce()
     // 无 cookie 时为 `system`（由 CSS 媒体查询决定明暗）。

@@ -92,7 +92,8 @@ describe('DocNextSteps', () => {
         ?.match(/tabler-icon-([a-z-]+)/)?.[1]
 
     const sidebar = render(<DocsSidebar docs={[SIDEBAR_DOC]} locale="en" />)
-    const sidebarIcon = iconName(sidebar.container, 'li svg')
+    // 侧边栏第一项可能是「返回官网」（实例工程配了 homeUrl），按文档链接取图标。
+    const sidebarIcon = iconName(sidebar.container, 'a[href="/docs/configuration"] svg')
     sidebar.unmount()
     expect(sidebarIcon).toBe('settings')
 

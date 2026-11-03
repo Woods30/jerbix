@@ -117,6 +117,6 @@
 ## 支付模型
 
 - 套餐只在 `src/config/products.ts` 声明一次，prices 映射本站选项到当前 provider 销售引用。
-- 站点选择一个 provider，当前为 Stripe；金额和真实周期来自外部价格目录。
+- 站点按部署选择一个 provider（内置 Stripe 与 Creem）；金额和真实周期来自外部价格目录。
 - 账号全局最多一份未终止订阅，一次性商品独立购买，不存在等级互斥或买断接管。
 - 订阅管理交给托管 Portal；Webhook 由适配器转换，通用 events.ts 落库。

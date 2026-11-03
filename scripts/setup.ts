@@ -51,17 +51,27 @@ export async function main() {
 
   const optional: Record<string, string> = {}
 
-  const stripeChoice = await select({
-    message: 'Stripe 配置？',
+  const paymentProvider = await select({
+    message: '支付渠道？',
     choices: [
+      { name: 'stripe', value: 'stripe' },
+      { name: 'creem', value: 'creem' },
       { name: 'skip', value: 'skip' },
-      { name: 'configure', value: 'configure' },
     ],
   })
-  if (stripeChoice === 'configure') {
+  if (paymentProvider === 'stripe') {
     optional.VITE_PAYMENT_PROVIDER = 'stripe'
     optional.STRIPE_SECRET_KEY = await password({ message: 'STRIPE_SECRET_KEY' })
     optional.STRIPE_WEBHOOK_SECRET = await password({ message: 'STRIPE_WEBHOOK_SECRET' })
+  }
+  if (paymentProvider === 'creem') {
+    optional.VITE_PAYMENT_PROVIDER = 'creem'
+    optional.CREEM_API_KEY = await password({ message: 'CREEM_API_KEY' })
+    optional.CREEM_WEBHOOK_SECRET = await password({ message: 'CREEM_WEBHOOK_SECRET' })
+    optional.CREEM_PRODUCTS = await input({
+      message: 'CREEM_PRODUCTS（reference=prod_xxx，逗号分隔）',
+      default: 'pro_monthly=prod_,pro_yearly=prod_,lifetime=prod_',
+    })
   }
 
   const mailProvider = await select({

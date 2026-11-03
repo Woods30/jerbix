@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { m } from '@/locale/paraglide/messages.js'
 
 /**
  * 站点 URL 与 SEO helper。这些函数读模块加载期解析好的 `publicEnv`，
@@ -247,9 +248,12 @@ describe('seo()', () => {
   })
 
   it('输出 og:site_name，默认取站点品牌名', async () => {
-    const { seoModule } = await loadModules(CUSTOM_BASE_URL)
+    const { seoModule, website } = await loadModules(CUSTOM_BASE_URL)
     const head = seoModule.seo('/', { title: '首页' })
-    expect(head.meta).toContainEqual({ property: 'og:site_name', content: 'Jerbix' })
+    expect(head.meta).toContainEqual({
+      property: 'og:site_name',
+      content: website.websiteConfig.metadata.name,
+    })
   })
 
   it('social 为空时不输出 twitter:site，配置后输出', async () => {
@@ -271,7 +275,8 @@ describe('websiteConfig', () => {
   it('只承载语言无关值：名称与图片路径', async () => {
     const { website } = await loadModules(CUSTOM_BASE_URL)
     const { metadata } = website.websiteConfig
-    expect(metadata.name).toBe('Jerbix')
+    // 品牌名取配置里的值，不写死：改名（`pnpm run init`）之后这里仍然成立。
+    expect(metadata.name).toBe(m.site_name({}, { locale: 'zh' }))
     expect(metadata.images.ogImage).toBe('/logo.png')
   })
 
@@ -282,10 +287,14 @@ describe('websiteConfig', () => {
     expect('description' in metadata).toBe(false)
   })
 
-  it('features 为显式布尔开关，i18n 默认开启', async () => {
+  it('features 为显式布尔开关，能力清单固定', async () => {
     const { website } = await loadModules(CUSTOM_BASE_URL)
     const { features } = website.websiteConfig
-    expect(features.enableI18n).toBe(true)
+    // 能力开关的默认值是部署场景的决定（`pnpm run init` 之后全关），
+    // 这里只钉住「清单固定 + 取值都是布尔」。
+    expect(Object.keys(features).sort()).toEqual(
+      ['enableAIGateway', 'enableAdmin', 'enableApiKeys', 'enableFileUpload', 'enableI18n'].sort(),
+    )
     expect(Object.values(features).every((value) => typeof value === 'boolean')).toBe(true)
   })
 })

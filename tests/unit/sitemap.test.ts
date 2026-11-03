@@ -13,10 +13,12 @@ import { getSitemapPaths, renderSitemapXml } from '@/routes/sitemap[.]xml'
 const base = 'https://example.com'
 
 /**
- * 显式打开 docs：各仓是否提供文档站不同，sitemap 的用例只关心文档路径本身。
+ * 显式打开 docs 与 blog：各仓是否提供文档站、是否开博客都随部署场景变化，
+ * sitemap 的用例只关心路径与 lastmod 本身。
  */
 const config = createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: base }))
 config.docs = { enabled: true }
+config.blog = { enabled: true }
 
 describe('sitemap lastmod', () => {
   it('文档按 frontmatter 的 updated 输出 lastmod', () => {
@@ -42,6 +44,15 @@ describe('sitemap lastmod', () => {
     })
     const entry = paths.find((p) => p.loc === `${base}/en/marketing/blog/hello-world`)
     expect(entry?.lastmod).toBe('2026-10-12')
+  })
+
+  it('关闭 waitlist 静态页后不再收录该地址', () => {
+    const off = createWebsiteConfig(parsePublicEnv({ VITE_BASE_URL: base }))
+    off.pages = { waitlist: false }
+    const paths = getSitemapPaths(off, 'en', { blogs: [], docs: [] })
+    expect(paths.some((p) => p.loc.endsWith('/marketing/waitlist'))).toBe(false)
+    // 其余静态页不受影响，避免开关写成「整个静态页列表都关」。
+    expect(paths.some((p) => p.loc.endsWith('/marketing/roadmap'))).toBe(true)
   })
 
   it('静态页没有日期来源时不输出 lastmod', () => {

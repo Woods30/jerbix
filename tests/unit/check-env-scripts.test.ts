@@ -67,6 +67,14 @@ const EXTRA_ENV_KEYS = [
 /** 从子进程环境删除的键集合：`.env.example` 全部键 + 额外键，确保临时 `.env` 是唯一来源。 */
 const scrubKeys = [...dotenvKeys, ...EXTRA_ENV_KEYS]
 
+/**
+ * 启用中的服务模块（`VITE_MODULES` 白名单）。
+ *
+ * 模块开关随部署场景变化（各仓出厂值不同，`pnpm run init` 之后全关），校验脚本
+ * 读的是仓库的 `website.ts`，因此这里显式指定，让用例只测校验逻辑本身。
+ */
+const ENABLED_MODULES = 'mail,payment,analytics'
+
 /** 合成服务配置；包含已启用支付与可选的通知、分析字段。 */
 const ENABLED_SERVICES_ENV: Record<string, string> = {
   RESEND_API_KEY: 're_synthetic',
@@ -75,6 +83,7 @@ const ENABLED_SERVICES_ENV: Record<string, string> = {
   STRIPE_WEBHOOK_SECRET: 'whsec_synthetic',
   DISCORD_WEBHOOK_URL: 'https://discord.com/api/webhooks/1/synthetic',
   VITE_GA_ID: 'G-SYNTHETIC',
+  VITE_MODULES: ENABLED_MODULES,
 }
 
 /** 把已启用服务的配置拼成 `.env` 文本。 */
@@ -185,7 +194,7 @@ describe('check-env.ts（开发校验）', () => {
 
   it('非法 enum（VITE_PAYMENT_PROVIDER）失败', () => {
     const dir = makeWorkspace()
-    writeDotEnv(dir, 'VITE_PAYMENT_PROVIDER=creem\n')
+    writeDotEnv(dir, 'VITE_PAYMENT_PROVIDER=paypal\n')
     const result = runScript(dir, checkEnv)
     expect(result.code).toBe(1)
     expect(result.stderr).toContain('VITE_PAYMENT_PROVIDER')
@@ -329,7 +338,10 @@ describe('check-env-prod.ts（生产校验）', () => {
   it('邮件、支付与分析缺少配置时失败，已关闭的通知不要求凭据', () => {
     const dir = makeWorkspace()
     // 只提供生产必需的 URL 与 auth secret，未提供邮件、支付或分析凭据。
-    writeDotEnv(dir, `VITE_BASE_URL=${VALID_URL}\nBETTER_AUTH_SECRET=${VALID_SECRET}\n`)
+    writeDotEnv(
+      dir,
+      `VITE_BASE_URL=${VALID_URL}\nBETTER_AUTH_SECRET=${VALID_SECRET}\nVITE_MODULES=${ENABLED_MODULES}\n`,
+    )
     const result = runScript(dir, checkEnvProd)
     expect(result.code).toBe(1)
     expect(result.stderr).toContain('STRIPE_SECRET_KEY')

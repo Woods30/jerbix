@@ -4,10 +4,10 @@ description: 套餐配置、托管购买与账单管理
 locale: zh
 order: 14
 group: features
-updated: 2026-10-28
+updated: 2026-11-03
 ---
 
-站点通过 `websiteConfig.payment.provider` 选择一个支付服务商。当前内置 Stripe，用户无需在付款时选择服务商。
+站点通过 `websiteConfig.payment.provider` 选择一个支付服务商。当前内置 Stripe 与 Creem，用户无需在付款时选择服务商。切换渠道只改 `VITE_PAYMENT_PROVIDER`（或 `src/config/website.ts` 的默认值），页面、订阅与落库逻辑共用。
 
 ## 配置套餐
 
@@ -29,6 +29,7 @@ updated: 2026-10-28
 
 - `id` 是本站套餐标识，`prices` 左侧是本站购买选项 ID。
 - Stripe 下右侧填写 Price 的 `lookup_key`。不同套餐创建不同 Product，同套餐不同周期使用多个 Price。
+- Creem 下右侧是本站引用，真实商品 ID 由 `CREEM_PRODUCTS` 映射（`pro_monthly=prod_xxx`）。Creem 没有 lookup key，商品本身就是价格：不同周期要建不同的 recurring 商品。
 - 金额、币种和实际计费周期从服务商读取并缓存；选项名称不会决定扣款周期。
 - 空 `prices` 表示免费套餐，按钮进入注册或工作台。
 - `recommended` 可省略，数组顺序就是展示顺序；无需设置 CTA、等级或互斥。
@@ -79,7 +80,47 @@ Stripe 端点是 `/api/webhooks/stripe`。在 Stripe Dashboard → Developers �
 
 新增服务商需要实现 `src/payment/types.ts` 的 `PaymentProvider`，注册 provider、补齐 env 校验并提供自己的 Webhook 路由。适配器解释 `prices` 引用，归一化价格、订阅快照和支付事件，共用页面与落库逻辑。
 
-例如 Creem 可把引用解释为 Product ID，而 Stripe 把它解释为 lookup key。本模板仅实现 Stripe，未内置 Creem，也不提供现有订阅跨服务商迁移。
+## Creem
+
+Creem 是 Merchant of Record：它以自己名义收款、处理税费与退款，站点拿到的是净额结算。订阅与一次性付款都支持。
+
+### 配置
+
+1. 在 Creem 后台创建商品：订阅用 recurring 商品（按月/年各建一个），买断用 one-time 商品。
+2. 把商品 ID 映射写入环境变量，左侧是 `src/config/products.ts` 里的引用：
+
+   ```dotenv
+   VITE_PAYMENT_PROVIDER=creem
+   CREEM_API_KEY=creem_xxx
+   CREEM_WEBHOOK_SECRET=whsec_xxx
+   CREEM_PRODUCTS=pro_monthly=prod_xxx,pro_yearly=prod_yyy,lifetime=prod_zzz
+   ```
+
+3. 联调时设 `CREEM_DEBUG=true` 走沙箱（`test-api.creem.io`），用沙箱 key 与沙箱商品 ID；上线前改回 `false` 并换成生产 key。
+
+### Webhook
+
+端点是 `/api/webhooks/creem`。在 Creem 后台添加该地址，签名密钥即 `CREEM_WEBHOOK_SECRET`。请求头 `creem-signature` 是原文的 HMAC-SHA256 十六进制串，适配器按常量时间比较校验；不合法返回 400。
+
+关键事件：
+
+| 事件 | 作用 |
+|---|---|
+| `checkout.completed` | 结账完成；一次性付款的订单在此记录 |
+| `subscription.paid` | **订阅付款的权威事件**，首笔与每次续费都会发 |
+| `subscription.*` | 订阅生命周期；`scheduled_cancel` 归一化为「有效但期末取消」 |
+
+归属写在 checkout 的 `metadata.userId` / `productId` / `offerId` 上，订阅自带 metadata 时优先用它。两者都缺失时落库会抛错，让 Creem 重试，等带归属的事件到达——不会把付款记到猜出来的用户身上。
+
+### 与 Stripe 的差异
+
+- **商品即价格**：没有 lookup key，结账传 `product_id`；价格目录逐个 `GET /v1/products/{id}` 读取。
+- **没有 cancel_url**：取消只能回 Creem 自己的页面，站内不提供取消回跳。
+- **金额是税前价**：结账页会加税，展示价与实付可能不同。MoR 模式下税务由 Creem 承担。
+- **状态映射**：`expired` 记为 `past_due`（仍可恢复）；未知状态记为 `incomplete`，宁可暂不授予权益。
+- **不支持站内退款**：退款走 Creem 后台，退款事件会同步回来。
+
+已有订阅不随渠道切换迁移；换渠道等于换收款主体，需自行处理存量。
 
 ## 数据库调整
 

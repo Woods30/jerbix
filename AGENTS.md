@@ -52,6 +52,22 @@ git fetch template && git merge template/main
 官网不提供 `/docs`（`docs.enabled = false`，整棵 docs 子树 404），导航与页脚的
 「文档」入口指向外部文档站。
 
+## 版本与发布
+
+本仓是**模板工程**；销售站点（官网工程）是另一个仓，两仓**版本号各自独立**，
+互不跟随：
+
+| | 模板仓（本仓） | 官网工程 |
+|---|---|---|
+| `package.json` 的 `version` | 模板的发布版本 | 官网站点的发布版本 |
+| Release tag | `v<模板版本>`，买家拿这个冻结版本 | `v<官网版本>`，部署官网 |
+| `CHANGELOG.md` | 模板的发布记录 | 官网的发布记录 |
+
+官网仓合并本仓时，本仓的版本号与发布记录**不带过去**（官网保留自己的），反之亦然。
+
+发 Release 的硬性要求：tag 必须与本仓 `package.json` 的 `version` 一致，且 tag
+指向的提交在 `main` 上、该提交的 CI 已成功——三者任一不满足，部署工作流会拒绝。
+
 ## 命令
 
 | 命令 | 作用 |
@@ -122,10 +138,10 @@ scripts/             构建与校验脚本
 9. **不硬编码颜色**：只用语义 token，规则见 `DESIGN.md`。
 10. **llms 文件由配置生成**：`/llms*.txt` 的内容来自 `src/config/llms.ts` 与 `content/`，
     不手写正文、不硬编码链接——链接按语言前缀拼装。
-11. **价格只存一份**：金额的事实源是 Stripe 的价格目录
+11. **价格只存一份**：金额的事实源是所选支付渠道的价格目录
     （`src/payment/price-catalog.server.ts`）。首页展示、`llms.txt` 与结账收款读**同一份**
     目录；代码与配置里**不得**再存第二份金额——两份金额必然漂移，漂移后结账会被判为
-    价格不可用。改价只需在 Stripe 后台操作。
+    价格不可用。改价只需在渠道后台（Stripe / Creem）操作。
 
 ## 工作方式
 
@@ -134,6 +150,12 @@ scripts/             构建与校验脚本
 - **先找现成组件**，没有才手写。新增 shadcn 组件用
   `pnpm dlx shadcn@latest add <component> -y`。
 - **行为修改先写失败测试**；结构整理与行为修改分开提交。
+- **测试不依赖出厂配置**：模块开关、能力开关与品牌名都是配置项，`pnpm run init` 会把它们
+  改写成使用者自己的值。断言要么显式摆出自己要的配置（`makeConfig({ blog: { enabled: true } })`），
+  要么取相对值（`websiteConfig.metadata.name`、`m.site_name(...)`），不写死出厂值与品牌字面量 ——
+  写死的话，初始化之后的项目跑 `pnpm test` 会集体变红。组件测试读的是全局 `websiteConfig`，
+  它的场景由 `vitest.config.ts` 的 `testScenarioEnv` 固定（`VITE_MODULES` / `VITE_FEATURES` 覆盖），
+  与 `website.ts` 的出厂值无关。
 - 提交前 `pnpm check` 与 `pnpm test` 必须全绿。提交消息写清改了什么、为什么。
 - **文档语言为中文**；技术名词、命令、代码标识符保留英文；中文与半角英数之间加空格。
 

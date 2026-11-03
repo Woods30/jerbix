@@ -1,6 +1,6 @@
 import { type PublicEnv, publicEnv } from '@/env/public'
 
-export type PaymentProviderName = 'stripe'
+export type PaymentProviderName = 'stripe' | 'creem'
 export type AnalyticsName = 'ga' | 'plausible' | 'umami' | 'clarity'
 export type SocialPlatform =
   | 'github'
@@ -58,6 +58,15 @@ export interface WebsiteConfig {
    * 读同一份目录。配置里再存一份金额只会让两者漂移。
    */
   landingOffer: { productId: string; offerId: string }
+  /**
+   * 静态营销页开关。
+   *
+   * 这些页面没有对应的服务模块（不需要后端），但「提不提供」仍随站点定位变化：
+   * 不卖等候名单的站点，链接与页面都该消失，而不是留一个空壳。
+   */
+  pages: {
+    waitlist: boolean
+  }
   docs: {
     /**
      * 本仓是否提供文档站：关闭时整棵 docs 子树以 404 呈现。
@@ -71,6 +80,12 @@ export interface WebsiteConfig {
      * 留空表示文档就在本仓的 `/docs`。
      */
     siteUrl?: string
+    /**
+     * 主站地址（可选）：文档站独立部署时，文档中心里的「返回官网」指向这里。
+     *
+     * 留空则不显示该入口——文档就在本仓时没有「另一个站」可返回。
+     */
+    homeUrl?: string
     /**
      * 本仓就是文档站：根路径跳到文档首页，而不是营销首页。
      *
@@ -90,9 +105,9 @@ export interface WebsiteConfig {
    * 支付链路以 provider 为边界，新增供应商只需扩 `PaymentProviderName` 并实现接口；
    * `subscriptions` / `payments` 表用供应商中立的列名也是同一目的。
    *
-   * 「卖什么、怎么卖」不在这里，而在 `src/config/products.ts`：产品、付费方式与
-   * Stripe Price 的 `lookup_key` 都在那儿定义。真正的 Price id 与金额由 Stripe 在
-   * 运行时给出（见 `src/payment/price-catalog.ts`）。
+   * 「卖什么、怎么卖」不在这里，而在 `src/config/products.ts`：产品与销售引用都在
+   * 那儿定义。真正的价格 ID 与金额由所选渠道在运行时给出（见
+   * `src/payment/price-catalog.ts`）。
    */
   payment: {
     enabled: boolean
@@ -149,7 +164,13 @@ function parseNameList(value: string | undefined): Set<string> | undefined {
 export function applyEnvOverrides(config: WebsiteConfig, env: PublicEnv): WebsiteConfig {
   const modules = parseNameList(env.VITE_MODULES)
   const features = parseNameList(env.VITE_FEATURES)
-  if (!modules && !features && env.VITE_DOCS_AS_HOME === undefined) return config
+  if (
+    !modules &&
+    !features &&
+    env.VITE_DOCS_AS_HOME === undefined &&
+    env.VITE_PAYMENT_PROVIDER === undefined
+  )
+    return config
 
   const next: WebsiteConfig = { ...config, features: { ...config.features } }
   if (modules) {
@@ -166,6 +187,10 @@ export function applyEnvOverrides(config: WebsiteConfig, env: PublicEnv): Websit
   }
   if (env.VITE_DOCS_AS_HOME !== undefined) {
     next.docs = { ...next.docs, asHome: env.VITE_DOCS_AS_HOME === 'true' }
+  }
+  // 同一份代码发不同支付渠道：provider 由构建环境决定，不写死在配置里。
+  if (env.VITE_PAYMENT_PROVIDER !== undefined) {
+    next.payment = { ...next.payment, provider: env.VITE_PAYMENT_PROVIDER }
   }
   if (features) {
     next.features = {
@@ -205,9 +230,16 @@ export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
         themeColor: { light: '#FCFAFF', dark: '#0A0A0F' },
       },
       landingOffer: { productId: 'template', offerId: 'once' },
-      // 官网不提供文档站：文档站部署在模板仓的独立域，入口指过去。
+      // 官网不提供文档站：文档站部署在独立域，入口指过去。
       // docs 子树因此以 404 呈现，sitemap 与 llms 索引也不再收录文档。
-      docs: { enabled: false, siteUrl: 'https://docs.jerbix.site/docs' },
+      // 官网不卖等候名单，整页与所有入口一并关闭。
+      pages: { waitlist: false },
+      docs: {
+        enabled: false,
+        siteUrl: 'https://docs.jerbix.site',
+        // 文档站里的「返回官网」指向这里。
+        homeUrl: 'https://www.jerbix.site',
+      },
       blog: { enabled: true },
       changelog: { enabled: true },
       mail: { enabled: true, provider: 'resend', supportEmail: 'service@jerbix.site' },

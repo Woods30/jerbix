@@ -1,10 +1,35 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+/**
+ * 服务端读取目录依赖 ALS 上下文里的支付渠道注册表。
+ *
+ * `cacheProvider: undefined` 让 `getOrSetCache` 走 pass-through，用例不经过缓存。
+ */
+const { mockServerContext } = vi.hoisted(() => ({
+  mockServerContext: {
+    env: {},
+    cacheProvider: undefined,
+    paymentProviderRegistry: undefined as
+      | Partial<
+          Record<'stripe', () => { listPrices: (references: string[]) => Promise<unknown[]> }>
+        >
+      | undefined,
+  },
+}))
+
+vi.mock('@/lib/server-context', () => ({
+  getServerContext: () => mockServerContext,
+  als: { run: (_ctx: unknown, fn: () => unknown) => fn() },
+}))
+
+import { collectPriceReferences } from '@/config/products'
 import {
   findCatalogAmount,
   formatUsdAmount,
   isOneTimePriceValid,
   LANDING_PRICE_CURRENCY,
 } from '@/payment/price-catalog'
+import { getPriceCatalog } from '@/payment/price-catalog.server'
 
 /**
  * 价格目录：价格的**唯一事实源**是 Stripe，代码里不再存第二份金额。
@@ -53,6 +78,42 @@ describe('目录取价', () => {
   it('付费方式不存在或目录里没有该引用时返回 null', () => {
     expect(findCatalogAmount(catalog, 'template', 'missing')).toBeNull()
     expect(findCatalogAmount({}, 'template', 'once')).toBeNull()
+  })
+})
+
+describe('服务端读取目录', () => {
+  it('没有配置支付渠道时返回空目录，而不是抛错', async () => {
+    // 模板工程本身没有 Stripe 账号，llms.txt 与定价页仍要能渲染。
+    mockServerContext.paymentProviderRegistry = undefined
+
+    await expect(getPriceCatalog()).resolves.toEqual({})
+  })
+
+  it('已配置渠道时按引用聚合，跳过没有金额的条目', async () => {
+    // 引用来自实例的商品配置（官网与模板不同），不写死具体 key。
+    const [priced, ...unpriced] = collectPriceReferences()
+    if (!priced) throw new Error('商品配置里至少要有一个价格引用')
+    mockServerContext.paymentProviderRegistry = {
+      stripe: () => ({
+        listPrices: async (references) =>
+          references.map((reference) => ({
+            id: `price_${reference}`,
+            reference,
+            // 只给第一个引用金额，其余模拟渠道里查不到价格的情况。
+            amount: reference === priced ? 9900 : null,
+            currency: 'usd',
+            mode: 'payment',
+            interval: null,
+            intervalCount: null,
+          })),
+      }),
+    }
+
+    const catalog = await getPriceCatalog()
+
+    expect(Object.keys(catalog)).toEqual([priced])
+    expect(catalog[priced]).toMatchObject({ priceId: `price_${priced}`, amount: 9900 })
+    expect(unpriced.length).toBeGreaterThan(0)
   })
 })
 

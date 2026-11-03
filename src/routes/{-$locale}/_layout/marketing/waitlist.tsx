@@ -2,10 +2,13 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Cta, Faq, Hero, NewsletterCta } from '@/components/sections'
 import { websiteConfig } from '@/config/website'
 import { getRequestLocale } from '@/lib/locale'
+import { assertStaticPageEnabled } from '@/lib/module-access'
 import { seo } from '@/lib/seo'
 import { m } from '@/locale/paraglide/messages.js'
 
 export const Route = createFileRoute('/{-$locale}/_layout/marketing/waitlist')({
+  // 静态页也按站点定位开关：关闭时链接与页面一起消失。
+  beforeLoad: () => assertStaticPageEnabled('waitlist'),
   head: () =>
     seo('/marketing/waitlist', {
       title: m.waitlist_page_title(),

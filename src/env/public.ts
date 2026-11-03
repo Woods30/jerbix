@@ -3,7 +3,7 @@ import { treatEmptyAsUndefined } from './normalize'
 
 const schema = z.object({
   VITE_BASE_URL: z.url().default('http://localhost:3000'),
-  VITE_PAYMENT_PROVIDER: z.enum(['stripe']).optional(),
+  VITE_PAYMENT_PROVIDER: z.enum(['stripe', 'creem']).optional(),
   VITE_GA_ID: z.string().optional(),
   VITE_PLAUSIBLE_DOMAIN: z.string().optional(),
   VITE_UMAMI_WEBSITE_ID: z.string().optional(),

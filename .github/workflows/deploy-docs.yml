@@ -192,8 +192,8 @@ jobs:
             echo "::error::5 分钟内 $BASE_URL 未就绪；检查自定义域名绑定与 DNS 记录"
             exit 1
           fi
-          # 根路径跳到文档首页，/docs 是文档正文的正式地址，两者都要通。
-          for path in / /docs /zh/docs; do
+          # 根路径进文档首页，正文在根级路径（不再有 /docs 前缀）。
+          for path in / /zh /zh/getting-started; do
             code=$(curl --retry 3 --retry-delay 2 --max-time 30 -sS -L -o /dev/null -w '%{http_code}' "$BASE_URL$path")
             echo "$path → $code"
             if [ "$code" != "200" ]; then
@@ -201,3 +201,10 @@ jobs:
               exit 1
             fi
           done
+          # 旧地址 301 到新地址；带 -L 会被跟随成 200，所以这里只看原始状态码。
+          legacy=$(curl --retry 3 --retry-delay 2 --max-time 30 -sS -o /dev/null -w '%{http_code}' "$BASE_URL/zh/docs/getting-started")
+          echo "/zh/docs/getting-started → $legacy（期望 301）"
+          if [ "$legacy" != "301" ]; then
+            echo "::error::旧文档地址未重定向：返回 $legacy"
+            exit 1
+          fi

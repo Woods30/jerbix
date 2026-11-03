@@ -5,9 +5,16 @@ import { parsePublicEnv } from '@/env/public'
 import { parseServerEnv } from '@/env/server'
 import { formatServiceDiagnostics } from '../../scripts/lib/report-issues'
 
-/** 构造独立配置，避免用例之间互相污染。 */
+/**
+ * 构造独立配置，避免用例之间互相污染。
+ *
+ * auth 与 mail 的开关逐项写死：本文件测的是 `getServiceStatuses` 的分支逻辑，
+ * 各仓的默认开关不同（`pnpm run init` 之后服务全关），依赖默认值会让用例无谓变红。
+ */
 function makeConfig(mutate?: (config: WebsiteConfig) => void): WebsiteConfig {
   const config = createWebsiteConfig(parsePublicEnv({}))
+  config.mail.enabled = true
+  config.auth.enabled = true
   mutate?.(config)
   return config
 }
@@ -24,6 +31,7 @@ function makeAllDisabledConfig(mutate?: (config: WebsiteConfig) => void): Websit
   config.payment.enabled = false
   config.notification.enabled = false
   config.analytics.enabled = false
+  config.auth.enabled = true
   mutate?.(config)
   return config
 }
@@ -367,7 +375,53 @@ describe('getServiceStatuses — payment', () => {
 
     expect(statuses.payment.state).toBe('incomplete')
     const issue = statuses.payment.issues.find((item) => item.key === 'payment.products')
-    expect(issue?.reason).toContain('Price')
+    expect(issue?.reason).toContain('价格引用')
+  })
+
+  it('选 creem 时只校验 Creem 变量，Stripe 留空不影响', () => {
+    const statuses = getServiceStatuses({
+      config: makeConfig((c) => {
+        c.payment.enabled = true
+        c.payment.provider = 'creem'
+      }),
+      publicEnv: parsePublicEnv({}),
+      serverEnv: parseServerEnv({
+        CREEM_API_KEY: 'key',
+        CREEM_WEBHOOK_SECRET: 'whsec',
+        CREEM_PRODUCTS: 'pro_monthly=prod_x',
+      }),
+    })
+    expect(statuses.payment.state).toBe('configured')
+    const keys = statuses.payment.issues.map((i) => i.key)
+    expect(keys).not.toContain('STRIPE_SECRET_KEY')
+    expect(keys).not.toContain('STRIPE_WEBHOOK_SECRET')
+  })
+
+  it('选 creem 但缺商品映射时 incomplete，并点名 CREEM_PRODUCTS', () => {
+    const statuses = getServiceStatuses({
+      config: makeConfig((c) => {
+        c.payment.enabled = true
+        c.payment.provider = 'creem'
+      }),
+      publicEnv: parsePublicEnv({}),
+      serverEnv: parseServerEnv({ CREEM_API_KEY: 'key', CREEM_WEBHOOK_SECRET: 'whsec' }),
+    })
+    expect(statuses.payment.state).toBe('incomplete')
+    expect(statuses.payment.issues.map((i) => i.key)).toContain('CREEM_PRODUCTS')
+  })
+
+  it('选 creem 时配齐 Stripe 不算数', () => {
+    // 配错渠道的密钥是常见错误：Stripe 全绿但 creem 选中的情况下仍是 incomplete。
+    const statuses = getServiceStatuses({
+      config: makeConfig((c) => {
+        c.payment.enabled = true
+        c.payment.provider = 'creem'
+      }),
+      publicEnv: parsePublicEnv({}),
+      serverEnv: parseServerEnv({ STRIPE_SECRET_KEY: 'key', STRIPE_WEBHOOK_SECRET: 'whsec' }),
+    })
+    expect(statuses.payment.state).toBe('incomplete')
+    expect(statuses.payment.issues.map((i) => i.key)).toContain('CREEM_API_KEY')
   })
 })
 
