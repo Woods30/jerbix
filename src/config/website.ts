@@ -1,3 +1,4 @@
+import type { CheckoutMode, CollectionAccountConfig } from '@/collection/types'
 import { type PublicEnv, publicEnv } from '@/env/public'
 
 export type PaymentProviderName = 'stripe' | 'creem'
@@ -19,6 +20,7 @@ export type ServiceModule =
   | 'contact'
   | 'newsletter'
   | 'payment'
+  | 'collection'
   | 'notification'
   | 'analytics'
   | 'auth'
@@ -113,6 +115,28 @@ export interface WebsiteConfig {
     enabled: boolean
     provider: PaymentProviderName
   }
+  /**
+   * 新订单走哪条结账链路。
+   *
+   * 两条链路互斥：托管支付交给 provider，核销型支付由用户自行向收款码付款、
+   * 管理员核验后结算。`provider` 是默认值，升级不改变既有实例的行为。
+   */
+  checkout: {
+    mode: CheckoutMode
+  }
+  /**
+   * 核销型支付（collection）模块。
+   *
+   * 与 `payment` 平级的独立模块：它不实现 `PaymentProvider`，没有托管结账页、
+   * 没有 webhook、没有 Customer Portal。`accounts` 是收款账户的源码兜底配置，
+   * D1 里的运营记录按 `id` 覆盖同名项。
+   */
+  collection: {
+    enabled: boolean
+    /** 核验时效承诺（小时），用于页面正文告知用户。 */
+    verificationSlaHours: number
+    accounts: CollectionAccountConfig[]
+  }
   notification: { enabled: boolean; provider: 'discord' | 'feishu' }
   analytics: { enabled: boolean; providers: AnalyticsName[] }
   auth: {
@@ -168,7 +192,8 @@ export function applyEnvOverrides(config: WebsiteConfig, env: PublicEnv): Websit
     !modules &&
     !features &&
     env.VITE_DOCS_AS_HOME === undefined &&
-    env.VITE_PAYMENT_PROVIDER === undefined
+    env.VITE_PAYMENT_PROVIDER === undefined &&
+    env.VITE_CHECKOUT_MODE === undefined
   )
     return config
 
@@ -181,6 +206,7 @@ export function applyEnvOverrides(config: WebsiteConfig, env: PublicEnv): Websit
     next.contact = { ...next.contact, enabled: modules.has('contact') }
     next.newsletter = { ...next.newsletter, enabled: modules.has('newsletter') }
     next.payment = { ...next.payment, enabled: modules.has('payment') }
+    next.collection = { ...next.collection, enabled: modules.has('collection') }
     next.notification = { ...next.notification, enabled: modules.has('notification') }
     next.analytics = { ...next.analytics, enabled: modules.has('analytics') }
     next.auth = { ...next.auth, enabled: modules.has('auth') }
@@ -191,6 +217,10 @@ export function applyEnvOverrides(config: WebsiteConfig, env: PublicEnv): Websit
   // 同一份代码发不同支付渠道：provider 由构建环境决定，不写死在配置里。
   if (env.VITE_PAYMENT_PROVIDER !== undefined) {
     next.payment = { ...next.payment, provider: env.VITE_PAYMENT_PROVIDER }
+  }
+  // 结账模式同样由构建环境决定：同一个构建产物不能既收托管支付订单又收核销订单。
+  if (env.VITE_CHECKOUT_MODE !== undefined) {
+    next.checkout = { ...next.checkout, mode: env.VITE_CHECKOUT_MODE }
   }
   if (features) {
     next.features = {
@@ -242,6 +272,15 @@ export function createWebsiteConfig(env: PublicEnv): WebsiteConfig {
         // 当前站点启用 Stripe 收款；通知与分析待配置后单独开启。
         enabled: true,
         provider: 'stripe',
+      },
+      // 核销型支付默认关闭：开了才会展示收款码链路，升级不改变既有实例行为。
+      checkout: { mode: 'provider' },
+      collection: {
+        enabled: false,
+        verificationSlaHours: 24,
+        // 出厂没有收款账户：使用者需在 `src/config/website.ts` 填自己的收款码，
+        // 或在管理台上传后由 D1 覆盖。这里只放占位，不放真实收款码。
+        accounts: [],
       },
       notification: { enabled: false, provider: 'discord' },
       analytics: { enabled: true, providers: ['ga'] },
