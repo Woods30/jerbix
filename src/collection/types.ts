@@ -107,6 +107,7 @@ export type CollectionErrorCode =
   | 'ORDER_NOT_FOUND'
   | 'ORDER_EXPIRED'
   | 'INVALID_ORDER_STATE'
+  | 'INVALID_PAYER_NOTE'
   | 'AMOUNT_MISMATCH'
   | 'SUBSCRIPTION_SLOT_TAKEN'
   | 'SETTLEMENT_IN_PROGRESS'
@@ -122,4 +123,38 @@ export class CollectionError extends Error {
     this.name = 'CollectionError'
     this.code = code
   }
+}
+
+/** 用户辅助说明的最大字符数。 */
+export const COLLECTION_PAYER_NOTE_MAX_LENGTH = 500
+
+/** 申报付款的输入。 */
+export interface SubmitOrderInput {
+  /** 下单账号；必须与订单所有者一致，否则按订单不存在处理。 */
+  userId: string
+  orderId: string
+  /** 用户填写的辅助说明，最多 500 字符。 */
+  payerNote?: string | null
+}
+
+/** 取消订单的输入。 */
+export interface CancelOrderInput {
+  userId: string
+  orderId: string
+}
+
+/** 用户订单列表的输入。 */
+export interface ListUserOrdersInput {
+  userId: string
+  /** 单页条数，默认 20，上限 100。 */
+  limit?: number
+  /** 偏移量，默认 0。 */
+  offset?: number
+}
+
+/** 用户订单列表的一页。 */
+export interface UserOrderPage {
+  rows: CollectionOrder[]
+  /** 该用户的订单总数（不受分页影响）。 */
+  total: number
 }

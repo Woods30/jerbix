@@ -17,7 +17,15 @@ vi.mock('@/config/products', async (importOriginal) => {
 })
 
 import { resolveCollectionAccount } from '@/collection/accounts'
-import { COLLECTION_ORDER_TTL_SECONDS, createOrder, expirePendingOrders } from '@/collection/orders'
+import {
+  COLLECTION_ORDER_TTL_SECONDS,
+  cancelOrder,
+  createOrder,
+  expirePendingOrders,
+  getUserOrder,
+  listUserOrders,
+  submitOrder,
+} from '@/collection/orders'
 import type { CollectionAccountConfig } from '@/collection/types'
 import { websiteConfig } from '@/config/website'
 import { type DB, schema } from '@/db'
@@ -602,6 +610,206 @@ describe('核销订单惰性过期', () => {
     expect(expired).toBe(2)
     expect(orderStatus(sqlite, 'stale-1')).toBe('expired')
     expect(orderStatus(sqlite, 'alive')).toBe('pending_payment')
+    sqlite.close()
+  })
+})
+
+// --- 用户订单状态机与查询隔离 -------------------------------------------------
+
+describe('用户订单状态机与查询隔离', () => {
+  /** 固定基准时刻，避免测试依赖真实时钟。 */
+  const T0 = new Date('2026-01-01T00:00:00.000Z')
+
+  function plusSeconds(base: Date, seconds: number): Date {
+    return new Date(base.getTime() + seconds * 1000)
+  }
+
+  /** 在指定时刻给指定用户下一单。 */
+  async function createAt(
+    db: DB,
+    userId: string,
+    now: Date = T0,
+  ): Promise<Awaited<ReturnType<typeof createOrder>>> {
+    return createOrder(db, { userId, productId: PRODUCT_ID, offerId: OFFER_ID }, now)
+  }
+
+  it('到期时刻等于当前时间即视为过期，不能申报且订单变为已过期', async () => {
+    const { db, sqlite } = collectionDatabase()
+    const order = await createAt(db, 'u1')
+    await expect(
+      submitOrder(
+        db,
+        { userId: 'u1', orderId: order.id },
+        plusSeconds(T0, COLLECTION_ORDER_TTL_SECONDS),
+      ),
+    ).rejects.toMatchObject({ code: 'ORDER_EXPIRED' })
+    expect(orderStatus(sqlite, order.id)).toBe('expired')
+    sqlite.close()
+  })
+
+  it('未到期的订单申报后进入待核验并记录申报时间', async () => {
+    const { db, sqlite } = collectionDatabase()
+    const order = await createAt(db, 'u1')
+    const submitted = await submitOrder(
+      db,
+      { userId: 'u1', orderId: order.id },
+      plusSeconds(T0, 10),
+    )
+    expect(submitted.status).toBe('pending_verification')
+    expect(submitted.submittedAt?.getTime()).toBe(plusSeconds(T0, 10).getTime())
+    expect(orderStatus(sqlite, order.id)).toBe('pending_verification')
+    sqlite.close()
+  })
+
+  it('申报后继续占用尾数，新订单拿不到同一个应付金额', async () => {
+    const { db, sqlite } = collectionDatabase()
+    const order = await createAt(db, 'u1')
+    await submitOrder(db, { userId: 'u1', orderId: order.id }, plusSeconds(T0, 10))
+    forceFingerprintStart(order.fingerprint)
+    const next = await createAt(db, 'u2', plusSeconds(T0, 20))
+    expect(next.payableAmount).not.toBe(order.payableAmount)
+    sqlite.close()
+  })
+
+  it('重复申报返回状态非法', async () => {
+    const { db, sqlite } = collectionDatabase()
+    const order = await createAt(db, 'u1')
+    await submitOrder(db, { userId: 'u1', orderId: order.id }, plusSeconds(T0, 10))
+    await expect(
+      submitOrder(db, { userId: 'u1', orderId: order.id }, plusSeconds(T0, 20)),
+    ).rejects.toMatchObject({ code: 'INVALID_ORDER_STATE' })
+    sqlite.close()
+  })
+
+  it('他人读取与提交统一表现为订单不存在', async () => {
+    const { db, sqlite } = collectionDatabase()
+    const order = await createAt(db, 'u1')
+    expect(await getUserOrder(db, 'u2', order.id, plusSeconds(T0, 10))).toBeNull()
+    await expect(
+      submitOrder(db, { userId: 'u2', orderId: order.id }, plusSeconds(T0, 10)),
+    ).rejects.toMatchObject({ code: 'ORDER_NOT_FOUND' })
+    await expect(
+      cancelOrder(db, { userId: 'u2', orderId: order.id }, plusSeconds(T0, 10)),
+    ).rejects.toMatchObject({ code: 'ORDER_NOT_FOUND' })
+    expect(orderStatus(sqlite, order.id)).toBe('pending_payment')
+    sqlite.close()
+  })
+
+  it('不存在的订单读取返回空、提交返回订单不存在', async () => {
+    const { db, sqlite } = collectionDatabase()
+    expect(await getUserOrder(db, 'u1', 'missing-order', T0)).toBeNull()
+    await expect(
+      submitOrder(db, { userId: 'u1', orderId: 'missing-order' }, T0),
+    ).rejects.toMatchObject({ code: 'ORDER_NOT_FOUND' })
+    sqlite.close()
+  })
+
+  it('只有待支付订单可以取消', async () => {
+    const { db, sqlite } = collectionDatabase()
+    const order = await createAt(db, 'u1')
+    const canceled = await cancelOrder(db, { userId: 'u1', orderId: order.id }, plusSeconds(T0, 10))
+    expect(canceled.status).toBe('canceled')
+    expect(orderStatus(sqlite, order.id)).toBe('canceled')
+    sqlite.close()
+  })
+
+  it('待核验订单不能取消', async () => {
+    const { db, sqlite } = collectionDatabase()
+    const order = await createAt(db, 'u1')
+    await submitOrder(db, { userId: 'u1', orderId: order.id }, plusSeconds(T0, 10))
+    await expect(
+      cancelOrder(db, { userId: 'u1', orderId: order.id }, plusSeconds(T0, 20)),
+    ).rejects.toMatchObject({ code: 'INVALID_ORDER_STATE' })
+    expect(orderStatus(sqlite, order.id)).toBe('pending_verification')
+    sqlite.close()
+  })
+
+  it('已取消的订单不能再次取消', async () => {
+    const { db, sqlite } = collectionDatabase()
+    const order = await createAt(db, 'u1')
+    await cancelOrder(db, { userId: 'u1', orderId: order.id }, plusSeconds(T0, 10))
+    await expect(
+      cancelOrder(db, { userId: 'u1', orderId: order.id }, plusSeconds(T0, 20)),
+    ).rejects.toMatchObject({ code: 'INVALID_ORDER_STATE' })
+    sqlite.close()
+  })
+
+  it('辅助说明最多 500 字符，超出被拒绝', async () => {
+    const { db, sqlite } = collectionDatabase()
+    const order = await createAt(db, 'u1')
+    const accepted = await submitOrder(
+      db,
+      { userId: 'u1', orderId: order.id, payerNote: 'x'.repeat(500) },
+      plusSeconds(T0, 10),
+    )
+    expect(accepted.payerNote).toHaveLength(500)
+
+    const other = await createAt(db, 'u1', plusSeconds(T0, 20))
+    await expect(
+      submitOrder(
+        db,
+        { userId: 'u1', orderId: other.id, payerNote: 'x'.repeat(501) },
+        plusSeconds(T0, 30),
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_PAYER_NOTE' })
+    expect(orderStatus(sqlite, other.id)).toBe('pending_payment')
+    sqlite.close()
+  })
+
+  it('读取自己的订单时惰性过期待支付订单，不动待核验订单', async () => {
+    const { db, sqlite } = collectionDatabase()
+    const pending = await createAt(db, 'u1')
+    const submitted = await createAt(db, 'u1', plusSeconds(T0, 1))
+    await submitOrder(db, { userId: 'u1', orderId: submitted.id }, plusSeconds(T0, 2))
+    const later = plusSeconds(T0, COLLECTION_ORDER_TTL_SECONDS)
+    const read = await getUserOrder(db, 'u1', pending.id, later)
+    expect(read?.status).toBe('expired')
+    expect(orderStatus(sqlite, pending.id)).toBe('expired')
+    expect(orderStatus(sqlite, submitted.id)).toBe('pending_verification')
+    sqlite.close()
+  })
+
+  it('过期订单释放尾数，新订单可以复用同一个应付金额', async () => {
+    const { db, sqlite } = collectionDatabase()
+    const order = await createAt(db, 'u1')
+    const later = plusSeconds(T0, COLLECTION_ORDER_TTL_SECONDS)
+    await getUserOrder(db, 'u1', order.id, later)
+    expect(orderStatus(sqlite, order.id)).toBe('expired')
+    forceFingerprintStart(order.fingerprint - 1)
+    const next = await createAt(db, 'u2', later)
+    expect(next.fingerprint).toBe(order.fingerprint)
+    expect(next.payableAmount).toBe(order.payableAmount)
+    sqlite.close()
+  })
+
+  it('列表只返回自己的订单，并在返回前惰性过期自己的待支付订单', async () => {
+    const { db, sqlite } = collectionDatabase()
+    await createAt(db, 'u1')
+    await createAt(db, 'u1', plusSeconds(T0, 1))
+    await createAt(db, 'u2', plusSeconds(T0, 2))
+    // 到期时刻恰好等于当前时间的订单同样算过期。
+    const later = plusSeconds(T0, 901)
+    const page = await listUserOrders(db, { userId: 'u1', limit: 10, offset: 0 }, later)
+    expect(page.total).toBe(2)
+    expect(page.rows.map((row) => row.userId)).toEqual(['u1', 'u1'])
+    expect(page.rows.every((row) => row.status === 'expired')).toBe(true)
+    // 别人的待支付订单不受影响。
+    const other = await listUserOrders(db, { userId: 'u2', limit: 10, offset: 0 }, later)
+    expect(other.total).toBe(1)
+    expect(other.rows[0]?.status).toBe('pending_payment')
+    sqlite.close()
+  })
+
+  it('列表支持分页', async () => {
+    const { db, sqlite } = collectionDatabase()
+    await createAt(db, 'u1')
+    await createAt(db, 'u1', plusSeconds(T0, 1))
+    await createAt(db, 'u1', plusSeconds(T0, 2))
+    const page = await listUserOrders(db, { userId: 'u1', limit: 2, offset: 0 }, plusSeconds(T0, 3))
+    expect(page.total).toBe(3)
+    expect(page.rows).toHaveLength(2)
+    const next = await listUserOrders(db, { userId: 'u1', limit: 2, offset: 2 }, plusSeconds(T0, 3))
+    expect(next.rows).toHaveLength(1)
     sqlite.close()
   })
 })
