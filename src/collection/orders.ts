@@ -318,7 +318,7 @@ function buildOrder(params: {
   }
 }
 
-function toCollectionOrder(row: CollectionOrderRow): CollectionOrder {
+export function toCollectionOrder(row: CollectionOrderRow): CollectionOrder {
   return {
     ...row,
     channel: row.channel as CollectionOrder['channel'],
@@ -432,7 +432,7 @@ function randomFingerprintStart(): number {
  * SQLite（本地与 D1 都一样）报 `UNIQUE constraint failed`；不同运行时的错误
  * 包装方式不同，所以既看消息也看错误码，还看一层 `cause`。
  */
-function isUniqueConstraintError(error: unknown, depth = 0): boolean {
+export function isUniqueConstraintError(error: unknown, depth = 0): boolean {
   if (depth > 3 || typeof error !== 'object' || error === null) return false
   const candidate = error as {
     message?: unknown
