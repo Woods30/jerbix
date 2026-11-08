@@ -108,6 +108,7 @@ export type CollectionErrorCode =
   | 'ORDER_EXPIRED'
   | 'INVALID_ORDER_STATE'
   | 'INVALID_PAYER_NOTE'
+  | 'INVALID_REVIEW_NOTE'
   | 'AMOUNT_MISMATCH'
   | 'SUBSCRIPTION_SLOT_TAKEN'
   | 'SETTLEMENT_IN_PROGRESS'
@@ -157,4 +158,46 @@ export interface UserOrderPage {
   rows: CollectionOrder[]
   /** 该用户的订单总数（不受分页影响）。 */
   total: number
+}
+
+/**
+ * 管理员的核验动作。
+ *
+ * - `approve`：普通通过，实际到账金额必须等于应付金额；
+ * - `approve_exception`：异常通过，用于过期到账或金额不符，必须写理由；
+ * - `reject`：驳回，不产生任何资金事实。
+ */
+export type CollectionReviewAction = 'approve' | 'approve_exception' | 'reject'
+
+/** 核验输入。 */
+export interface ReviewOrderInput {
+  /** 待核验的订单 ID。 */
+  orderId: string
+  /** 核验管理员的用户 ID。 */
+  reviewerId: string
+  /** 核验动作。 */
+  action: CollectionReviewAction
+  /** 管理员在真实流水里看到的到账金额（分）。普通核验必须等于应付金额。 */
+  observedAmount?: number | null
+  /** 核验备注；异常核验必须填写。 */
+  reviewNote?: string | null
+  /** 运营填写的外部流水号。 */
+  externalReference?: string | null
+}
+
+/** 规范化后的核验结果。 */
+export interface CollectionReview {
+  action: CollectionReviewAction
+  /** 实际到账金额（分）。 */
+  observedAmount: number | null
+  reviewNote: string | null
+  externalReference: string | null
+  reviewedBy: string
+  /**
+   * 核验时刻。
+   *
+   * 订阅周期与结算事件都以它为基准，重试时沿用同一个值 —— 否则崩溃重试会把
+   * 周期再往后推一次。
+   */
+  reviewedAt: Date
 }
