@@ -33,3 +33,93 @@ export interface CollectionAccountConfig {
   /** 二维码地址：站内根路径或无凭据的 HTTPS URL。 */
   qrImageUrl: string
 }
+
+/** 解析后的收款账户：源码配置兜底 + 数据库同 ID 覆盖的结果。 */
+export interface ResolvedCollectionAccount {
+  id: string
+  channel: CollectionChannel
+  displayName: string
+  currency: 'cny'
+  /** 配置里的二维码地址；数据库只存 R2 key，所以这里来自配置。 */
+  qrImageUrl: string | null
+  /** 管理员上传到 R2 的二维码 key；有值时优先于配置 URL。 */
+  qrImageKey: string | null
+}
+
+/** 核销订单的状态机（见设计说明第 6 节）。 */
+export type CollectionOrderStatus =
+  | 'pending_payment'
+  | 'pending_verification'
+  | 'settling'
+  | 'settled'
+  | 'expired'
+  | 'canceled'
+  | 'rejected'
+  | 'requires_refund'
+
+/** 一笔核销订单的领域视图。 */
+export interface CollectionOrder {
+  id: string
+  userId: string
+  accountId: string
+  channel: CollectionChannel
+  qrImageUrl: string | null
+  qrImageKey: string | null
+  productId: string
+  offerId: string
+  kind: CollectionPrice['kind']
+  interval: 'month' | 'year' | null
+  intervalCount: number | null
+  /** 标价（分）。 */
+  baseAmount: number
+  /** 尾数，1–99。 */
+  fingerprint: number
+  /** 应付金额 = 标价 + 尾数（分）。 */
+  payableAmount: number
+  currency: 'cny'
+  status: CollectionOrderStatus
+  payerNote: string | null
+  receiptKey: string | null
+  submittedAt: Date | null
+  observedAmount: number | null
+  externalReference: string | null
+  reviewNote: string | null
+  reviewedBy: string | null
+  reviewedAt: Date | null
+  /** 到期时间 = 创建时间 + 15 分钟。 */
+  expiresAt: Date
+  settledAt: Date | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+/**
+ * 领域层的稳定错误码。
+ *
+ * server 层按它映射 HTTP 状态与对外文案，领域层只负责把原因说清楚。
+ */
+export type CollectionErrorCode =
+  | 'MODULE_DISABLED'
+  | 'SERVICE_UNAVAILABLE'
+  | 'INVALID_OFFER'
+  | 'NO_COLLECTION_ACCOUNT'
+  | 'AMOUNT_POOL_EXHAUSTED'
+  | 'ORDER_NOT_FOUND'
+  | 'ORDER_EXPIRED'
+  | 'INVALID_ORDER_STATE'
+  | 'AMOUNT_MISMATCH'
+  | 'SUBSCRIPTION_SLOT_TAKEN'
+  | 'SETTLEMENT_IN_PROGRESS'
+  | 'STORAGE_UNAVAILABLE'
+  | 'INVALID_RECEIPT'
+
+/** 带稳定错误码的领域异常。 */
+export class CollectionError extends Error {
+  readonly code: CollectionErrorCode
+
+  constructor(code: CollectionErrorCode, message?: string) {
+    super(message ?? code)
+    this.name = 'CollectionError'
+    this.code = code
+  }
+}
