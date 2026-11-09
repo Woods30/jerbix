@@ -128,6 +128,10 @@ function fillOtherFingerprints(base: number, exceptFingerprint: number): void {
   execFileSync('pnpm', args, { encoding: 'utf8', stdio: 'pipe' })
 }
 
+// 三个用例共享同一个收款账户的 99 个尾数槽位，且用例 3 的确定性占位会清掉
+// 该账户其他活跃订单——并行互相踩踏，必须在文件内串行（不同 spec 文件不受影响）。
+test.describe.configure({ mode: 'serial' })
+
 test.describe('Collection', () => {
   // 登录 + 下单 + 双角色核验的多段流程，且要容忍 dev server 冷编译与水合竞态
   // 的重试；默认 30 秒不够（重试等待就会把它吃光，浏览器被强关报假错误）。
