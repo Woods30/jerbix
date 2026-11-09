@@ -51,7 +51,7 @@ import {
 import { toast } from '@/components/ui/toast'
 import { websiteConfig } from '@/config/website'
 import { getRequestLocale } from '@/lib/locale'
-import { assertAdminRole, assertFeatureEnabled } from '@/lib/module-access'
+import { assertAdminRole, assertFeatureEnabled, assertPageEnabled } from '@/lib/module-access'
 import { seo } from '@/lib/seo'
 import { m } from '@/locale/paraglide/messages.js'
 import { productNameForProductId } from '@/payment/billing-query'
@@ -89,6 +89,9 @@ interface AdminAccountPayload {
 
 export const Route = createFileRoute('/{-$locale}/_layout/dashboard/admin/orders')({
   beforeLoad: ({ context }) => {
+    // 规格要求三层门禁：collection 模块 → enableAdmin → admin 角色，缺一不可；
+    // 模块关闭时整页 404，而不是渲染成 loader 的错误态。
+    assertPageEnabled('collection')
     assertFeatureEnabled('enableAdmin')
     assertAdminRole(context.session.user.role)
   },
