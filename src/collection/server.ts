@@ -37,6 +37,23 @@ type CollectionAccountRow = (typeof schema.collectionAccounts)['$inferSelect']
  *   门禁之前就跑，会让「模块关闭时还要不要解析入参」这件事失去意义。
  */
 
+/**
+ * 提交给 server function 的载荷类型。
+ *
+ * 本文件的 server function 刻意不用 `.validator()`（门禁顺序要求参数校验在
+ * 会话与限流之后，见文件头的注释），因此客户端侧的调用类型里 `data` 被推成
+ * `undefined`。载荷形状由服务端的 Zod schema 在运行时校验，这里只在类型层面
+ * 描述同一个形状；两侧不一致会以 400 `INVALID_INPUT` 显现，不会静默。
+ */
+export interface CallWith<D> {
+  /**
+   * 形状对齐 `FetcherBaseOptions`（headers / signal / fetch 由底层透传），
+   * 只把 `data` 从 `undefined` 覆写成真实载荷。返回类型保持原样：成功数据按
+   * 本文件的返回注解流回，`Response` 仍需 `instanceof` 收窄。
+   */
+  (opts: { data: D; headers?: HeadersInit; signal?: AbortSignal }): Promise<unknown>
+}
+
 /** 取门禁所需的依赖。 */
 async function guardDeps(): Promise<CollectionGuardDeps> {
   const [

@@ -14,6 +14,7 @@
  */
 
 import {
+  type CallWith,
   cancelCollectionOrderFn,
   createCollectionOrderFn,
   fetchCollectionOrderFn,
@@ -23,24 +24,6 @@ import {
 import type { CollectionApiErrorCode } from '@/collection/server-logic'
 import type { CollectionOrder, UserOrderPage } from '@/collection/types'
 import { m } from '@/locale/paraglide/messages.js'
-
-/**
- * 提交给 server function 的载荷类型。
- *
- * Task 6 的 server function 刻意不用 `.validator()`（门禁顺序要求参数校验在
- * 会话与限流之后，见 `server.ts` 的注释），因此客户端侧的调用类型里 `data`
- * 被推成 `undefined`。载荷形状由 server 端的 Zod schema（`server-logic.ts`）
- * 在运行时校验，这里只在类型层面描述同一个形状；两侧不一致会以 400
- * `INVALID_INPUT` 显现，不会静默。
- */
-interface CallWith<D> {
-  /**
-   * 形状对齐 `FetcherBaseOptions`（headers / signal / fetch 由底层透传），
-   * 只把 `data` 从 `undefined` 覆写成真实载荷。返回类型保持原样：
-   * 成功数据按 `server.ts` 的返回注解流回，`Response` 仍需 `instanceof` 收窄。
-   */
-  (opts: { data: D; headers?: HeadersInit; signal?: AbortSignal }): Promise<unknown>
-}
 
 /** 下单结果：成功拿到订单号，或明确告诉用户下一步去哪。 */
 export type CollectionCheckoutOutcome =

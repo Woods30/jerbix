@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { AdminCollectionOrder, AdminOrderPage } from '@/collection/orders'
 import { formatMoneyAmount } from '@/collection/pricing'
 import {
+  type CallWith,
   fetchAdminCollectionOrdersFn,
   fetchCollectionAccountsFn,
   reviewCollectionOrderFn,
@@ -62,21 +63,6 @@ import { productNameForProductId } from '@/payment/billing-query'
  * 拦不住直接调用。列表数据（订单、账户）都来自 Task 6 的 server function，
  * 失败契约是「返回 `Response`」，页面按稳定错误码分支，不自己造码。
  */
-
-/**
- * 提交给 server function 的载荷类型。
- *
- * Task 6 的 server function 刻意不用 `.validator()`（门禁顺序要求参数校验在
- * 会话与限流之后，见 `src/collection/server.ts` 的注释），因此客户端侧的调用
- * 类型里 `data` 被推成 `undefined`。载荷形状由服务端的 Zod schema 在运行时
- * 校验，这里只在类型层面描述同一个形状；两侧不一致会以 400 `INVALID_INPUT`
- * 显现，不会静默。
- */
-type CallWith<D> = (opts: {
-  data: D
-  headers?: HeadersInit
-  signal?: AbortSignal
-}) => Promise<unknown>
 
 /** 管理员订单队列的查询载荷。 */
 interface AdminOrderQuery {
