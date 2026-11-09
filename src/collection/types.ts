@@ -161,6 +161,19 @@ export interface UserOrderPage {
 }
 
 /**
+ * 单个订单详情。
+ *
+ * `canUpload` 由服务端判定：对象存储绑定（`env.BUCKET`）只在服务端可见，
+ * 页面不能自己读服务端上下文 —— 客户端静态导入服务端模块会把
+ * `node:async_hooks` 打进浏览器 bundle，整站水合失败。
+ */
+export interface CollectionOrderDetail {
+  order: CollectionOrder
+  /** 是否可以上传付款凭证（没有 R2 绑定时为 false，但说明仍可填写）。 */
+  canUpload: boolean
+}
+
+/**
  * 管理员的核验动作。
  *
  * - `approve`：普通通过，实际到账金额必须等于应付金额；

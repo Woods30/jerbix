@@ -14,7 +14,7 @@ import {
   reviewOrderSchema,
   submitOrderSchema,
 } from '@/collection/server-logic'
-import type { CollectionOrder, UserOrderPage } from '@/collection/types'
+import type { CollectionOrderDetail, UserOrderPage } from '@/collection/types'
 import type { DB, schema } from '@/db'
 
 /** 收款账户的数据库行。 */
@@ -92,6 +92,17 @@ async function collectionDb() {
     import('@/lib/server-context'),
   ])
   return createDb(getServerContext().env.DB)
+}
+
+/**
+ * 对象存储绑定是否可用。
+ *
+ * 绑定只在服务端可见，所以「能不能上传凭证」必须由服务端回答：页面若自己
+ * 静态导入服务端上下文，`node:async_hooks` 会进浏览器 bundle，整站水合失败。
+ */
+async function hasStorageBinding(): Promise<boolean> {
+  const { getServerContext } = await import('@/lib/server-context')
+  return Boolean(getServerContext().env?.BUCKET)
 }
 
 /**
@@ -281,7 +292,7 @@ export const cancelCollectionOrderFn = createServerFn({ method: 'POST' }).handle
 
 /** 读取自己的订单详情。 */
 export const fetchCollectionOrderFn = createServerFn({ method: 'GET' }).handler(
-  async ({ data }): Promise<CollectionOrder | Response> => {
+  async ({ data }): Promise<CollectionOrderDetail | Response> => {
     const guard = await guardCollectionRequest(await guardDeps(), { limit: 'poll-order' })
     if (!guard.ok) return guard.response
 
@@ -297,7 +308,7 @@ export const fetchCollectionOrderFn = createServerFn({ method: 'GET' }).handler(
       )
       // 他人的订单与不存在的订单不可区分。
       if (!order) return errorResponse('ORDER_NOT_FOUND')
-      return order
+      return { order, canUpload: await hasStorageBinding() }
     } catch (error) {
       return failureResponse(error)
     }

@@ -159,7 +159,10 @@ beforeEach(() => {
   mocks.createOrder.mockReset().mockResolvedValue({ id: 'ord_1' })
   mocks.submitOrder.mockReset().mockResolvedValue({ status: 'pending_verification' })
   mocks.cancelOrder.mockReset().mockResolvedValue({ status: 'canceled' })
-  mocks.fetchOrder.mockReset().mockResolvedValue(makeOrder({ status: 'pending_verification' }))
+  mocks.fetchOrder.mockReset().mockResolvedValue({
+    order: makeOrder({ status: 'pending_verification' }),
+    canUpload: true,
+  })
   mocks.fetchOrders.mockReset().mockResolvedValue({ rows: [], total: 0 })
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Unavailable', { status: 400 })))
   motion = Object.assign(new EventTarget(), {
@@ -320,7 +323,7 @@ describe('订单详情页', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
     const order = makeOrder({ status: 'pending_verification' })
-    mocks.fetchOrder.mockResolvedValue({ ...order, status: 'settled' })
+    mocks.fetchOrder.mockResolvedValue({ order: { ...order, status: 'settled' }, canUpload: true })
     stubDetail(order, true)
     render(<OrderDetailPage />)
     await act(async () => {

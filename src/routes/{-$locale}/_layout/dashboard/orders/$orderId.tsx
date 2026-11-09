@@ -24,7 +24,6 @@ import { websiteConfig } from '@/config/website'
 import { getRequestLocale } from '@/lib/locale'
 import { assertPageEnabled } from '@/lib/module-access'
 import { seo } from '@/lib/seo'
-import { getServerContext } from '@/lib/server-context'
 import { m } from '@/locale/paraglide/messages.js'
 import { productNameForProductId } from '@/payment/billing-query'
 import { collectionOrderStatusMessageKey } from '../orders'
@@ -51,8 +50,9 @@ export const Route = createFileRoute('/{-$locale}/_layout/dashboard/orders/$orde
           ok: true as const,
           orderId: params.orderId,
           order: result.order,
-          // 对象存储绑定只在服务端可见；没有 BUCKET 时上传入口隐藏，说明仍可填。
-          canUpload: Boolean(getServerContext().env?.BUCKET),
+          // 对象存储绑定只在服务端可见，由 server function 一并带回；
+          // 没有 BUCKET 时上传入口隐藏，说明仍可填。
+          canUpload: result.canUpload,
         }
       }
       return {

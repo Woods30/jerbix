@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { join, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 import {
   ADMIN_ORDER_STATUSES,
@@ -15,6 +18,13 @@ import {
   reviewOrderSchema,
 } from '@/collection/server-logic'
 import { CollectionError } from '@/collection/types'
+
+const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
+
+/** 正则里要按字面量匹配的模块路径。 */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 /**
  * server 层的纯逻辑：门禁顺序、错误映射、限流键与参数校验。
@@ -277,5 +287,48 @@ describe('管理员订单列表查询', () => {
     for (const status of ADMIN_ORDER_STATUSES) {
       expect(resolveAdminOrderQuery({ status }).status).toBe(status)
     }
+  })
+})
+
+describe('页面路由的服务端导入边界', () => {
+  /**
+   * 回归守卫：页面路由静态导入服务端模块，会把 `node:async_hooks` 之类的
+   * 服务端依赖打进浏览器 bundle，运行时直接抛「Module has been externalized」，
+   * 整站水合失败 —— 表现是所有页面都白屏，而不是某一个页面报错。
+   *
+   * 页面要服务端事实（如「有没有对象存储绑定」）时，走 server function 返回，
+   * 不在页面里 import 服务端模块。`src/routes/api/**` 是服务端路由，不受此限。
+   */
+  const SERVER_ONLY_MODULES = [
+    '@/lib/server-context',
+    '@/lib/module-access.server',
+    '@/lib/rate-limit',
+    '@/db',
+    '@/storage',
+    '@/auth/auth',
+    '@/mail',
+    '@/cache',
+    '@/notification',
+  ]
+
+  it('页面路由不静态导入服务端专用模块', () => {
+    const routesDir = join(repoRoot, 'src/routes')
+    const offenders: string[] = []
+    for (const file of readdirSync(routesDir, { recursive: true, encoding: 'utf8' })) {
+      if (!/\.(ts|tsx)$/.test(file)) continue
+      const relativePath = join('src/routes', file)
+      // API 路由是服务端路由，本来就在服务端跑。
+      if (relativePath.includes(`${sep}api${sep}`)) continue
+      const source = readFileSync(join(routesDir, file), 'utf8')
+      for (const modulePath of SERVER_ONLY_MODULES) {
+        // 只看静态 import：`import type` 编译期擦除，函数内 `await import()` 是惰性加载。
+        const pattern = new RegExp(
+          `^\\s*import\\s+(?!type\\b)[^\\n]*from\\s+['"]${escapeRegExp(modulePath)}['"]`,
+          'm',
+        )
+        if (pattern.test(source)) offenders.push(`${relativePath} → ${modulePath}`)
+      }
+    }
+    expect(offenders).toEqual([])
   })
 })

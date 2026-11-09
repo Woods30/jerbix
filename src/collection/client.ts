@@ -22,7 +22,7 @@ import {
   submitCollectionOrderFn,
 } from '@/collection/server'
 import type { CollectionApiErrorCode } from '@/collection/server-logic'
-import type { CollectionOrder, UserOrderPage } from '@/collection/types'
+import type { CollectionOrder, CollectionOrderDetail, UserOrderPage } from '@/collection/types'
 import { m } from '@/locale/paraglide/messages.js'
 
 /** 下单结果：成功拿到订单号，或明确告诉用户下一步去哪。 */
@@ -120,7 +120,7 @@ export async function cancelCollectionOrder(input: {
 
 /** 读取订单详情的结果；`null` 表示订单不存在或不属于当前用户。 */
 export type CollectionOrderResult =
-  | { kind: 'ok'; order: CollectionOrder }
+  | { kind: 'ok'; order: CollectionOrder; canUpload: boolean }
   | { kind: 'missing' }
   | { kind: 'error'; code: CollectionOrderErrorCode }
 
@@ -130,12 +130,12 @@ export async function fetchCollectionOrder(input: {
   const fetchOrderFn = fetchCollectionOrderFn as unknown as CallWith<{ orderId: string }>
   const result = (await fetchOrderFn({
     data: { orderId: input.orderId },
-  })) as CollectionOrder | Response
+  })) as CollectionOrderDetail | Response
   if (result instanceof Response) {
     if (result.status === 404) return { kind: 'missing' }
     return { kind: 'error', code: await errorCode(result) }
   }
-  return { kind: 'ok', order: result }
+  return { kind: 'ok', order: result.order, canUpload: result.canUpload }
 }
 
 /** 用户订单列表的结果。 */
