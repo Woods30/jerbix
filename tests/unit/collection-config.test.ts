@@ -146,6 +146,63 @@ describe('checkout.mode', () => {
   })
 })
 
+describe('VITE_COLLECTION_ACCOUNTS', () => {
+  /** 一个合法的账户 JSON：与 `ACCOUNT` 同构。 */
+  const accountJson = JSON.stringify([
+    {
+      id: 'alipay-env',
+      channel: 'alipay',
+      displayName: '环境变量收款账户',
+      currency: 'cny',
+      qrImageUrl: '/collection/env-qrcode.png',
+    },
+  ])
+
+  it('JSON 数组覆盖源码配置的收款账户', () => {
+    const config = createWebsiteConfig({ ...baseEnv, VITE_COLLECTION_ACCOUNTS: accountJson })
+    expect(config.collection.accounts).toHaveLength(1)
+    expect(config.collection.accounts[0]).toMatchObject({
+      id: 'alipay-env',
+      channel: 'alipay',
+      currency: 'cny',
+    })
+  })
+
+  it('留空或未设置时沿用源码配置', () => {
+    const withSource = createWebsiteConfig({
+      ...baseEnv,
+      VITE_COLLECTION_ACCOUNTS: '   ',
+    })
+    expect(withSource.collection.accounts).toEqual(createWebsiteConfig(baseEnv).collection.accounts)
+  })
+
+  it('非法 JSON 或形状不对时整体忽略，回退源码配置（fail-visible 由 service-status 报 incomplete）', () => {
+    const source = createWebsiteConfig(baseEnv).collection.accounts
+    for (const bad of ['not-json', '[{"id":1}]', JSON.stringify({ id: 'x' }), '[]']) {
+      expect(
+        createWebsiteConfig({ ...baseEnv, VITE_COLLECTION_ACCOUNTS: bad }).collection.accounts,
+      ).toEqual(source)
+    }
+  })
+
+  it('env 账户参与 service-status 的完整性判定', () => {
+    const env = {
+      ...baseEnv,
+      VITE_MODULES: 'collection,auth',
+      VITE_CHECKOUT_MODE: 'collection' as const,
+      VITE_COLLECTION_ACCOUNTS: accountJson,
+    }
+    const config = createWebsiteConfig(env)
+    expect(config.collection.enabled).toBe(true)
+    const statuses = getServiceStatuses({
+      config,
+      publicEnv: env,
+      serverEnv: parseServerEnv({}),
+    })
+    expect(statuses.collection.state).toBe('configured')
+  })
+})
+
 describe('getServiceStatuses — collection', () => {
   it('collection checkout 缺模块、价格或账户时为 incomplete', () => {
     expect(statusFor({ mode: 'collection', enabled: false }).collection.state).toBe('disabled')

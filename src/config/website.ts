@@ -1,5 +1,15 @@
-import type { CheckoutMode, CollectionAccountConfig } from '@/collection/types'
+import { z } from 'zod'
+import type { CheckoutMode, CollectionAccountConfig, CollectionChannel } from '@/collection/types'
 import { type PublicEnv, publicEnv } from '@/env/public'
+
+/** `VITE_COLLECTION_ACCOUNTS` 里单个账户的形状（与源码配置同构）。 */
+const collectionAccountJson = z.object({
+  id: z.string().min(1),
+  channel: z.enum(['alipay'] satisfies CollectionChannel[]),
+  displayName: z.string().min(1),
+  currency: z.literal('cny'),
+  qrImageUrl: z.string().min(1),
+})
 
 export type PaymentProviderName = 'stripe' | 'creem'
 export type AnalyticsName = 'ga' | 'plausible' | 'umami' | 'clarity'
@@ -177,6 +187,32 @@ function parseNameList(value: string | undefined): Set<string> | undefined {
 }
 
 /**
+ * `VITE_COLLECTION_ACCOUNTS`（JSON 数组）→ 收款账户清单。
+ *
+ * 返回 `undefined` 表示「没给或无效」：非法 JSON、形状不对或空数组都回退源码
+ * 兜底配置，**不静默生效半个配置**。「账户没配齐」由服务状态检查如实报出来。
+ * 空白串视同未设置。
+ */
+export function parseCollectionAccounts(
+  value: string | undefined,
+): CollectionAccountConfig[] | undefined {
+  if (value === undefined || value.trim() === '') return undefined
+  try {
+    const parsed: unknown = JSON.parse(value)
+    if (!Array.isArray(parsed) || parsed.length === 0) return undefined
+    const accounts: CollectionAccountConfig[] = []
+    for (const item of parsed) {
+      const account = collectionAccountJson.safeParse(item)
+      if (!account.success) return undefined
+      accounts.push(account.data)
+    }
+    return accounts
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * 按环境变量覆盖模块与能力开关。
  *
  * 同一份代码要发到不同场景：模板的文档站只开文档模块，业务站开支付与邮件。
@@ -188,9 +224,11 @@ function parseNameList(value: string | undefined): Set<string> | undefined {
 export function applyEnvOverrides(config: WebsiteConfig, env: PublicEnv): WebsiteConfig {
   const modules = parseNameList(env.VITE_MODULES)
   const features = parseNameList(env.VITE_FEATURES)
+  const collectionAccounts = parseCollectionAccounts(env.VITE_COLLECTION_ACCOUNTS)
   if (
     !modules &&
     !features &&
+    !collectionAccounts &&
     env.VITE_DOCS_AS_HOME === undefined &&
     env.VITE_PAYMENT_PROVIDER === undefined &&
     env.VITE_CHECKOUT_MODE === undefined
@@ -221,6 +259,10 @@ export function applyEnvOverrides(config: WebsiteConfig, env: PublicEnv): Websit
   // 结账模式同样由构建环境决定：同一个构建产物不能既收托管支付订单又收核销订单。
   if (env.VITE_CHECKOUT_MODE !== undefined) {
     next.checkout = { ...next.checkout, mode: env.VITE_CHECKOUT_MODE }
+  }
+  // 收款账户走部署平台的配置变量：不碰源码也能配齐核销链路的「无处可付」项。
+  if (collectionAccounts) {
+    next.collection = { ...next.collection, accounts: collectionAccounts }
   }
   if (features) {
     next.features = {

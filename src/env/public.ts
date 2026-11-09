@@ -47,6 +47,14 @@ const schema = z.object({
    * 走错了地方。
    */
   VITE_DOCS_AS_HOME: z.enum(['true', 'false']).optional(),
+  /**
+   * 核销型支付的收款账户清单（JSON 数组），覆盖 `website.ts` 里的源码兜底。
+   *
+   * 只在部署平台配置变量、不碰源码也能配收款账户。形状校验在
+   * `applyEnvOverrides()` 里做：非法值整体忽略回退源码配置，由服务状态检查把
+   * 「没有可用账户」如实报出来，而不是让坏配置静默生效。
+   */
+  VITE_COLLECTION_ACCOUNTS: z.string().optional(),
 })
 
 export type PublicEnv = z.infer<typeof schema>
