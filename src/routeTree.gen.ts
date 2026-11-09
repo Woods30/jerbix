@@ -55,6 +55,7 @@ import { Route as ApiCollectionOrdersOrderIdReceiptRouteImport } from './routes/
 import { Route as Char123LocaleChar125LayoutDashboardAdminOrdersRouteImport } from './routes/{-$locale}/_layout/dashboard/admin/orders'
 import { Route as Char123LocaleChar125LayoutDashboardAdminRevenueRouteImport } from './routes/{-$locale}/_layout/dashboard/admin/revenue'
 import { Route as Char123LocaleChar125LayoutDashboardAdminUsersRouteImport } from './routes/{-$locale}/_layout/dashboard/admin/users'
+import { Route as Char123LocaleChar125LayoutDashboardOrdersIndexRouteImport } from './routes/{-$locale}/_layout/dashboard/orders/index'
 import { Route as Char123LocaleChar125LayoutDashboardOrdersOrderIdRouteImport } from './routes/{-$locale}/_layout/dashboard/orders/$orderId'
 import { Route as Char123LocaleChar125LayoutMarketingBlogIndexRouteImport } from './routes/{-$locale}/_layout/marketing/blog/index'
 import { Route as Char123LocaleChar125LayoutMarketingBlogSlugRouteImport } from './routes/{-$locale}/_layout/marketing/blog/$slug'
@@ -324,6 +325,12 @@ const Char123LocaleChar125LayoutDashboardAdminUsersRoute =
     path: '/admin/users',
     getParentRoute: () => Char123LocaleChar125LayoutDashboardRoute,
   } as any)
+const Char123LocaleChar125LayoutDashboardOrdersIndexRoute =
+  Char123LocaleChar125LayoutDashboardOrdersIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => Char123LocaleChar125LayoutDashboardOrdersRoute,
+  } as any)
 const Char123LocaleChar125LayoutDashboardOrdersOrderIdRoute =
   Char123LocaleChar125LayoutDashboardOrdersOrderIdRouteImport.update({
     id: '/$orderId',
@@ -405,6 +412,7 @@ export interface FileRoutesByFullPath {
   '/{-$locale}/dashboard/orders/$orderId': typeof Char123LocaleChar125LayoutDashboardOrdersOrderIdRoute
   '/{-$locale}/marketing/blog/$slug': typeof Char123LocaleChar125LayoutMarketingBlogSlugRoute
   '/{-$locale}/marketing/legal/$slug': typeof Char123LocaleChar125LayoutMarketingLegalSlugRoute
+  '/{-$locale}/dashboard/orders/': typeof Char123LocaleChar125LayoutDashboardOrdersIndexRoute
   '/{-$locale}/marketing/blog/': typeof Char123LocaleChar125LayoutMarketingBlogIndexRoute
   '/{-$locale}/marketing/changelog/': typeof Char123LocaleChar125LayoutMarketingChangelogIndexRoute
 }
@@ -434,7 +442,6 @@ export interface FileRoutesByTo {
   '/{-$locale}/dashboard/api-keys': typeof Char123LocaleChar125LayoutDashboardApiKeysRoute
   '/{-$locale}/dashboard/billing': typeof Char123LocaleChar125LayoutDashboardBillingRoute
   '/{-$locale}/dashboard/notifications': typeof Char123LocaleChar125LayoutDashboardNotificationsRoute
-  '/{-$locale}/dashboard/orders': typeof Char123LocaleChar125LayoutDashboardOrdersRouteWithChildren
   '/{-$locale}/dashboard/profile': typeof Char123LocaleChar125LayoutDashboardProfileRoute
   '/{-$locale}/dashboard/security': typeof Char123LocaleChar125LayoutDashboardSecurityRoute
   '/{-$locale}/dashboard/sessions': typeof Char123LocaleChar125LayoutDashboardSessionsRoute
@@ -455,6 +462,7 @@ export interface FileRoutesByTo {
   '/{-$locale}/dashboard/orders/$orderId': typeof Char123LocaleChar125LayoutDashboardOrdersOrderIdRoute
   '/{-$locale}/marketing/blog/$slug': typeof Char123LocaleChar125LayoutMarketingBlogSlugRoute
   '/{-$locale}/marketing/legal/$slug': typeof Char123LocaleChar125LayoutMarketingLegalSlugRoute
+  '/{-$locale}/dashboard/orders': typeof Char123LocaleChar125LayoutDashboardOrdersIndexRoute
   '/{-$locale}/marketing/blog': typeof Char123LocaleChar125LayoutMarketingBlogIndexRoute
   '/{-$locale}/marketing/changelog': typeof Char123LocaleChar125LayoutMarketingChangelogIndexRoute
 }
@@ -509,6 +517,7 @@ export interface FileRoutesById {
   '/{-$locale}/_layout/dashboard/orders/$orderId': typeof Char123LocaleChar125LayoutDashboardOrdersOrderIdRoute
   '/{-$locale}/_layout/marketing/blog/$slug': typeof Char123LocaleChar125LayoutMarketingBlogSlugRoute
   '/{-$locale}/_layout/marketing/legal/$slug': typeof Char123LocaleChar125LayoutMarketingLegalSlugRoute
+  '/{-$locale}/_layout/dashboard/orders/': typeof Char123LocaleChar125LayoutDashboardOrdersIndexRoute
   '/{-$locale}/_layout/marketing/blog/': typeof Char123LocaleChar125LayoutMarketingBlogIndexRoute
   '/{-$locale}/_layout/marketing/changelog/': typeof Char123LocaleChar125LayoutMarketingChangelogIndexRoute
 }
@@ -564,6 +573,7 @@ export interface FileRouteTypes {
     | '/{-$locale}/dashboard/orders/$orderId'
     | '/{-$locale}/marketing/blog/$slug'
     | '/{-$locale}/marketing/legal/$slug'
+    | '/{-$locale}/dashboard/orders/'
     | '/{-$locale}/marketing/blog/'
     | '/{-$locale}/marketing/changelog/'
   fileRoutesByTo: FileRoutesByTo
@@ -593,7 +603,6 @@ export interface FileRouteTypes {
     | '/{-$locale}/dashboard/api-keys'
     | '/{-$locale}/dashboard/billing'
     | '/{-$locale}/dashboard/notifications'
-    | '/{-$locale}/dashboard/orders'
     | '/{-$locale}/dashboard/profile'
     | '/{-$locale}/dashboard/security'
     | '/{-$locale}/dashboard/sessions'
@@ -614,6 +623,7 @@ export interface FileRouteTypes {
     | '/{-$locale}/dashboard/orders/$orderId'
     | '/{-$locale}/marketing/blog/$slug'
     | '/{-$locale}/marketing/legal/$slug'
+    | '/{-$locale}/dashboard/orders'
     | '/{-$locale}/marketing/blog'
     | '/{-$locale}/marketing/changelog'
   id:
@@ -667,6 +677,7 @@ export interface FileRouteTypes {
     | '/{-$locale}/_layout/dashboard/orders/$orderId'
     | '/{-$locale}/_layout/marketing/blog/$slug'
     | '/{-$locale}/_layout/marketing/legal/$slug'
+    | '/{-$locale}/_layout/dashboard/orders/'
     | '/{-$locale}/_layout/marketing/blog/'
     | '/{-$locale}/_layout/marketing/changelog/'
   fileRoutesById: FileRoutesById
@@ -1025,6 +1036,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LocaleChar125LayoutDashboardAdminUsersRouteImport
       parentRoute: typeof Char123LocaleChar125LayoutDashboardRoute
     }
+    '/{-$locale}/_layout/dashboard/orders/': {
+      id: '/{-$locale}/_layout/dashboard/orders/'
+      path: '/'
+      fullPath: '/{-$locale}/dashboard/orders/'
+      preLoaderRoute: typeof Char123LocaleChar125LayoutDashboardOrdersIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125LayoutDashboardOrdersRoute
+    }
     '/{-$locale}/_layout/dashboard/orders/$orderId': {
       id: '/{-$locale}/_layout/dashboard/orders/$orderId'
       path: '/$orderId'
@@ -1065,12 +1083,15 @@ declare module '@tanstack/react-router' {
 
 interface Char123LocaleChar125LayoutDashboardOrdersRouteChildren {
   Char123LocaleChar125LayoutDashboardOrdersOrderIdRoute: typeof Char123LocaleChar125LayoutDashboardOrdersOrderIdRoute
+  Char123LocaleChar125LayoutDashboardOrdersIndexRoute: typeof Char123LocaleChar125LayoutDashboardOrdersIndexRoute
 }
 
 const Char123LocaleChar125LayoutDashboardOrdersRouteChildren: Char123LocaleChar125LayoutDashboardOrdersRouteChildren =
   {
     Char123LocaleChar125LayoutDashboardOrdersOrderIdRoute:
       Char123LocaleChar125LayoutDashboardOrdersOrderIdRoute,
+    Char123LocaleChar125LayoutDashboardOrdersIndexRoute:
+      Char123LocaleChar125LayoutDashboardOrdersIndexRoute,
   }
 
 const Char123LocaleChar125LayoutDashboardOrdersRouteWithChildren =

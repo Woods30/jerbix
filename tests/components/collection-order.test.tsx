@@ -8,8 +8,8 @@ import { LandingPage } from '@/components/marketing/LandingPage'
 import { findProduct } from '@/config/products'
 import { websiteConfig } from '@/config/website'
 import { setLocale } from '@/locale/paraglide/runtime.js'
-import { Route as OrdersRoute } from '@/routes/{-$locale}/_layout/dashboard/orders'
 import { Route as OrderDetailRoute } from '@/routes/{-$locale}/_layout/dashboard/orders/$orderId'
+import { Route as OrdersIndexRoute } from '@/routes/{-$locale}/_layout/dashboard/orders/index'
 
 /**
  * 核销型支付的用户流程：首页分流、订单列表 / 详情、申报与轮询、无对象存储降级、
@@ -84,7 +84,8 @@ vi.mock('@/collection/server', () => ({
 }))
 
 const originalConfig = structuredClone(websiteConfig)
-const OrdersPage = OrdersRoute.options.component as unknown as () => React.JSX.Element
+// 列表页在 index 子路由（父路由 `orders.tsx` 只承担门禁与 SEO，无 component）。
+const OrdersPage = OrdersIndexRoute.options.component as unknown as () => React.JSX.Element
 const OrderDetailPage = OrderDetailRoute.options.component as unknown as () => React.JSX.Element
 
 function makeOrder(overrides: Partial<CollectionOrder> = {}): CollectionOrder {
@@ -133,7 +134,7 @@ function stubDetail(order: CollectionOrder | null, canUpload: boolean) {
 }
 
 function stubList(page: { rows: CollectionOrder[]; total: number } | null) {
-  vi.spyOn(OrdersRoute, 'useLoaderData').mockReturnValue({ ok: page !== null, page } as never)
+  vi.spyOn(OrdersIndexRoute, 'useLoaderData').mockReturnValue({ ok: page !== null, page } as never)
 }
 
 function sessionWith(role: SessionInfo['user']['role'] = 'user'): SessionInfo {
