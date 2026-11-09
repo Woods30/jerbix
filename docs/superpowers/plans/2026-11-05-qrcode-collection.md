@@ -97,7 +97,7 @@
 - Produces: `websiteConfig.checkout.mode`、`websiteConfig.collection`、`ServiceModule` 新成员 `'collection'`、公开 env `VITE_CHECKOUT_MODE`。
 - Consumes: 现有 `ProductDefinition`、`getProducts()`、`applyEnvOverrides()`、`getServiceStatuses()`。
 
-- [ ] **Step 1: 写配置与价格失败测试**
+- [x] **Step 1: 写配置与价格失败测试**
 
 ```ts
 it('解析 CNY collection price 且金额只接受正整数', () => {
@@ -123,13 +123,13 @@ it('collection checkout 缺模块、价格或账户时为 incomplete', () => {
 
 同时在 `init-modules.test.ts` 断言 `collection` 出现在 `MODULE_NAMES`，init 选择 collection 时把 `checkout.mode` 写成 `'collection'`；`module-access.test.ts` 断言关闭时页面门禁 404。
 
-- [ ] **Step 2: 运行测试确认 Red**
+- [x] **Step 2: 运行测试确认 Red**
 
 Run: `pnpm exec vitest run --project unit tests/unit/collection-config.test.ts tests/unit/env.test.ts tests/unit/service-status.test.ts tests/unit/init-modules.test.ts tests/unit/module-access.test.ts`
 
 Expected: FAIL，缺少 collection 类型 / 配置 / env 枚举。
 
-- [ ] **Step 3: 实现配置接口与本地价格解析**
+- [x] **Step 3: 实现配置接口与本地价格解析**
 
 在 `src/collection/types.ts` 定义：
 
@@ -156,13 +156,13 @@ export interface CollectionAccountConfig {
 
 `websiteConfig` 默认 provider 模式与 collection disabled；`applyEnvOverrides()` 处理 `VITE_CHECKOUT_MODE` 与 `VITE_MODULES` 中的 collection。ServiceStatus 在 collection 启用时检查目标价格、账户与 `checkout.mode` 的一致性；R2 不参与完整性判定。
 
-- [ ] **Step 4: 运行测试确认 Green**
+- [x] **Step 4: 运行测试确认 Green**
 
 Run: 与 Step 2 相同。
 
 Expected: PASS。
 
-- [ ] **Step 5: 跑格式化并提交单一行为变更**
+- [x] **Step 5: 跑格式化并提交单一行为变更**
 
 ```bash
 pnpm locale:sort
@@ -186,7 +186,7 @@ git commit -m "feat(collection): 定义核销型支付配置与本地价格"
 - Produces: `schema.collectionAccounts`、`schema.collectionOrders`。
 - Consumes: Task 1 的 `CollectionChannel` / 状态文字约束仅在 TS 层使用；SQL 列保持 text。
 
-- [ ] **Step 1: 写 migration 结构失败测试**
+- [x] **Step 1: 写 migration 结构失败测试**
 
 在 `collection-orders.test.ts` 复用 `payment-persistence.test.ts` 的内存 SQLite + 全迁移回放：
 
@@ -201,13 +201,13 @@ it('迁移创建 collection 表与两个 partial unique index', () => {
 })
 ```
 
-- [ ] **Step 2: 运行测试确认 Red**
+- [x] **Step 2: 运行测试确认 Red**
 
 Run: `pnpm exec vitest run --project unit tests/unit/collection-orders.test.ts`
 
 Expected: FAIL，表不存在。
 
-- [ ] **Step 3: 只做 schema 与 migration 结构变更**
+- [x] **Step 3: 只做 schema 与 migration 结构变更**
 
 按 spec §5 定义两张表和索引；执行：
 
@@ -222,13 +222,13 @@ pnpm db:generate
 - `0009_snapshot.json` 存在；
 - partial unique index 的 WHERE 条件与 spec 完全一致。
 
-- [ ] **Step 4: 回放所有 migration 并确认 Green**
+- [x] **Step 4: 回放所有 migration 并确认 Green**
 
 Run: `pnpm exec vitest run --project unit tests/unit/collection-orders.test.ts`
 
 Expected: PASS，内存 SQLite 可依次应用 `0000..0009`。
 
-- [ ] **Step 5: 提交纯结构变更**
+- [x] **Step 5: 提交纯结构变更**
 
 ```bash
 git add src/db/schema.ts src/db/migrations tests/unit/collection-orders.test.ts
@@ -254,7 +254,7 @@ createOrder(db, input: { userId: string; productId: string; offerId: string }, n
 expirePendingOrders(db, accountId: string, now: Date): Promise<number>
 ```
 
-- [ ] **Step 1: 写账户覆盖与分配失败测试**
+- [x] **Step 1: 写账户覆盖与分配失败测试**
 
 测试必须覆盖：配置兜底、D1 覆盖优先、`base+1..99`、账户级唯一、随机起点环形扫描、99 个槽位耗尽、并发两个 create 不重号。
 
@@ -270,25 +270,25 @@ it('99 个活跃金额占满后抛 AMOUNT_POOL_EXHAUSTED', async () => {
 })
 ```
 
-- [ ] **Step 2: 运行测试确认 Red**
+- [x] **Step 2: 运行测试确认 Red**
 
 Run: `pnpm exec vitest run --project unit tests/unit/collection-orders.test.ts`
 
 Expected: FAIL，领域函数不存在。
 
-- [ ] **Step 3: 实现账户解析、惰性过期与插入重试**
+- [x] **Step 3: 实现账户解析、惰性过期与插入重试**
 
 `createOrder()` 使用 Web Crypto 生成随机起点，依次尝试 99 个候选；每次直接 INSERT，让 partial unique index决定冲突，不采用「先查后插」。订单创建时快照账户与价格字段，`expiresAt = now + 900s`。
 
 D1 覆盖只覆盖相同 account ID；禁用覆盖跳过该账户，随后寻找下一个配置账户。没有可用账户抛 `NO_COLLECTION_ACCOUNT`。
 
-- [ ] **Step 4: 运行测试确认 Green**
+- [x] **Step 4: 运行测试确认 Green**
 
 Run: 与 Step 2 相同。
 
 Expected: PASS，包括并发与容量测试。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/collection/accounts.ts src/collection/orders.ts tests/unit/collection-orders.test.ts
@@ -315,7 +315,7 @@ getUserOrder(db, userId, orderId, now?): Promise<CollectionOrder | null>
 listUserOrders(db, { userId, limit, offset }, now?): Promise<{ rows; total }>
 ```
 
-- [ ] **Step 1: 写 15 分钟边界与状态转换失败测试**
+- [x] **Step 1: 写 15 分钟边界与状态转换失败测试**
 
 ```ts
 it('expiresAt 等于 now 时已过期且不能申报', async () => {
@@ -334,23 +334,23 @@ it('他人读取与提交统一返回 ORDER_NOT_FOUND', async () => {
 
 另测：申报进入 `pending_verification` 且保留尾数；只有 `pending_payment` 可取消；重复申报返回 `INVALID_ORDER_STATE`；payerNote 截断 / 拒绝超过 500 字符。
 
-- [ ] **Step 2: 运行测试确认 Red**
+- [x] **Step 2: 运行测试确认 Red**
 
 Run: `pnpm exec vitest run --project unit tests/unit/collection-orders.test.ts`
 
 Expected: FAIL，状态机函数不存在。
 
-- [ ] **Step 3: 实现 CAS 状态更新与所有者查询**
+- [x] **Step 3: 实现 CAS 状态更新与所有者查询**
 
 每次更新都在 WHERE 中带当前状态与所有者；更新返回空行时重新读取并映射稳定错误码。查询先惰性过期自己的 `pending_payment`，不能修改 `pending_verification`。
 
-- [ ] **Step 4: 运行测试确认 Green**
+- [x] **Step 4: 运行测试确认 Green**
 
 Run: 与 Step 2 相同。
 
 Expected: PASS。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/collection/types.ts src/collection/orders.ts tests/unit/collection-orders.test.ts
@@ -380,7 +380,7 @@ settleCollectionOrder(db, order, review, now?): Promise<CollectionOrder>
 
 `ProviderSubscription` 新增可选 `productId?: string|null`、`offerId?: string|null`；`applyPaymentEvent` 优先使用它们，再回退 `reference` 反查。
 
-- [ ] **Step 1: 写核验与付款桥接失败测试**
+- [x] **Step 1: 写核验与付款桥接失败测试**
 
 固定以下矩阵：
 
@@ -396,13 +396,13 @@ it('付款已落库但订单更新失败，重试只补 settled', ...)
 
 崩溃恢复测试在第一次调用时 mock / 包装订单最终 UPDATE 抛错；第二次调用后断言 payments count = 1、续期只加一次、订单 settled。
 
-- [ ] **Step 2: 运行测试确认 Red**
+- [x] **Step 2: 运行测试确认 Red**
 
 Run: `pnpm exec vitest run --project unit tests/unit/collection-settlement.test.ts tests/unit/payment-persistence.test.ts`
 
 Expected: FAIL，settlement 与直接归属字段不存在。
 
-- [ ] **Step 3: 实现结算临界区与 PaymentEvent 合成**
+- [x] **Step 3: 实现结算临界区与 PaymentEvent 合成**
 
 普通 approve 只接受 `pending_verification` 且金额相等；exception approve 接受过期 / 金额异常但强制 note。先 CAS 更新到 `settling`，partial unique index 序列化同一用户。
 
@@ -417,13 +417,13 @@ Expected: FAIL，settlement 与直接归属字段不存在。
 
 处理订阅冲突后再调用 `applyPaymentEvent`；成功后更新当前订单并清理同用户重复订阅订单。事件幂等是故障恢复依据。
 
-- [ ] **Step 4: 运行测试确认 Green**
+- [x] **Step 4: 运行测试确认 Green**
 
 Run: 与 Step 2 相同。
 
 Expected: PASS，原 Stripe / Creem 持久化测试也保持绿色。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/collection/settlement.ts src/payment/types.ts src/payment/events.ts tests/unit/collection-settlement.test.ts tests/unit/payment-persistence.test.ts
@@ -442,7 +442,7 @@ git commit -m "feat(collection): 核验订单并复用支付事件结算"
 - Consumes: Tasks 3–5 的全部领域函数、现有 `getAuth()`、`getModuleUnavailableResponse()`、`checkRateLimit()`。
 - Produces: `createCollectionOrderFn`、`submitCollectionOrderFn`、`cancelCollectionOrderFn`、`fetchCollectionOrderFn`、`fetchMyCollectionOrdersFn`、`fetchAdminCollectionOrdersFn`、`reviewCollectionOrderFn`、`saveCollectionAccountFn`。
 
-- [ ] **Step 1: 写服务端门禁与限流失败测试**
+- [x] **Step 1: 写服务端门禁与限流失败测试**
 
 测试：模块关闭 404、配置不全 503、未登录 401、其他用户 `ORDER_NOT_FOUND`、普通用户 admin 函数 403、admin 可核验、创建 5/15m 与轮询 60/min 的 action key独立。
 
@@ -453,25 +453,25 @@ it('客户端伪造 role 不能绕过服务端 session', async () => {
 })
 ```
 
-- [ ] **Step 2: 运行测试确认 Red**
+- [x] **Step 2: 运行测试确认 Red**
 
 Run: `pnpm exec vitest run --project unit tests/unit/collection-server.test.ts`
 
 Expected: FAIL，server functions 不存在。
 
-- [ ] **Step 3: 实现薄 server-function 边界**
+- [x] **Step 3: 实现薄 server-function 边界**
 
 每个 handler 顺序固定：模块门禁 → 服务端 session → 角色（如需要）→ rate limit → Zod input → 领域函数。不得信任客户端传入 userId / role / amount / price；userId 来自 session，金额来自订单与商品配置。
 
 管理员列表默认 `pending_verification`，limit 1–100、默认 20；所有公开错误只返回稳定 code。
 
-- [ ] **Step 4: 运行测试确认 Green**
+- [x] **Step 4: 运行测试确认 Green**
 
 Run: 与 Step 2 相同。
 
 Expected: PASS。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/collection/server.ts tests/unit/collection-server.test.ts
@@ -494,7 +494,7 @@ git commit -m "feat(collection): 增加订单与核验服务端接口"
 - Consumes: `getStorageProvider()`、collection order / account 查询、服务端 session。
 - Produces: `validateCollectionImage(bytes, mime, kind)`；两个 POST / GET 文件端点。
 
-- [ ] **Step 1: 写文件伪装与越权失败测试**
+- [x] **Step 1: 写文件伪装与越权失败测试**
 
 ```ts
 it('拒绝 MIME 为 image/png 但 magic bytes 不是 PNG 的文件', ...)
@@ -504,25 +504,25 @@ it('非 admin 不能上传二维码', ...)
 it('无 BUCKET 时返回 STORAGE_UNAVAILABLE 且不改 DB', ...)
 ```
 
-- [ ] **Step 2: 运行测试确认 Red**
+- [x] **Step 2: 运行测试确认 Red**
 
 Run: `pnpm exec vitest run --project unit tests/unit/collection-files.test.ts tests/unit/storage-security.test.ts`
 
 Expected: FAIL，验证器 / 路由不存在，folder 不在白名单。
 
-- [ ] **Step 3: 实现文件验证、存储与授权下载**
+- [x] **Step 3: 实现文件验证、存储与授权下载**
 
 在 R2 folder 白名单加入 `collection-qrcodes` / `collection-receipts`。端点不接受裸 key：由 orderId / accountId 查询授权后取得 key。上传新二维码成功后再 upsert account；旧 key 删除失败只告警。
 
 凭证上传只允许订单所有者、状态 `pending_payment|pending_verification`；存为 private。GET 按所有者 / admin 授权并返回正确 Content-Type 与 `Cache-Control: private, no-store`。
 
-- [ ] **Step 4: 运行测试确认 Green**
+- [x] **Step 4: 运行测试确认 Green**
 
 Run: 与 Step 2 相同。
 
 Expected: PASS。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/collection/files.ts src/storage/provider/r2.ts src/routes/api/collection tests/unit/collection-files.test.ts tests/unit/storage-security.test.ts
@@ -550,7 +550,7 @@ git commit -m "feat(collection): 安全存取收款码与付款凭证"
 - Consumes: Task 1 的 checkout mode / money formatter、Task 6 server functions、Task 7 receipt endpoint。
 - Produces: 首页 collection CTA、用户订单列表与详情；申报后每 5 秒轮询。
 
-- [ ] **Step 1: 写组件失败测试**
+- [x] **Step 1: 写组件失败测试**
 
 固定断言：
 
@@ -565,23 +565,23 @@ it('非登录用户仍先去登录', ...)
 
 Settings 测试断言 collection enabled 时显示「订单」，disabled 时隐藏；面包屑识别 `orders` 与订单详情。
 
-- [ ] **Step 2: 运行测试确认 Red**
+- [x] **Step 2: 运行测试确认 Red**
 
 Run: `pnpm exec vitest run --project components tests/components/collection-order.test.tsx tests/components/landing.test.tsx tests/components/settings-layout.test.tsx`
 
 Expected: FAIL，新路由 / 文案 / 分流不存在。
 
-- [ ] **Step 3: 实现价格数据与 CTA 分流**
+- [x] **Step 3: 实现价格数据与 CTA 分流**
 
 首页 loader 返回 `{ amount, currency } | null`，provider 模式从 catalog 取，collection 模式从本地 price 取；`LandingPage` 用 `formatMoneyAmount()`。`client.ts` 将 server-function 结果映射为 `redirect|unauthenticated|not-configured|error`，成功导航内部订单页。
 
-- [ ] **Step 4: 实现用户列表、详情、倒计时、申报与轮询**
+- [x] **Step 4: 实现用户列表、详情、倒计时、申报与轮询**
 
 页面门禁 `assertPageEnabled('collection')`；倒计时以服务端 `expiresAt` 为准，客户端只显示；到 0 后刷新服务端状态。风险文案放正文，明确截图不是到账依据、订单过期勿付、订阅不自动续费。
 
 轮询只在 `pending_verification|settling` 启动，5 秒一次；卸载 / settled / rejected / requires_refund 时清理 timer。
 
-- [ ] **Step 5: 补齐双语 key、排序并确认 Green**
+- [x] **Step 5: 补齐双语 key、排序并确认 Green**
 
 Run:
 
@@ -594,7 +594,7 @@ pnpm locale:check
 
 Expected: PASS，locale 键完全配对。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add src/collection/client.ts src/routes/'{-$locale}' src/components/marketing/LandingPage.tsx src/config/settings.ts messages tests/components
@@ -618,7 +618,7 @@ git commit -m "feat(collection): 增加收款码订单用户流程"
 - Consumes: Task 6 admin server functions、Task 7 QR / receipt endpoints、Task 5 review actions。
 - Produces: 管理员订单队列、核验 Dialog、异常确认 AlertDialog、账户启停 / QR 上传。
 
-- [ ] **Step 1: 写 admin UI 与门禁失败测试**
+- [x] **Step 1: 写 admin UI 与门禁失败测试**
 
 ```ts
 it('只有 admin + enableAdmin + collection 三条件都满足才显示入口', ...)
@@ -630,19 +630,19 @@ it('上传二维码后显示数据库覆盖，禁用后回退下一个配置账�
 
 `admin-module.test.ts` 同时验证直接调用 route / server function 时非 admin 403/404，不只测菜单隐藏。
 
-- [ ] **Step 2: 运行测试确认 Red**
+- [x] **Step 2: 运行测试确认 Red**
 
 Run: `pnpm exec vitest run --project unit tests/unit/admin-module.test.ts && pnpm exec vitest run --project components tests/components/collection-admin.test.tsx tests/components/settings-layout.test.tsx`
 
 Expected: FAIL，admin route / 导航不存在。
 
-- [ ] **Step 3: 实现分页筛选、核验与账户区块**
+- [x] **Step 3: 实现分页筛选、核验与账户区块**
 
 复用现有 `Table`、`Badge`、`Dialog`、`AlertDialog`、`Input`、`Select`、`Pagination`；不改 `src/components/ui`。金额输入在客户端只做 UX 校验，服务端仍以整数分重新验证。
 
 异常通过 dialog 明示实际金额、订单金额、退款 / 风控影响，并强制非空理由。核验成功后刷新列表与 router data。
 
-- [ ] **Step 4: 双语排序、运行测试确认 Green**
+- [x] **Step 4: 双语排序、运行测试确认 Green**
 
 Run:
 
@@ -656,7 +656,7 @@ pnpm locale:check
 
 Expected: PASS。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/routes/'{-$locale}'/_layout/dashboard/admin/orders.tsx src/config/settings.ts messages tests/unit/admin-module.test.ts tests/components/collection-admin.test.tsx tests/components/settings-layout.test.tsx
@@ -685,7 +685,7 @@ git commit -m "feat(collection): 增加管理员人工核验队列"
 - Consumes: 完整 collection 模块。
 - Produces: 可复现的本地端到端验收、互斥接入文档页。
 
-- [ ] **Step 1: 写失败的 Playwright 流程**
+- [x] **Step 1: 写失败的 Playwright 流程**
 
 `collection.spec.ts` 使用本地 D1 和 mock R2：
 
@@ -702,17 +702,17 @@ test('过期订单不可申报且尾数可复用', ...)
 
 Seed 脚本只写本地 D1：创建 verified user / admin、必要 collection account override；不访问 Stripe / 支付宝。
 
-- [ ] **Step 2: 跑 E2E 确认 Red**
+- [x] **Step 2: 跑 E2E 确认 Red**
 
 Run: `pnpm test:e2e -- e2e/collection.spec.ts`
 
 Expected: FAIL，文档前的实现缺口或 E2E seed 尚未完成。
 
-- [ ] **Step 3: 完成 seed 与 E2E 所需测试接线**
+- [x] **Step 3: 完成 seed 与 E2E 所需测试接线**
 
 给 Playwright 测试环境设置 `VITE_CHECKOUT_MODE=collection` 与包含 `collection,auth` 的 `VITE_MODULES`；使用测试专用同源二维码资源，不写真实收款码。若 E2E server 已在运行，不在测试运行中修改源码。
 
-- [ ] **Step 4: 写互斥、按步骤的双语文档**
+- [x] **Step 4: 写互斥、按步骤的双语文档**
 
 新页面只讲 collection：
 
@@ -728,7 +728,7 @@ Expected: FAIL，文档前的实现缺口或 E2E seed 尚未完成。
 
 总览页只链接 Stripe / Creem / collection 三条互斥接入页，不重复正文。环境文档登记 `VITE_CHECKOUT_MODE`；不虚构 secret。
 
-- [ ] **Step 5: 运行 E2E 与文档检查确认 Green**
+- [x] **Step 5: 运行 E2E 与文档检查确认 Green**
 
 Run:
 
@@ -740,7 +740,7 @@ pnpm exec vitest run --project unit tests/unit/docs.test.ts tests/unit/init-modu
 
 Expected: PASS。
 
-- [ ] **Step 6: 全量验证**
+- [x] **Step 6: 全量验证**
 
 按仓库非交互约定分开运行：
 
@@ -754,7 +754,7 @@ pnpm test:e2e
 
 Expected: 全部退出码 0；Biome / tsc / env / locale 零 warning；E2E 全绿。若 `pnpm check` 因 locale compile 交互提示阻塞，先运行 `pnpm locale:compile` 后逐项执行 check 内各命令，不声称跳过。
 
-- [ ] **Step 7: 最终提交**
+- [x] **Step 7: 最终提交**
 
 ```bash
 git add scripts/e2e-seed-collection.ts e2e/collection.spec.ts content/docs .env.example CHANGELOG.md
