@@ -15,7 +15,7 @@ import {
   submitOrderSchema,
 } from '@/collection/server-logic'
 import type { CollectionOrder, UserOrderPage } from '@/collection/types'
-import type { schema } from '@/db'
+import type { DB, schema } from '@/db'
 
 /** 收款账户的数据库行。 */
 type CollectionAccountRow = (typeof schema.collectionAccounts)['$inferSelect']
@@ -75,6 +75,125 @@ async function collectionDb() {
     import('@/lib/server-context'),
   ])
   return createDb(getServerContext().env.DB)
+}
+
+/**
+ * 三个管理员动作的**可注入实现**：门禁 → 参数校验 → 领域层，整段都在这里。
+ *
+ * `createServerFn` 的接线由 vite 插件在构建期改写，单元测试里驱动不了 server
+ * function 本身（见 `tests/unit/collection-server.test.ts` 的说明）。把依赖全部
+ * 注入之后，越权与参数校验能被单测直接驱动，server function 只剩接线。
+ */
+
+/** 管理员动作共享的运行时依赖。 */
+export interface AdminActionDeps {
+  /** 门禁依赖：模块开关、服务端会话、角色、限流。 */
+  guard: CollectionGuardDeps
+  /** 惰性取库：门禁不通过时不该碰数据库。 */
+  db: () => Promise<DB>
+}
+
+/** 管理员订单列表：门禁 → 参数校验 → 领域层。 */
+export async function adminListOrders(
+  { guard, db }: AdminActionDeps,
+  data: unknown,
+): Promise<AdminOrderPage | Response> {
+  const gate = await guardCollectionRequest(guard, { requireAdmin: true })
+  if (!gate.ok) return gate.response
+
+  const raw = data && typeof data === 'object' ? (data as Record<string, unknown>) : {}
+  const parsed = adminOrderListSchema.safeParse({
+    status: raw.status,
+    limit: raw.limit,
+    offset: raw.offset,
+  })
+  if (!parsed.success) return errorResponse('INVALID_INPUT')
+  const query = resolveAdminOrderQuery(parsed.data)
+
+  try {
+    const { listAllOrders } = await import('@/collection/orders')
+    return await listAllOrders(await db(), {
+      status: query.status,
+      limit: query.limit,
+      offset: query.offset,
+    })
+  } catch (error) {
+    return failureResponse(error)
+  }
+}
+
+/** 管理员核验订单：门禁 → 参数校验 → 领域层。 */
+export async function adminReviewOrder(
+  { guard, db }: AdminActionDeps,
+  data: unknown,
+): Promise<{ status: string } | Response> {
+  const gate = await guardCollectionRequest(guard, {
+    requireAdmin: true,
+    limit: 'review-order',
+  })
+  if (!gate.ok) return gate.response
+
+  const parsed = reviewOrderSchema.safeParse(data)
+  if (!parsed.success) return errorResponse('INVALID_INPUT')
+
+  try {
+    const { reviewOrder } = await import('@/collection/settlement')
+    const order = await reviewOrder(await db(), {
+      reviewerId: gate.session.userId,
+      ...parsed.data,
+    })
+    return { status: order.status }
+  } catch (error) {
+    return failureResponse(error)
+  }
+}
+
+/**
+ * 管理员保存收款账户：门禁 → 参数校验 → 落库。
+ *
+ * 数据库只是「覆盖」：账户清单仍在源码配置里，这里改的是显示名、二维码与启用
+ * 状态。数据库里没有的账户会补一行。
+ */
+export async function adminSaveAccount(
+  { guard, db }: AdminActionDeps,
+  data: unknown,
+): Promise<{ ok: true } | Response> {
+  const gate = await guardCollectionRequest(guard, { requireAdmin: true })
+  if (!gate.ok) return gate.response
+
+  const parsed = collectionAccountSchema.safeParse(data)
+  if (!parsed.success) return errorResponse('INVALID_INPUT')
+
+  try {
+    const { schema } = await import('@/db')
+    const now = new Date()
+    await (await db())
+      .insert(schema.collectionAccounts)
+      .values({
+        id: parsed.data.accountId,
+        channel: 'alipay',
+        displayName: parsed.data.displayName,
+        currency: 'cny',
+        qrImageKey: parsed.data.qrImageKey ?? null,
+        enabled: parsed.data.enabled,
+        updatedBy: gate.session.userId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: schema.collectionAccounts.id,
+        set: {
+          displayName: parsed.data.displayName,
+          qrImageKey: parsed.data.qrImageKey ?? null,
+          enabled: parsed.data.enabled,
+          updatedBy: gate.session.userId,
+          updatedAt: now,
+        },
+      })
+    return { ok: true }
+  } catch (error) {
+    return failureResponse(error)
+  }
 }
 
 /** 用户创建订单：分配一个唯一的应付金额。 */
@@ -185,55 +304,14 @@ export const fetchMyCollectionOrdersFn = createServerFn({ method: 'GET' }).handl
 
 /** 管理员读取订单队列，默认只看待核验。 */
 export const fetchAdminCollectionOrdersFn = createServerFn({ method: 'GET' }).handler(
-  async ({ data }): Promise<AdminOrderPage | Response> => {
-    const guard = await guardCollectionRequest(await guardDeps(), { requireAdmin: true })
-    if (!guard.ok) return guard.response
-
-    const raw = data && typeof data === 'object' ? (data as Record<string, unknown>) : {}
-    const parsed = adminOrderListSchema.safeParse({
-      status: raw.status,
-      limit: raw.limit,
-      offset: raw.offset,
-    })
-    if (!parsed.success) return errorResponse('INVALID_INPUT')
-    const query = resolveAdminOrderQuery(parsed.data)
-
-    try {
-      const { listAllOrders } = await import('@/collection/orders')
-      return await listAllOrders(await collectionDb(), {
-        status: query.status,
-        limit: query.limit,
-        offset: query.offset,
-      })
-    } catch (error) {
-      return failureResponse(error)
-    }
-  },
+  async ({ data }): Promise<AdminOrderPage | Response> =>
+    adminListOrders({ guard: await guardDeps(), db: collectionDb }, data),
 )
 
 /** 管理员核验订单。 */
 export const reviewCollectionOrderFn = createServerFn({ method: 'POST' }).handler(
-  async ({ data }): Promise<{ status: string } | Response> => {
-    const guard = await guardCollectionRequest(await guardDeps(), {
-      requireAdmin: true,
-      limit: 'review-order',
-    })
-    if (!guard.ok) return guard.response
-
-    const parsed = reviewOrderSchema.safeParse(data)
-    if (!parsed.success) return errorResponse('INVALID_INPUT')
-
-    try {
-      const { reviewOrder } = await import('@/collection/settlement')
-      const order = await reviewOrder(await collectionDb(), {
-        reviewerId: guard.session.userId,
-        ...parsed.data,
-      })
-      return { status: order.status }
-    } catch (error) {
-      return failureResponse(error)
-    }
-  },
+  async ({ data }): Promise<{ status: string } | Response> =>
+    adminReviewOrder({ guard: await guardDeps(), db: collectionDb }, data),
 )
 
 /** 管理员读取收款账户。 */
@@ -262,46 +340,6 @@ export const fetchCollectionAccountsFn = createServerFn({ method: 'GET' }).handl
  * 状态。数据库里没有的账户会补一行。
  */
 export const saveCollectionAccountFn = createServerFn({ method: 'POST' }).handler(
-  async ({ data }): Promise<{ ok: true } | Response> => {
-    const guard = await guardCollectionRequest(await guardDeps(), { requireAdmin: true })
-    if (!guard.ok) return guard.response
-
-    const parsed = collectionAccountSchema.safeParse(data)
-    if (!parsed.success) return errorResponse('INVALID_INPUT')
-
-    try {
-      const [{ createDb, schema }, { getServerContext }] = await Promise.all([
-        import('@/db'),
-        import('@/lib/server-context'),
-      ])
-      const db = createDb(getServerContext().env.DB)
-      const now = new Date()
-      await db
-        .insert(schema.collectionAccounts)
-        .values({
-          id: parsed.data.accountId,
-          channel: 'alipay',
-          displayName: parsed.data.displayName,
-          currency: 'cny',
-          qrImageKey: parsed.data.qrImageKey ?? null,
-          enabled: parsed.data.enabled,
-          updatedBy: guard.session.userId,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: schema.collectionAccounts.id,
-          set: {
-            displayName: parsed.data.displayName,
-            qrImageKey: parsed.data.qrImageKey ?? null,
-            enabled: parsed.data.enabled,
-            updatedBy: guard.session.userId,
-            updatedAt: now,
-          },
-        })
-      return { ok: true }
-    } catch (error) {
-      return failureResponse(error)
-    }
-  },
+  async ({ data }): Promise<{ ok: true } | Response> =>
+    adminSaveAccount({ guard: await guardDeps(), db: collectionDb }, data),
 )
