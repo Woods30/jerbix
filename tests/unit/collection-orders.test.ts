@@ -23,6 +23,7 @@ import {
   createOrder,
   expirePendingOrders,
   getUserOrder,
+  listAllOrders,
   listUserOrders,
   submitOrder,
 } from '@/collection/orders'
@@ -809,6 +810,74 @@ describe('用户订单状态机与查询隔离', () => {
     expect(page.total).toBe(3)
     expect(page.rows).toHaveLength(2)
     const next = await listUserOrders(db, { userId: 'u1', limit: 2, offset: 2 }, plusSeconds(T0, 3))
+    expect(next.rows).toHaveLength(1)
+    sqlite.close()
+  })
+})
+
+describe('管理员订单列表', () => {
+  const T0 = new Date('2026-01-01T00:00:00.000Z')
+
+  function plusSeconds(base: Date, seconds: number): Date {
+    return new Date(base.getTime() + seconds * 1000)
+  }
+
+  it('默认只看待核验，且带上下单账号的邮箱', async () => {
+    const { db, sqlite } = collectionDatabase()
+    await createOrder(db, { userId: 'u1', productId: PRODUCT_ID, offerId: OFFER_ID }, T0)
+    await createOrder(
+      db,
+      { userId: 'u2', productId: PRODUCT_ID, offerId: OFFER_ID },
+      plusSeconds(T0, 1),
+    )
+    // 把其中一单推进到待核验。
+    sqlite
+      .prepare("UPDATE collection_orders SET status = 'pending_verification' WHERE user_id = 'u2'")
+      .run()
+
+    const page = await listAllOrders(db, { status: 'pending_verification', limit: 20, offset: 0 })
+    expect(page.total).toBe(1)
+    expect(page.rows[0]?.userId).toBe('u2')
+    // 人工对账要能认出是谁付的款。
+    expect(page.rows[0]?.userEmail).toBe('u2@example.com')
+    sqlite.close()
+  })
+
+  it("'all' 不按状态过滤", async () => {
+    const { db, sqlite } = collectionDatabase()
+    await createOrder(db, { userId: 'u1', productId: PRODUCT_ID, offerId: OFFER_ID }, T0)
+    await createOrder(
+      db,
+      { userId: 'u2', productId: PRODUCT_ID, offerId: OFFER_ID },
+      plusSeconds(T0, 1),
+    )
+    sqlite
+      .prepare("UPDATE collection_orders SET status = 'pending_verification' WHERE user_id = 'u2'")
+      .run()
+
+    const page = await listAllOrders(db, { status: 'all', limit: 20, offset: 0 })
+    expect(page.total).toBe(2)
+    sqlite.close()
+  })
+
+  it('支持分页', async () => {
+    const { db, sqlite } = collectionDatabase()
+    await createOrder(db, { userId: 'u1', productId: PRODUCT_ID, offerId: OFFER_ID }, T0)
+    await createOrder(
+      db,
+      { userId: 'u1', productId: PRODUCT_ID, offerId: OFFER_ID },
+      plusSeconds(T0, 1),
+    )
+    await createOrder(
+      db,
+      { userId: 'u1', productId: PRODUCT_ID, offerId: OFFER_ID },
+      plusSeconds(T0, 2),
+    )
+
+    const page = await listAllOrders(db, { status: 'all', limit: 2, offset: 0 })
+    expect(page.total).toBe(3)
+    expect(page.rows).toHaveLength(2)
+    const next = await listAllOrders(db, { status: 'all', limit: 2, offset: 2 })
     expect(next.rows).toHaveLength(1)
     sqlite.close()
   })

@@ -277,6 +277,53 @@ export async function listUserOrders(
   return { rows: rows.map(toCollectionOrder), total: Number(counted[0]?.total ?? 0) }
 }
 
+/** 管理员看到的订单：额外带上下单账号的邮箱。 */
+export interface AdminCollectionOrder extends CollectionOrder {
+  /** 下单账号的邮箱：人工对账时要能认出是谁付的款。 */
+  userEmail: string
+}
+
+/** 管理员订单列表的一页。 */
+export interface AdminOrderPage {
+  rows: AdminCollectionOrder[]
+  total: number
+}
+
+/**
+ * 列出全部订单（管理员用），按创建时间倒序。
+ *
+ * 与用户列表只差两点：不按 userId 过滤，且带上下单账号的邮箱。
+ *
+ * @param input.status 不给或传 `'all'` 表示不过滤状态
+ */
+export async function listAllOrders(
+  db: DB,
+  input: { status?: CollectionOrderStatus | 'all' | null; limit: number; offset: number },
+): Promise<AdminOrderPage> {
+  const where =
+    input.status && input.status !== 'all'
+      ? eq(schema.collectionOrders.status, input.status)
+      : undefined
+
+  const rows = await db
+    .select({ order: schema.collectionOrders, userEmail: schema.users.email })
+    .from(schema.collectionOrders)
+    .leftJoin(schema.users, eq(schema.collectionOrders.userId, schema.users.id))
+    .where(where)
+    .orderBy(desc(schema.collectionOrders.createdAt), desc(schema.collectionOrders.id))
+    .limit(input.limit)
+    .offset(input.offset)
+  const counted = await db.select({ total: count() }).from(schema.collectionOrders).where(where)
+
+  return {
+    rows: rows.map((row) => ({
+      ...toCollectionOrder(row.order),
+      userEmail: row.userEmail ?? '',
+    })),
+    total: Number(counted[0]?.total ?? 0),
+  }
+}
+
 function buildOrder(params: {
   input: CreateOrderInput
   price: CollectionPrice
