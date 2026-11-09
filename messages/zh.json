@@ -136,6 +136,7 @@
   "collection.error_invalid_input": "提交的内容不合法，请检查后重试。",
   "collection.error_invalid_offer": "该商品暂不支持收款码购买。",
   "collection.error_invalid_payer_note": "辅助说明超出长度限制。",
+  "collection.error_invalid_qrcode": "收款码图片不合法，请检查后重试。",
   "collection.error_invalid_state": "订单状态已变化，请刷新后重试。",
   "collection.error_module_disabled": "当前站点未开放收款码支付。",
   "collection.error_no_account": "暂无可用收款账户，请联系站点管理员。",

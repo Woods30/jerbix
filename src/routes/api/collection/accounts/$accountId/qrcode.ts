@@ -9,6 +9,7 @@ import {
   setAccountQrImageKey,
   validateCollectionImage,
 } from '@/collection/files'
+import { errorResponse } from '@/collection/server-logic'
 import { websiteConfig } from '@/config/website'
 import { createDb } from '@/db'
 import { getModuleUnavailableResponse } from '@/lib/module-access.server'
@@ -41,10 +42,10 @@ export const Route = createFileRoute('/api/collection/accounts/$accountId/qrcode
 
         const { env } = getServerContext()
         const session = await getAuth(env).api.getSession({ headers: request.headers })
-        if (!session) return new Response('Unauthorized', { status: 401 })
+        if (!session) return errorResponse('UNAUTHENTICATED')
         // 只有管理员能改收款账户的收款码。
         if (session.user.role !== 'admin') {
-          return Response.json({ error: 'FORBIDDEN' }, { status: 403 })
+          return errorResponse('FORBIDDEN')
         }
 
         const allowed = await checkRateLimit({
@@ -53,11 +54,11 @@ export const Route = createFileRoute('/api/collection/accounts/$accountId/qrcode
           limit: UPLOAD_QRCODE_LIMIT,
           windowSeconds: UPLOAD_QRCODE_WINDOW_SECONDS,
         })
-        if (!allowed) return new Response('Too Many Requests', { status: 429 })
+        if (!allowed) return errorResponse('RATE_LIMITED')
 
         // 没有对象存储绑定时直接拒绝，账户记录保持原样。
         if (!env?.BUCKET) {
-          return Response.json({ error: 'STORAGE_UNAVAILABLE' }, { status: 503 })
+          return errorResponse('STORAGE_UNAVAILABLE')
         }
 
         const db = createDb(env.DB)
@@ -66,25 +67,25 @@ export const Route = createFileRoute('/api/collection/accounts/$accountId/qrcode
         )
         const existing = await findAccountFileRef(db, params.accountId)
         if (!configured && !existing) {
-          return Response.json({ error: 'NO_COLLECTION_ACCOUNT' }, { status: 404 })
+          return errorResponse('NO_COLLECTION_ACCOUNT')
         }
 
         const formData = await request.formData().catch(() => null)
-        if (!formData) return Response.json({ error: 'INVALID_RECEIPT' }, { status: 400 })
+        if (!formData) return errorResponse('INVALID_QRCODE')
         const file = formData.get('file')
         if (!(file instanceof File)) {
-          return Response.json({ error: 'INVALID_RECEIPT' }, { status: 400 })
+          return errorResponse('INVALID_QRCODE')
         }
 
         // 先按声明大小挡一道：不把超大文件整个读进内存。
         if (file.size > COLLECTION_IMAGE_MAX_BYTES.qrcode) {
-          return Response.json({ error: 'INVALID_RECEIPT' }, { status: 400 })
+          return errorResponse('INVALID_QRCODE')
         }
 
         const bytes = new Uint8Array(await file.arrayBuffer())
         const validation = validateCollectionImage(bytes, file.type, 'qrcode')
         if (!validation.ok) {
-          return Response.json({ error: 'INVALID_RECEIPT' }, { status: 400 })
+          return errorResponse('INVALID_QRCODE')
         }
 
         // 先上传：上传失败就不会改账户记录。
@@ -125,28 +126,28 @@ export const Route = createFileRoute('/api/collection/accounts/$accountId/qrcode
 
         const { env } = getServerContext()
         const session = await getAuth(env).api.getSession({ headers: request.headers })
-        if (!session) return new Response('Unauthorized', { status: 401 })
+        if (!session) return errorResponse('UNAUTHENTICATED')
 
         if (!env?.BUCKET) {
-          return Response.json({ error: 'STORAGE_UNAVAILABLE' }, { status: 503 })
+          return errorResponse('STORAGE_UNAVAILABLE')
         }
 
         const db = createDb(env.DB)
         const account = await findAccountFileRef(db, params.accountId)
-        if (!account) return Response.json({ error: 'ORDER_NOT_FOUND' }, { status: 404 })
+        if (!account) return errorResponse('NO_COLLECTION_ACCOUNT')
 
         // 管理员与该账户的订单所有者可读；其他人一律 404。
         const isAdmin = session.user.role === 'admin'
         if (!isAdmin && !(await hasOrderForAccount(db, session.user.id, params.accountId))) {
-          return Response.json({ error: 'ORDER_NOT_FOUND' }, { status: 404 })
+          return errorResponse('ORDER_NOT_FOUND')
         }
         if (!account.qrImageKey) {
-          return Response.json({ error: 'ORDER_NOT_FOUND' }, { status: 404 })
+          return errorResponse('ORDER_NOT_FOUND')
         }
 
         const info = await getFileInfo(account.qrImageKey)
         const stream = await downloadFile(account.qrImageKey, true)
-        if (!stream) return Response.json({ error: 'ORDER_NOT_FOUND' }, { status: 404 })
+        if (!stream) return errorResponse('ORDER_NOT_FOUND')
 
         return new Response(stream, {
           headers: {

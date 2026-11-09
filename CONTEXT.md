@@ -61,7 +61,7 @@
   `messages.site_name`（`__root.tsx` 的标题）。二者必须成对替换，否则 `<title>` 与 OG
   站点名不一致。
 
-### 核销型支付（待实现）
+### 核销型支付
 
 - **核销型支付（collection-code settlement）**：没有托管 Checkout 与 webhook 的收款
   形态。用户按订单指定金额向收款账户付款；管理员核实到账后，系统才确认付款事实。
@@ -113,12 +113,11 @@
   部署（D：E2E / CI / CSP）、品牌化与 Landing 单页、网站源码配置与公共菜单（模块开关、
   菜单契约、服务状态、配置文档）、工作台（`/{locale}/dashboard/*`：资料 / 安全 / 登录设备 /
   通知偏好 / API 密钥 / 用户管理，含 `fetchSession` 守卫）与表单统一（TanStack Form +
-  Zod + shadcn `Field`）。
+  Zod + shadcn `Field`）、核销型支付模块（支付宝个人收款码 + 金额指纹 + 人工核验，
+  见 `docs/adr/0006`、`docs/adr/0007` 与
+  `docs/superpowers/specs/2026-11-05-qrcode-collection-design.md`）。
 - **尚未实现**：文件上传、AI 网关、PWA。`websiteConfig.features` 中对应的开关是能力边界
   标记，不注册路由。
-- **已决策、待实现**：核销型支付可选模块（支付宝个人收款码 + 金额指纹 + 人工核验）；
-  见 `docs/adr/0006`、`docs/adr/0007` 与
-  `docs/superpowers/specs/2026-11-05-qrcode-collection-design.md`。
 - **两仓关系（2026-11-02 定）**：本仓是**模板工程**（`Woods30/saas-template`，含 init
   脚本与技术文档），**官网工程**是另一个仓（`Woods30/jerbix`，官网 + 支付 + 商业条款
   文档），保留完整代码副本并靠 `git merge template/main` 跟进本仓。拆分取舍见

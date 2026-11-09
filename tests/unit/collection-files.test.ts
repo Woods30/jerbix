@@ -420,6 +420,40 @@ describe('付款凭证端点', () => {
     expect(row.receipt_key).toBeNull()
   })
 
+  it('未登录读凭证返回 401 UNAUTHENTICATED；对象取不到时按 ORDER_NOT_FOUND 处理', async () => {
+    state.session = null
+    const denied = await receiptGetHandler({
+      request: new Request('https://example.com/api/collection/orders/o1/receipt'),
+      params: { orderId: 'o1' },
+    })
+    expect(denied.status).toBe(401)
+    expect(await denied.json()).toEqual({ error: 'UNAUTHENTICATED' })
+
+    state.session = { user: { id: 'u1', role: 'user' } }
+    insertOrder(sqlite, { id: 'o1', userId: 'u1', receiptKey: 'collection-receipts/u1/gone.png' })
+    state.downloadFile.mockResolvedValue(null)
+    const missing = await receiptGetHandler({
+      request: new Request('https://example.com/api/collection/orders/o1/receipt'),
+      params: { orderId: 'o1' },
+    })
+    expect(missing.status).toBe(404)
+    expect(await missing.json()).toEqual({ error: 'ORDER_NOT_FOUND' })
+  })
+
+  it('未登录上传凭证返回 401 UNAUTHENTICATED', async () => {
+    state.session = null
+    const response = await receiptHandler({
+      request: uploadRequest(
+        'https://example.com/api/collection/orders/o1/receipt',
+        PNG_BYTES,
+        'image/png',
+      ),
+      params: { orderId: 'o1' },
+    })
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ error: 'UNAUTHENTICATED' })
+  })
+
   it('模块关闭时直接返回门禁响应，不碰对象存储', async () => {
     state.gate = Response.json({ error: 'MODULE_DISABLED' }, { status: 404 })
 
@@ -546,7 +580,7 @@ describe('收款码端点', () => {
     })
 
     expect(response.status).toBe(400)
-    expect(await response.json()).toEqual({ error: 'INVALID_RECEIPT' })
+    expect(await response.json()).toEqual({ error: 'INVALID_QRCODE' })
     expect(state.uploadFile).not.toHaveBeenCalled()
   })
 
@@ -565,8 +599,68 @@ describe('收款码端点', () => {
     })
 
     expect(response.status).toBe(400)
-    expect(await response.json()).toEqual({ error: 'INVALID_RECEIPT' })
+    expect(await response.json()).toEqual({ error: 'INVALID_QRCODE' })
     expect(state.uploadFile).not.toHaveBeenCalled()
+  })
+
+  it('读取不存在的收款账户返回 400 NO_COLLECTION_ACCOUNT', async () => {
+    state.session = { user: { id: 'u3', role: 'admin' } }
+
+    const response = await qrcodeGetHandler({
+      request: new Request('https://example.com/api/collection/accounts/nope/qrcode'),
+      params: { accountId: 'nope' },
+    })
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ error: 'NO_COLLECTION_ACCOUNT' })
+    expect(state.downloadFile).not.toHaveBeenCalled()
+  })
+
+  it('读取没有二维码的收款账户返回 404 ORDER_NOT_FOUND', async () => {
+    state.session = { user: { id: 'u3', role: 'admin' } }
+    insertAccount(sqlite, 'acct-main', null)
+
+    const response = await qrcodeGetHandler({
+      request: new Request('https://example.com/api/collection/accounts/acct-main/qrcode'),
+      params: { accountId: 'acct-main' },
+    })
+    expect(response.status).toBe(404)
+    expect(await response.json()).toEqual({ error: 'ORDER_NOT_FOUND' })
+    expect(state.downloadFile).not.toHaveBeenCalled()
+  })
+
+  it('未登录读收款码返回 401 UNAUTHENTICATED', async () => {
+    state.session = null
+
+    const response = await qrcodeGetHandler({
+      request: new Request('https://example.com/api/collection/accounts/acct-main/qrcode'),
+      params: { accountId: 'acct-main' },
+    })
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ error: 'UNAUTHENTICATED' })
+  })
+
+  it('未登录上传收款码返回 401；对象取不到时按 ORDER_NOT_FOUND 处理', async () => {
+    state.session = null
+    const denied = await qrcodeHandler({
+      request: uploadRequest(
+        'https://example.com/api/collection/accounts/acct-main/qrcode',
+        PNG_BYTES,
+        'image/png',
+      ),
+      params: { accountId: 'acct-main' },
+    })
+    expect(denied.status).toBe(401)
+    expect(await denied.json()).toEqual({ error: 'UNAUTHENTICATED' })
+
+    state.session = { user: { id: 'u3', role: 'admin' } }
+    insertAccount(sqlite, 'acct-main', 'collection-qrcodes/u3/gone.png')
+    state.downloadFile.mockResolvedValue(null)
+    const missing = await qrcodeGetHandler({
+      request: new Request('https://example.com/api/collection/accounts/acct-main/qrcode'),
+      params: { accountId: 'acct-main' },
+    })
+    expect(missing.status).toBe(404)
+    expect(await missing.json()).toEqual({ error: 'ORDER_NOT_FOUND' })
   })
 
   it('其他用户读取收款码返回 404，订单所有者与 admin 可读', async () => {

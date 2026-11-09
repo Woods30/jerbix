@@ -29,6 +29,7 @@ export type CollectionApiErrorCode =
   | 'FORBIDDEN'
   | 'RATE_LIMITED'
   | 'INVALID_INPUT'
+  | 'INVALID_QRCODE'
 
 /** 错误码 → HTTP 状态码。 */
 const ERROR_STATUS: Record<CollectionApiErrorCode, number> = {
@@ -49,6 +50,7 @@ const ERROR_STATUS: Record<CollectionApiErrorCode, number> = {
   SETTLEMENT_IN_PROGRESS: 409,
   STORAGE_UNAVAILABLE: 503,
   INVALID_RECEIPT: 400,
+  INVALID_QRCODE: 400,
   UNAUTHENTICATED: 401,
   FORBIDDEN: 403,
   RATE_LIMITED: 429,

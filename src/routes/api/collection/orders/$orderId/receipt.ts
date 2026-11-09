@@ -8,6 +8,7 @@ import {
   setOrderReceiptKey,
   validateCollectionImage,
 } from '@/collection/files'
+import { errorResponse } from '@/collection/server-logic'
 import { createDb } from '@/db'
 import { getModuleUnavailableResponse } from '@/lib/module-access.server'
 import { checkRateLimit } from '@/lib/rate-limit'
@@ -39,7 +40,7 @@ export const Route = createFileRoute('/api/collection/orders/$orderId/receipt')(
 
         const { env } = getServerContext()
         const session = await getAuth(env).api.getSession({ headers: request.headers })
-        if (!session) return new Response('Unauthorized', { status: 401 })
+        if (!session) return errorResponse('UNAUTHENTICATED')
 
         const allowed = await checkRateLimit({
           ip: request.headers.get('cf-connecting-ip') ?? 'unknown',
@@ -48,39 +49,39 @@ export const Route = createFileRoute('/api/collection/orders/$orderId/receipt')(
           limit: UPLOAD_RECEIPT_LIMIT,
           windowSeconds: UPLOAD_RECEIPT_WINDOW_SECONDS,
         })
-        if (!allowed) return new Response('Too Many Requests', { status: 429 })
+        if (!allowed) return errorResponse('RATE_LIMITED')
 
         // 没有对象存储绑定时直接拒绝：模块状态不因缺少对象存储降级。
         if (!env?.BUCKET) {
-          return Response.json({ error: 'STORAGE_UNAVAILABLE' }, { status: 503 })
+          return errorResponse('STORAGE_UNAVAILABLE')
         }
 
         const db = createDb(env.DB)
         const order = await findOrderFileRef(db, params.orderId)
         // 越权与「订单不存在」表现一致：不泄漏别人的订单是否存在。
         if (!order || order.userId !== session.user.id) {
-          return Response.json({ error: 'ORDER_NOT_FOUND' }, { status: 404 })
+          return errorResponse('ORDER_NOT_FOUND')
         }
         if (order.status !== 'pending_payment' && order.status !== 'pending_verification') {
-          return Response.json({ error: 'INVALID_ORDER_STATE' }, { status: 409 })
+          return errorResponse('INVALID_ORDER_STATE')
         }
 
         const formData = await request.formData().catch(() => null)
-        if (!formData) return Response.json({ error: 'INVALID_RECEIPT' }, { status: 400 })
+        if (!formData) return errorResponse('INVALID_RECEIPT')
         const file = formData.get('file')
         if (!(file instanceof File)) {
-          return Response.json({ error: 'INVALID_RECEIPT' }, { status: 400 })
+          return errorResponse('INVALID_RECEIPT')
         }
 
         // 先按声明大小挡一道：不把超大文件整个读进内存。
         if (file.size > COLLECTION_IMAGE_MAX_BYTES.receipt) {
-          return Response.json({ error: 'INVALID_RECEIPT' }, { status: 400 })
+          return errorResponse('INVALID_RECEIPT')
         }
 
         const bytes = new Uint8Array(await file.arrayBuffer())
         const validation = validateCollectionImage(bytes, file.type, 'receipt')
         if (!validation.ok) {
-          return Response.json({ error: 'INVALID_RECEIPT' }, { status: 400 })
+          return errorResponse('INVALID_RECEIPT')
         }
 
         const uploaded = await uploadFile(
@@ -103,7 +104,7 @@ export const Route = createFileRoute('/api/collection/orders/$orderId/receipt')(
         if (!written) {
           // 上传期间订单状态变了：清掉刚上传的对象，库里不留悬挂引用。
           await deleteFile(uploaded.key, true).catch(() => {})
-          return Response.json({ error: 'INVALID_ORDER_STATE' }, { status: 409 })
+          return errorResponse('INVALID_ORDER_STATE')
         }
 
         // 旧凭证删除失败只告警，不回滚新凭证。
@@ -122,27 +123,27 @@ export const Route = createFileRoute('/api/collection/orders/$orderId/receipt')(
 
         const { env } = getServerContext()
         const session = await getAuth(env).api.getSession({ headers: request.headers })
-        if (!session) return new Response('Unauthorized', { status: 401 })
+        if (!session) return errorResponse('UNAUTHENTICATED')
 
         if (!env?.BUCKET) {
-          return Response.json({ error: 'STORAGE_UNAVAILABLE' }, { status: 503 })
+          return errorResponse('STORAGE_UNAVAILABLE')
         }
 
         const db = createDb(env.DB)
         const order = await findOrderFileRef(db, params.orderId)
-        if (!order) return Response.json({ error: 'ORDER_NOT_FOUND' }, { status: 404 })
+        if (!order) return errorResponse('ORDER_NOT_FOUND')
         // 管理员核验时要看凭证；其他人一律按「订单不存在」处理。
         const isAdmin = session.user.role === 'admin'
         if (!isAdmin && order.userId !== session.user.id) {
-          return Response.json({ error: 'ORDER_NOT_FOUND' }, { status: 404 })
+          return errorResponse('ORDER_NOT_FOUND')
         }
         if (!order.receiptKey) {
-          return Response.json({ error: 'ORDER_NOT_FOUND' }, { status: 404 })
+          return errorResponse('ORDER_NOT_FOUND')
         }
 
         const info = await getFileInfo(order.receiptKey)
         const stream = await downloadFile(order.receiptKey, true)
-        if (!stream) return Response.json({ error: 'ORDER_NOT_FOUND' }, { status: 404 })
+        if (!stream) return errorResponse('ORDER_NOT_FOUND')
 
         return new Response(stream, {
           headers: {

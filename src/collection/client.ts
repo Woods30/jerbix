@@ -180,6 +180,8 @@ export function collectionOrderErrorMessage(code: CollectionOrderErrorCode): str
       return m['collection.error_storage_unavailable']()
     case 'INVALID_INPUT':
       return m['collection.error_invalid_input']()
+    case 'INVALID_QRCODE':
+      return m['collection.error_invalid_qrcode']()
     default:
       return m['collection.error_generic']()
   }
