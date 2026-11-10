@@ -221,6 +221,9 @@ function OrderDetailPage() {
         </p>
         <Button
           variant="outline"
+          // `nativeButton={false}`：Base UI 的 Button 默认渲染 <button>，换成 <a>
+          // 后必须关掉，否则开发环境会警告「丢了原生按钮语义」。
+          nativeButton={false}
           render={<Link to="/{-$locale}/dashboard/orders" params={{ locale }} />}
         >
           {m['collection.order_back_to_list']()}
