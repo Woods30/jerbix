@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { fetchMyCollectionOrders } from '@/collection/client'
 import { formatMoneyAmount } from '@/collection/pricing'
+import { LocalDate } from '@/components/local-date'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -97,7 +98,9 @@ function OrdersPage() {
                     <TableCell>
                       <Badge>{m[collectionOrderStatusMessageKey(order.status)]()}</Badge>
                     </TableCell>
-                    <TableCell>{new Date(order.createdAt).toLocaleDateString(locale)}</TableCell>
+                    <TableCell>
+                      <LocalDate value={order.createdAt} locale={locale} />
+                    </TableCell>
                     <TableCell>
                       <Button
                         variant="outline"

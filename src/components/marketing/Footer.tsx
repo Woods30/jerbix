@@ -60,7 +60,9 @@ export function Footer() {
           <MenuItems items={links} variant="footer" linkClassName={footerLinkClass} />
         </div>
         <div className="border-t border-border/70 pt-6 text-xs text-muted-foreground">
-          © {new Date().getFullYear()} {websiteConfig.metadata.name}. {m.footer_rights()}
+          {/* 年份取 UTC：服务端（Workers）固定 UTC，浏览器用本地时区，
+              直接用本地年份会在跨年时让服务端与客户端渲染出不同文本。 */}
+          © {new Date().getUTCFullYear()} {websiteConfig.metadata.name}. {m.footer_rights()}
         </div>
       </div>
     </footer>

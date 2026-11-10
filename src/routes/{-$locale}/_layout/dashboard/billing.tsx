@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
+import { LocalDate } from '@/components/local-date'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -55,9 +56,6 @@ function money(amount: number, currency: string) {
   return new Intl.NumberFormat(getRequestLocale(), { style: 'currency', currency }).format(
     amount / 10 ** (digits ?? 2),
   )
-}
-function date(value: Date | string | null | undefined) {
-  return value ? new Date(value).toLocaleDateString(getRequestLocale()) : '—'
 }
 
 function BillingPage() {
@@ -145,7 +143,7 @@ function BillingPage() {
                     {current.cancelAtPeriodEnd
                       ? m.settings_billing_ended_on()
                       : m.settings_billing_renews_on()}{' '}
-                    {date(current.currentPeriodEnd)}
+                    <LocalDate value={current.currentPeriodEnd} locale={locale} />
                   </p>
                 </>
               ) : (
@@ -173,7 +171,8 @@ function BillingPage() {
                   <li key={sub.id} className="flex justify-between gap-4 text-sm">
                     <span>{productNameForProductId(sub.productId) ?? sub.priceId}</span>
                     <span>
-                      {m[subscriptionStatusMessageKey(sub.status)]()} · {date(sub.currentPeriodEnd)}
+                      {m[subscriptionStatusMessageKey(sub.status)]()} ·{' '}
+                      <LocalDate value={sub.currentPeriodEnd} locale={locale} />
                     </span>
                   </li>
                 ))}
@@ -200,7 +199,9 @@ function BillingPage() {
                   <TableBody>
                     {data.payments.map((payment) => (
                       <TableRow key={payment.id}>
-                        <TableCell>{date(payment.paidAt ?? payment.createdAt)}</TableCell>
+                        <TableCell>
+                          <LocalDate value={payment.paidAt ?? payment.createdAt} locale={locale} />
+                        </TableCell>
                         <TableCell>
                           {productNameForProductId(payment.productId) ?? payment.description ?? '—'}
                         </TableCell>

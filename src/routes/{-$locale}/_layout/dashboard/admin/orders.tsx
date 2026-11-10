@@ -10,6 +10,7 @@ import {
   saveCollectionAccountFn,
 } from '@/collection/server'
 import type { CollectionOrderStatus } from '@/collection/types'
+import { LocalDate } from '@/components/local-date'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -437,7 +438,9 @@ function AdminOrdersComponent() {
                   <TableCell>
                     {formatMoneyAmount(order.payableAmount, order.currency, locale)}
                   </TableCell>
-                  <TableCell>{date(order.submittedAt, locale)}</TableCell>
+                  <TableCell>
+                    <LocalDate value={order.submittedAt} locale={locale} />
+                  </TableCell>
                   <TableCell className="max-w-[200px] truncate">{order.payerNote ?? '—'}</TableCell>
                   <TableCell>
                     {order.receiptKey ? (
@@ -727,8 +730,4 @@ function statusFilterItems(): { value: string; label: string }[] {
     { value: 'requires_refund', label: m['collection_admin.status_requires_refund']() },
     { value: 'all', label: m['collection_admin.filter_all']() },
   ]
-}
-
-function date(value: Date | string | null | undefined, locale: string) {
-  return value ? new Date(value).toLocaleDateString(locale) : '—'
 }
