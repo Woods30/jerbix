@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { allChangelogs } from 'content-collections'
 import { Mdx } from '@/components/mdx/Mdx'
+import { formatUtcDate } from '@/lib/datetime'
 import { assertPageEnabled } from '@/lib/module-access'
 import { seo } from '@/lib/seo'
 import { m } from '@/locale/paraglide/messages.js'
@@ -29,7 +30,8 @@ function ChangelogPage() {
       <div className="mt-8 space-y-10">
         {entries.map((c) => (
           <article key={c._meta.path}>
-            <p className="text-sm text-muted-foreground">{new Date(c.date).toLocaleDateString()}</p>
+            {/* 发布日按 UTC 渲染：更新日志日期记的是「日历日」，西半球不该显示成前一天。 */}
+            <p className="text-sm text-muted-foreground">{formatUtcDate(c.date, locale)}</p>
             <h2 className="mt-1 text-2xl font-semibold">{c.title}</h2>
             <p className="mt-1 text-sm">{c.summary}</p>
             <Mdx source={c.content} />

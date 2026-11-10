@@ -13,14 +13,20 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
     trace: 'on-first-retry',
     /**
-     * 固定浏览器时区为 UTC，与 wrangler dev（Workers 运行时固定 UTC）一致。
+     * 浏览器时区**故意**与服务端（wrangler dev 的 Workers 运行时固定 UTC）不同。
      *
-     * 不一致时 `toLocaleDateString` 等在 SSR 与客户端产生不同文本（如本机
-     * UTC+8 在 UTC 午夜后的 8 小时内差一天），React 18 水合失败后整树重生成，
-     * 页面短暂不可交互——表现为随机性的「点击被吞」。日期渲染统一化是产品
-     * 级任务，在 E2E 层先把两端时区对齐。
+     * 早先这里固定成 UTC 来绕开水合失败：服务端渲染 UTC 日期、客户端按本地时区
+     * 渲染，跨午夜差一天时文本不一致，React 水合失败后整树重生成、页面短暂不可
+     * 交互——表现为随机性的「点击被吞」。
+     *
+     * 日期渲染已统一（SSR 与水合首帧用 UTC 基准值，挂载后再切本地时区，见
+     * `src/components/local-date.tsx`），这里改回本地时区正是为了守住这条修复。
+     *
+     * 选 `Pacific/Honolulu`（UTC-10）而不是本机的 UTC+8：负偏移才会把 UTC 午夜
+     * 的内容日期（文章发布日）推到前一天，一退回到「本地时区直接渲染」就必然
+     * 水合失败。
      */
-    timezoneId: 'UTC',
+    timezoneId: 'Pacific/Honolulu',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: process.env.E2E_NO_SERVER

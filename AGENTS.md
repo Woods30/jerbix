@@ -148,6 +148,15 @@ scripts/             构建与校验脚本
     事实源是商品配置里的 `collectionPrices`（`src/config/products.ts`）。这是**例外而
     不是第二份金额**：核销链路的标价只有这一处，见
     `docs/adr/0006-collection-code-settlement.md` 第 8 条。
+12. **日期与时区**：**后端统一 UTC**——存储用 Unix 秒（`unixepoch()`），周期推算用
+    `Date.UTC` / `getUTC*`，不读本地时区；展示统一走 `src/lib/datetime.ts`，业务代码
+    不得直接调 `toLocale*`。**服务端渲染与水合首帧输出 UTC 基准值，浏览器挂载后再切本地
+    时区**（`<LocalDate>` / `<LocalDateTime>`）——服务端（Workers 运行时）固定 UTC、浏览器
+    用本地时区，两端直接渲染本地时间会在跨午夜差一天时触发 React 水合失败，整棵树重新
+    生成、页面短暂不可交互（E2E 里表现为随机「点击被吞」）。记的是「日历日」的值
+    （文章发布日、更新日志日期）用 `formatUtcDate` 锁 UTC，否则西半球会看到前一天。
+    语言必须显式传入：不传会落到运行时默认语言（Node 与浏览器往往不同），那是与时区
+    无关的第二个水合失败来源。`tests/unit/datetime-guard.test.ts` 守着这条线。
 
 ## 工作方式
 

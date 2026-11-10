@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { type AdminBillingResult, fetchAdminBilling } from '@/auth/admin-billing'
+import { LocalDate } from '@/components/local-date'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -55,10 +56,6 @@ function money(amount: number, currency: string) {
   )
 }
 
-function date(value: Date | string | null | undefined) {
-  return value ? new Date(value).toLocaleDateString(getRequestLocale()) : '—'
-}
-
 /** 每页订阅条数。 */
 const PAGE_SIZE = 20
 
@@ -67,6 +64,7 @@ function AdminRevenuePage() {
   const { revenue, subscriptions, activeSubscriptionCount } = data
   const { page = 1 } = Route.useSearch()
   const navigate = Route.useNavigate()
+  const locale = getRequestLocale()
   const totalPages = Math.max(1, Math.ceil(subscriptions.length / PAGE_SIZE))
   // 页码可能因数据变少而越界（如删除了订阅），夹到有效范围而不是渲染空表。
   const currentPage = Math.min(page, totalPages)
@@ -183,8 +181,12 @@ function AdminRevenuePage() {
                         ? m.settings_billing_interval_year()
                         : '—'}
                   </TableCell>
-                  <TableCell>{date(subscription.createdAt)}</TableCell>
-                  <TableCell>{date(subscription.currentPeriodEnd)}</TableCell>
+                  <TableCell>
+                    <LocalDate value={subscription.createdAt} locale={locale} />
+                  </TableCell>
+                  <TableCell>
+                    <LocalDate value={subscription.currentPeriodEnd} locale={locale} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
