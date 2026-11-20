@@ -3,7 +3,7 @@ import { fetchMyCollectionOrders } from '@/collection/client'
 import { formatMoneyAmount } from '@/collection/pricing'
 import { LocalDate } from '@/components/local-date'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Table,
@@ -102,18 +102,16 @@ function OrdersPage() {
                       <LocalDate value={order.createdAt} locale={locale} />
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        render={
-                          <Link
-                            to="/{-$locale}/dashboard/orders/$orderId"
-                            params={{ locale, orderId: order.id }}
-                          />
-                        }
+                      {/* 详情入口是导航，不是按钮：直接渲染 `<a>` 保留链接语义。
+                          Base UI 的 Button 即使用 `render={<a>}` + `nativeButton={false}`
+                          也会加上 `role="button"`，读屏与 `getByRole('link')` 都会当成按钮。 */}
+                      <Link
+                        to="/{-$locale}/dashboard/orders/$orderId"
+                        params={{ locale, orderId: order.id }}
+                        className={buttonVariants({ variant: 'outline', size: 'sm' })}
                       >
                         {m['collection.order_view_detail']()}
-                      </Button>
+                      </Link>
                     </TableCell>
                   </TableRow>
                 ))}
